@@ -5,6 +5,7 @@
 #include "onVariant/CountryState.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "commands/punch.hpp"
+#include "action/quit_to_exit.hpp"
 #include "tools/string.hpp"
 
 #include "peer.hpp"
@@ -89,6 +90,11 @@ void peer::mysql_select_all()
     this->growid     = this->mysql_select<std::string>("growid");
     this->password   = this->mysql_select<std::string>("password");
     this->created_at = this->mysql_select<std::time_t>("created_at", "UNIX_TIMESTAMP");
+    this->role       = static_cast<u_char>(this->mysql_select<signed>("role"));
+    this->banned     = this->mysql_select<signed>("banned") != 0;
+    this->titles     = this->mysql_select<signed>("titles");
+    this->titles_on  = this->mysql_select<signed>("titles_on");
+    this->gems       = this->mysql_select<signed>("gems");
 
     auto blob = this->mysql_select<std::vector<u_char>>("inventory");
     const u_char *u8 = blob.data();
@@ -103,6 +109,50 @@ void peer::mysql_select_all()
         memcpy(&slot.id,    u8 + pos, sizeof(short)); pos += sizeof(short);
         memcpy(&slot.count, u8 + pos, sizeof(short)); pos += sizeof(short);
     }
+
+    /* @note equipped clothing: one u_short id per clothing:: slot. NULL column reads as all zeros */
+    auto cloth_blob = this->mysql_select<std::vector<u_char>>("clothing");
+    for (std::size_t i = 0; i < this->clothing.size(); ++i)
+    {
+        u_short id{};
+        memcpy(&id, cloth_blob.data() + i * sizeof(u_short), sizeof(u_short));
+        if (id != 0 && std::ranges::find(this->slots, (short)id, &::slot::id) != this->slots.end()) // @note only re-equip what is still in the backpack
+            this->clothing[i] = id;
+    }
+    this->update_effects(); // @note restore punch effect & double jump
+}
+
+::blob peer::serialize_clothing() const
+{
+    ::blob blob{};
+    for (float cloth : this->clothing)
+        blob.i16(static_cast<u_short>(cloth));
+    return blob;
+}
+
+int peer::owned_titles() const
+{
+    return (this->role >= MODERATOR) ? T_ALL : this->titles; // @note super supporter perk
+}
+
+std::string peer::name_as(std::string_view color) const
+{
+    std::string_view tag{};
+    if (this->nick.empty()) // @note /nick = undercover: hide the @ tag and role color, but keep titles
+        switch (this->role)
+        {
+            case OWNER:     color = "`9"; tag = "@"; break;
+            case DEVELOPER: color = "`6"; tag = "@"; break;
+            case MODERATOR: color = "`#"; tag = "@"; break;
+        }
+    const int shown = this->titles_on & this->owned_titles();
+    if (tag.empty() && (shown & T_DOCTOR)) color = "`4"; // @note like real growtopia, the Dr. title turns the name red (staff keep their role color)
+    /* @note Blue Name is not a color code: on::CountryState sends |maxLevel and the client draws it blue */
+
+    return std::format("{}{}{}{}{}``", color, tag,
+        (shown & T_DOCTOR) ? "Dr. " : "",
+        this->nick.empty() ? this->growid : this->nick,
+        (shown & T_LEGEND) ? " of Legend" : "");
 }
 
 ::blob peer::serialize_inventory() const
@@ -136,6 +186,9 @@ void peer::load(const std::string &growid, const std::string &password)
 peer::~peer()
 {
     this->mysql_update<std::vector<u_char>>("inventory", this->serialize_inventory().data());
+    this->mysql_update<std::vector<u_char>>("clothing", this->serialize_clothing().data());
+    this->mysql_update<signed>("titles_on", this->titles_on); // @note `titles` (owned) is written by /givetitle directly
+    this->mysql_update<signed>("gems", this->gems);
 }
 
 u_short peer::emplace(::slot slot) 
@@ -192,6 +245,14 @@ void peer::update_effects()
         if (punch_id != 0) // @note an actual change rather than no effect.
             this->punch_effect = punch_id;
     }
+
+    /* @note any back item (wings, capes) grants double jump */
+    if (this->clothing[clothing::BACK] != 0) this->state |= S_DOUBLE_JUMP;
+    else                                     this->state &= ~S_DOUBLE_JUMP;
+
+    /* @note staff are super supporters: bigger name + green wrench, unless /hidestatus */
+    if (this->role >= MODERATOR && !this->hide_status) this->state |= S_SUPER_SUPPORTER;
+    else                                               this->state &= ~S_SUPER_SUPPORTER;
 }
 
 ENetHost *host;
@@ -218,7 +279,20 @@ std::vector<ENetPeer*> peers(const std::string &world, peer_condition condition,
 
 void safe_disconnect_peers(int code)
 {
-    peers("", peer_condition::PEER_ALL, [](ENetPeer &p) { enet_peer_disconnect(&p, 0); });
+    enet_host_flush(host); // @note send anything still queued (e.g. restart notice) before disconnect drops the queues
+    peers("", peer_condition::PEER_ALL, [](ENetPeer &p)
+    {
+        /* @note save inventory, clothing & world - otherwise anything done since login is lost on shutdown */
+        if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr)
+        {
+            ENetEvent event{ .peer = &p };
+            if (pPeer->netid != 0) action::quit_to_exit(event, "", true);
+            delete pPeer;
+            p.data = nullptr;
+        }
+        enet_peer_disconnect(&p, 0);
+    });
+    worlds.clear(); // @note saves any world still in memory (world::~world)
     enet_host_flush(host);
     
     enet_host_destroy(host);

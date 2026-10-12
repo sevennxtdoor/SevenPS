@@ -6,6 +6,8 @@
 #include "onVariant/CountryState.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "commands/weather.hpp"
+#include "commands/moderation.hpp"
+#include "tools/worldban.hpp"
 #include "tools/time.hpp"
 
 #include "join_request.hpp"
@@ -24,7 +26,11 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         if (!alnum(name)) throw std::runtime_error("Sorry, spaces and special characters are not allowed in world or door names.  Try again.");
 
         for (char &c : name) c = std::toupper(c); // @note start -> START
-        
+        if (pPeer->role < MODERATOR && is_nuked(name)) throw std::runtime_error("That world is inaccessible.");
+        if (pPeer->role < MODERATOR)
+            if (const int left = world_ban_left(name, pPeer->user_id); left > 0)
+                throw std::runtime_error(std::format("`4Oh no! ``You've been banned from that world by its owner! Try again in `w{}`` minute{}.", left, (left == 1) ? "" : "s"));
+
         auto it = std::ranges::find(worlds, name, &::world::name);
         if (it == worlds.end()) 
             it = worlds.emplace(worlds.end(), name);
@@ -48,9 +54,9 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         on::EmoticonDataChanged(event);
 
         if (pPeer->user_id == world.owner) 
-            pPeer->display_growid = std::format("`2{}``", pPeer->growid);
-        else if (std::ranges::find(world.access, pPeer->user_id) != world.access.end()) 
-            pPeer->display_growid = std::format("`c{}``", pPeer->growid);
+            pPeer->display_growid = pPeer->name_as("`2");
+        else if (std::ranges::find(world.access, pPeer->user_id) != world.access.end())
+            pPeer->display_growid = pPeer->name_as("`c");
 
         pPeer->rest_pos = world.spawn;
 
@@ -62,6 +68,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             if (pOthers->user_id != pPeer->user_id)
             {
                 on::Spawn(*event.peer, pOthers->netid, pOthers->user_id, pOthers->pos, pOthers->display_growid, pOthers->country, pOthers->role, pOthers->role >= DEVELOPER, false);
+                send_varlist(event.peer, { "OnCountryState", on::country_state(*pOthers) }, pOthers->netid); // @note their blue name
                 on::Spawn(peer, pPeer->netid, pPeer->user_id, pPeer->rest_pos, pPeer->display_growid, pPeer->country, pPeer->role, pPeer->role >= DEVELOPER, false);
                 on::SetClothing(peer);
                 on::ConsoleMessage(&peer, std::format("`5<{} entered, `w{}`` others here>``", pPeer->display_growid, world.visitors));
@@ -94,6 +101,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             )
         );
         ++world.visitors;
+        send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);
         on::CountryState(event);
     }

@@ -8,6 +8,7 @@
 #include "tools/random.hpp"
 #include "tools/time.hpp"
 #include "tools/create_dialog.hpp"
+#include "tools/vending.hpp"
 #include "action/quit_to_exit.hpp"
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
@@ -116,8 +117,18 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             switch (item.type)
             {
-                case type::STRONG: throw std::runtime_error("It's too strong to break.");
+                case type::STRONG:
+                {
+                    if (pPeer->role < DEVELOPER) throw std::runtime_error("It's too strong to break.");
+                    block.hits[0] = 99; // @note developers break bedrock in one punch
+                    break;
+                }
                 case type::MAIN_DOOR: throw std::runtime_error("(stand over and punch to use)");
+                case type::VENDING_MACHINE:
+                {
+                    if (vending_in_use(*world, gamePacket.punch)) throw std::runtime_error("Empty the machine first!");
+                    break;
+                }
                 case type::LOCK:
                 {
                     if (is_tile_lock(item.id)) break; // @todo seperate area for 'range_lock'
@@ -193,7 +204,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     block.state[2] ^= S_TOGGLE; // @note if punched twice it can detoggle that is why we use ^= not |=
                     
                     world->weather = gamePacket.punch;
-                    
+                    clear_weather_override(world->name); // @note the machine wins over /weather
+
                     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [block, item](ENetPeer& p)
                     {
                         send_varlist(&p, { "OnSetCurrentWeather", (block.state[2] & S_TOGGLE) ? get_weather_id(item.id) : 0 });
@@ -263,7 +275,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             else if (item.type == type::LOCK && !is_tile_lock(item.id))
             {
-                pPeer->display_growid = std::format("`w{}``", pPeer->growid);
+                pPeer->display_growid = pPeer->name_as("`w");
                 on::NameChanged(event);
                 
                 world->owner = 0; // @todo have a seperate thing for 'range_lock'
@@ -617,21 +629,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::VENDING_MACHINE:
                 {
-                    send_varlist(event.peer, {
-                        "OnDialogRequest",
-                        ::create_dialog()
-                            .set_default_color("`o")
-                            .add_label_with_icon("big", std::format("`w{}``", item.raw_name), item.id)
-                            .add_spacer("small")
-                            .embed_data("tilex", gamePacket.punch.x)
-                            .embed_data("tiley", gamePacket.punch.y)
-                            .add_textbox("This machine is empty.")
-                            .add_item_picker("stockitem", "`wPut an item in``", "Choose an item to put in the machine!")
-                            .add_smalltext("Upgrade to a DigiVend Machine for `44,000 Gems``.")
-                            .add_button("upgradedigital", "Upgrade to DigiVend")
-                            .add_spacer("small")
-                            .end_dialog("vending", "Close", "")
-                    });
+                    send_vending_dialog(event, *world, gamePacket.punch);
                     break;
                 }
             }
@@ -717,7 +715,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                         world->owner = pPeer->user_id;
                         lock_visuals = true;
 
-                        pPeer->display_growid = std::format("`2{}``", pPeer->growid);
+                        pPeer->display_growid = pPeer->name_as("`2");
                         on::NameChanged(event);
                         if (std::ranges::find(pPeer->my_worlds, world->name) == pPeer->my_worlds.end()) 
                         {

@@ -1,11 +1,13 @@
 #include "pch.hpp"
 #include "onVariant/RequestWorldSelectMenu.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "trade.hpp"
 #include "quit_to_exit.hpp"
 
 void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip_selection = false) 
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    if (pPeer->trade_netid != 0) end_trade(*event.peer); // @note leaving the world cancels a trade
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return; // @note peer was not in a world, therefore nothing to exit from.
@@ -25,6 +27,6 @@ void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip
     if (--world->visitors <= 0) worlds.erase(world); // @note take 1, and if result is 0, delete memory copy of world.
     pPeer->netid = 0; // this will fix any packets being sent outside of world; this can also be used to check if peer is not in a world.
 
-    pPeer->display_growid = std::format("`w{}``", pPeer->growid);
+    pPeer->display_growid = pPeer->name_as("`w");
     if (!skip_selection) on::RequestWorldSelectMenu(event);
 }

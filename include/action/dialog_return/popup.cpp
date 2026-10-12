@@ -1,4 +1,7 @@
 #include "pch.hpp"
+#include "tools/worldban.hpp"
+#include "commands/titles.hpp"
+#include "action/trade.hpp"
 
 #include "popup.hpp"
 
@@ -6,6 +9,26 @@ void popup(ENetEvent& event, const ::hPipe &hPipe)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
+    /* wrench menu: pull / kick / worldban (world owner or staff) */
+    if (const std::string clicked{ hPipe["buttonClicked"] }; clicked == "pull" || clicked == "kick" || clicked == "worldban" || clicked == "trade")
+    {
+        const int netid = atoi(std::string{ hPipe["netID"] }.c_str());
+        if (pPeer->netid == 0) return;
+        for (ENetPeer *p : peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD))
+            if (static_cast<::peer*>(p->data)->netid == netid)
+            {
+                if (clicked == "trade") request_trade(event, *p);
+                else world_punish(event, clicked, p);
+                break;
+            }
+        return;
+    }
+
+    if (hPipe["buttonClicked"] == "title_edit")
+    {
+        send_title_dialog(event);
+        return;
+    }
     if (hPipe["buttonClicked"] == "my_worlds")
     {
         auto section = [](const auto &range) 

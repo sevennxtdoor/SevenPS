@@ -1,5 +1,7 @@
 #include "pch.hpp"
 #include "tools/create_dialog.hpp"
+#include "tools/worldban.hpp"
+#include "commands/titles.hpp"
 #include "wrench.hpp"
 
 void action::wrench(ENetEvent& event, const std::string& header) 
@@ -27,6 +29,7 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .set_default_color("`o")
                             .add_player_info(pOthers->display_growid, std::to_string(lvl), pOthers->level.back(), 50 * (lvl * lvl + 2))
                             .add_spacer("small")
+                            .add_textbox(std::format("`oStatus: {}", status_label(*pOthers)))
                             .add_spacer("small")
                             .add_button("renew_pvp_license", "Get Card Battle License")
                             .add_spacer("small")
@@ -75,9 +78,8 @@ void action::wrench(ENetEvent& event, const std::string& header)
                 /* wrench someone else */
                 else
                 {
-                    send_varlist(event.peer, {
-                        "OnDialogRequest",
-                        ::create_dialog()
+                    ::create_dialog dialog{};
+                    dialog
                             .embed_data("netID", netid)
                             .add_popup_name("WrenchMenu")
                             .set_default_color("`o")
@@ -92,6 +94,8 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_spacer("small")
                             .add_label("small", "`1Account Age:`` 0 days")
                             .add_spacer("small")
+                            .add_label("small", std::format("`1Status:`` {}", status_label(*pOthers)))
+                            .add_spacer("small")
                             .add_button("trade", "`wTrade``")
                             .add_button("sendpm", "`wSend Message``")
                             .add_textbox("(No Battle Leash equipped)")
@@ -99,7 +103,21 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_button("friend_add", "`wAdd as friend``")
                             .add_button("show_clothes", "`wView worn clothes``")
                             .add_button("ignore_player", "`wIgnore Player``")
-                            .add_button("report_player", "`wReport Player``")
+                            .add_button("report_player", "`wReport Player``");
+
+                    /* @note world owner (or staff) controls */
+                    auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
+                    if (world != worlds.end() && can_world_punish(*pPeer, *pOthers, *world))
+                    {
+                        dialog
+                            .add_spacer("small")
+                            .add_button("pull", "`5Pull``")
+                            .add_button("kick", "`4Kick``")
+                            .add_button("worldban", "`4World Ban``");
+                    }
+                    send_varlist(event.peer, {
+                        "OnDialogRequest",
+                        dialog
                             .add_spacer("small")
                             .add_quick_exit()
                             .end_dialog("popup", "", "Continue")

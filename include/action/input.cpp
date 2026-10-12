@@ -69,8 +69,11 @@ void action::input(ENetEvent& event, const std::string& header)
             }
             text = std::move(muffled_text);
         }
-        const std::string &player_chat = std::format("CP:0_PL:0_OID:_player_chat={}", text);
-        const std::string &message = std::format("CP:0_PL:0_OID:_CT:[W]_ `6<{}>`` `$`${}````", pPeer->display_growid, text);
+        /* @note staff chat color: owner `9 (gold), developer `5 (pink), moderator `^ (lime) */
+        const std::string_view staff_color = !pPeer->nick.empty() ? "" : // @note /nick = undercover, chat like a normal player
+            (pPeer->role >= OWNER) ? "`9" : (pPeer->role >= DEVELOPER) ? "`5" : (pPeer->role >= MODERATOR) ? "`^" : "";
+        const std::string &player_chat = std::format("CP:0_PL:0_OID:_player_chat={}{}", staff_color, text);
+        const std::string &message = std::format("CP:0_PL:0_OID:_CT:[W]_ `6<{}>`` {}{}````", pPeer->display_growid, staff_color.empty() ? "`$`$" : staff_color, text);
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, player_chat, message](ENetPeer& p) 
         {
             send_varlist(&p, { "OnTalkBubble", pPeer->netid, player_chat });

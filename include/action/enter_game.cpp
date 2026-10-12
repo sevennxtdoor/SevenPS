@@ -12,14 +12,17 @@ void action::enter_game(ENetEvent& event, const std::string& header)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
-    pPeer->display_growid = std::format("`w{}``", pPeer->growid);
+    pPeer->display_growid = pPeer->name_as("`w");
     on::ConsoleMessage(event.peer, 
         std::format("Welcome back, {}. No friends are online.", 
             pPeer->display_growid
         )
     );
+    on::ConsoleMessage(event.peer, "`o>> Welcome to `2MikeTopia``!");
     on::ConsoleMessage(event.peer, holiday_greeting().second);
     on::ConsoleMessage(event.peer, "`5Personal Settings active:`` `#Can customize profile``");
+    if (pPeer->role >= MODERATOR)
+        on::ConsoleMessage(event.peer, "`5Super Supporter`` status active! Perks: `$/nick {name}``, all titles (wrench yourself > `wTitle``)");
     
     send_inventory_state(event);
     on::SetBux(event);

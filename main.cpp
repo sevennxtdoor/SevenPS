@@ -10,6 +10,7 @@
 #include "include/https/server_data.hpp" // @note gServer_data
 #include "include/database/database_config.hpp" // @note load_database_config(), gDatabase_config
 #include "include/automate/holiday.hpp" // @note holiday
+#include "include/commands/restart.hpp" // @note restart_tick()
 #include <csignal>
 
 namespace
@@ -48,15 +49,24 @@ int main()
     check_for_holiday(); // @note check for any holidays using local time (your VPS or local time) - @todo thread loop so it can change the holiday without restarting
 
     ENetEvent event{};
-    while (!gSignal)
-        while (enet_host_service(host, &event, 1000/*ms*/) > 0)
+    bool restarting{};
+    while (!gSignal && !restarting)
+    {
+        if (enet_host_service(host, &event, 1000/*ms*/) > 0)
             if (const auto i = eventType_pool.find(event.type); i != eventType_pool.end())
                 i->second(event);
+        restarting = restart_tick(); // @note /restart countdown
+    }
 
     safe_disconnect_peers(gSignal);
     mysql_close(db); // @note deletes db (MYSQL* allocation)
     mysql_library_end();
 
+    if (restarting)
+    {
+        puts("restarting MikeTopia...");
+        return 2; // @note jalankan_server.bat starts the server again on exit code 2
+    }
     puts("killed gurotopia! [EXIT_SUCCESS]");
     return EXIT_SUCCESS;
 }

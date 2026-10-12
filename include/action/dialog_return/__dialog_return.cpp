@@ -10,6 +10,9 @@
 #include "create_blast.hpp"
 #include "socialportal.hpp"
 #include "megaphone.hpp"
+#include "commands/titles.hpp"
+#include "action/trade.hpp"
+#include "tools/vending.hpp"
 
 #include "__dialog_return.hpp"
 
@@ -31,4 +34,8 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"create_blast", std::bind(&create_blast, std::placeholders::_1, std::placeholders::_2)},
     {"socialportal", std::bind(&socialportal, std::placeholders::_1, std::placeholders::_2)},
     {"megaphone", std::bind(&megaphone, std::placeholders::_1, std::placeholders::_2)},
+    {"title_edit", std::bind(&title_edit, std::placeholders::_1, std::placeholders::_2)},
+    {"trade_add", std::bind(&trade_add, std::placeholders::_1, std::placeholders::_2)},
+    {"trade_confirm", std::bind(&trade_confirm, std::placeholders::_1, std::placeholders::_2)},
+    {"vending", std::bind(&vending_return, std::placeholders::_1, std::placeholders::_2)},
 };

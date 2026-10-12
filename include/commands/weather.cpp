@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include <unordered_map>
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "weather.hpp"
@@ -75,12 +76,53 @@ int get_weather_id(u_int item_id)
     return 0; // @note sunny
 }
 
+namespace
+{
+    std::unordered_map<std::string, int> weather_override{}; // @note world name -> weather id set by /weather (memory only)
+}
+
+int current_weather(const ::world &world)
+{
+    if (auto it = weather_override.find(world.name); it != weather_override.end()) return it->second;
+
+    for (const ::block &block : world.blocks)
+        if (block.fg != 0 && (block.state[2] & S_TOGGLE) && id_to_item(block.fg).type == type::WEATHER_MACHINE)
+            return get_weather_id(block.fg);
+    return 0;
+}
+
+void clear_weather_override(const std::string &world_name)
+{
+    weather_override.erase(world_name);
+}
+
+/* /weather {id} - weather id (0-100) or a weather machine's item id.
+ * world owner & staff change it for the whole world, everyone else only sees it themselves */
 void weather(ENetEvent& event, const std::string_view text)
 {
-    const std::string id{ text.substr(strlen("weather ")) };
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
-    send_varlist(event.peer, {
-        "OnSetCurrentWeather",
-        atoi(id.c_str())
-    });
+    int id = atoi(std::string{ text.substr(strlen("weather ")) }.c_str());
+    if (id > 100) id = get_weather_id(id); // @note item id of a weather machine, e.g. 934 (Night)
+    if (id < 0)
+    {
+        send_action(*event.peer, "log", "msg|`4Usage:`` /weather {id} - e.g. /weather 2 (night), /weather 0 (sunny)");
+        return;
+    }
+
+    auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
+    const bool whole_world = pPeer->netid != 0 && world != worlds.end() &&
+        ((world->owner != 0 && world->owner == pPeer->user_id) || pPeer->role >= MODERATOR);
+
+    if (whole_world)
+    {
+        weather_override[world->name] = id;
+        peers(world->name, PEER_SAME_WORLD, [id](ENetPeer &p) { send_varlist(&p, { "OnSetCurrentWeather", id }); });
+        on::ConsoleMessage(event.peer, std::format("`oWeather changed to `w{}`` for the whole world.``", id));
+    }
+    else
+    {
+        send_varlist(event.peer, { "OnSetCurrentWeather", id });
+        on::ConsoleMessage(event.peer, std::format("`oWeather changed to `w{}`` (only you can see it - the world owner can change it for everyone).``", id));
+    }
 }

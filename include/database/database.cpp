@@ -13,8 +13,24 @@ void create_table_if_not_exist()
             "growid VARCHAR(18) UNIQUE,"
             "password VARCHAR(18),"
             "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-            "inventory BLOB"
+            "inventory BLOB,"
+            "role TINYINT UNSIGNED DEFAULT 0,"
+            "clothing BLOB,"
+            "banned TINYINT UNSIGNED DEFAULT 0,"
+            "titles INT DEFAULT 0,"
+            "titles_on INT DEFAULT 0,"
+            "gems INT DEFAULT 0"
         ")";
+    /* @note older tables made before these columns existed */
+    std::string query_peer_role =
+        "ALTER TABLE peer "
+            "ADD COLUMN IF NOT EXISTS role TINYINT UNSIGNED DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS clothing BLOB,"
+            "ADD COLUMN IF NOT EXISTS banned TINYINT UNSIGNED DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS titles INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS titles_on INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS gems INT DEFAULT 0";
+    std::string query_nuked = "CREATE TABLE IF NOT EXISTS nuked (name VARCHAR(24) NOT NULL PRIMARY KEY)";
     std::string query_world = 
         "CREATE TABLE IF NOT EXISTS world ("
             "name VARCHAR(24) NOT NULL PRIMARY KEY,"
@@ -22,7 +38,19 @@ void create_table_if_not_exist()
             "blocks BLOB,"
             "objects BLOB"
         ")";
-    if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_world.c_str()))
+    std::string query_vending =
+        "CREATE TABLE IF NOT EXISTS vending ("
+            "world VARCHAR(24) NOT NULL,"
+            "x INT NOT NULL,"
+            "y INT NOT NULL,"
+            "item INT DEFAULT 0,"
+            "stock INT DEFAULT 0,"
+            "price INT DEFAULT 0,"
+            "per_lock TINYINT DEFAULT 0,"
+            "earned INT DEFAULT 0,"
+            "PRIMARY KEY (world, x, y)"
+        ")";
+    if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }

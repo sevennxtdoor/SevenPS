@@ -59,15 +59,25 @@ struct Billboard {
 
 enum role : u_char {
     PLAYER, 
-    MODERATOR, 
-    DEVELOPER
+    MODERATOR,
+    DEVELOPER,
+    OWNER // @note server owner, above developer. only set in the database
+};
+
+/* @note bit flags for peer::titles (owned) and peer::titles_on (shown) */
+enum title_flag : int {
+    T_DOCTOR   = 0x1, // @note "Dr. Name"
+    T_LEGEND   = 0x2, // @note "Name of Legend"
+    T_BLUENAME = 0x4, // @note blue name
+    T_ALL      = T_DOCTOR | T_LEGEND | T_BLUENAME
 };
 
 enum pstate : int
 {
     S_GHOST       = 0x00000001,
     S_DOUBLE_JUMP = 0x00000002,
-    S_DUCT_TAPE   = 0x00002000
+    S_DUCT_TAPE   = 0x00002000,
+    S_SUPER_SUPPORTER = 0x01000000 // @note bigger name + green swinging wrench. bit 24, from GTOS' getState() (haveSuperSupporterName)
 };
 
 class peer {
@@ -88,10 +98,25 @@ public:
     T    mysql_select(const std::string &column, const std::string &arg = "");
     void mysql_select_all();
 
+    std::string name_as(std::string_view color) const; // @note "`w" -> "`wName``", but role tag (@) overrides color
+    int owned_titles() const; // @note staff own every title (super supporter perk)
+
     int user_id{}; // @note unqiue user id.
     std::string growid{""}, password{""};
     std::time_t created_at{}; // @note when inserted in SQL (account age)
     u_char role{};
+    bool banned{};
+    std::string nick{}; // @note /nick (staff), hides the @ tag. not saved, resets on relog
+    bool hide_status{}; // @note /hidestatus - hide the super supporter name & wrench. not saved
+
+    /* @note trade (action/trade.cpp) */
+    int trade_netid{};                 // @note netid of the person we trade with, 0 = none
+    bool trading{};                    // @note both opened the trade window
+    bool trade_accepted{};             // @note ticked "accept" in the trade window
+    bool trade_confirmed{};            // @note pressed "Do The Trade!" in the confirmation
+    std::vector<::slot> trade_items{}; // @note our offer, max 4
+    int titles{};    // @note title_flag:: this peer owns
+    int titles_on{}; // @note title_flag:: this peer chose to show
     std::array<float, 10ull> clothing{}; // @note peer's clothing {id, clothing::}
     u_char punch_effect{}; // @note last equipped clothing that has a effect. supporting 0-255 effects.
 
@@ -119,6 +144,7 @@ public:
     */
     u_short emplace(::slot slot);
     ::blob serialize_inventory() const;
+    ::blob serialize_clothing() const;
 
     std::vector<short> fav{};
 

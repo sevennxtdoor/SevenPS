@@ -24,6 +24,12 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
     pPeer->load(pPeer->growid, pPeer->password); // @note the ACTUAL loading. the one in protocol.cpp must be removed for performance...
+    if (pPeer->banned)
+    {
+        send_action(*event.peer, "log", "msg|`4Sorry, this account has been banned from MikeTopia.``");
+        send_action(*event.peer, "logon_fail", ""); // @note triggers action|quit on client.
+        return;
+    }
 
     send_varlist(event.peer, { "OnOverrideGDPRFromServer", 18, 1, 0, 1 });
 

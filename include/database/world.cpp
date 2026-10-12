@@ -4,6 +4,7 @@
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "world.hpp"
+#include "tools/vending.hpp"
 
 char get_type(const ::item &item)
 {
@@ -146,6 +147,16 @@ void block::reset()
                 {
                     blob.push_back(tree->to_blob(true));
                 }
+            }
+            else if (type == '\x17'/*display block*/)
+            {
+                /* @note the client always reads the displayed item id here, even 0 - without it the rest of the world is misread */
+                auto display = std::ranges::find(this->displays, block_pos, &::display::pos);
+                blob.u32(display != this->displays.end() ? display->id : 0);
+            }
+            else if (type == '\x18'/*vending machine*/)
+            {
+                vending_extra(blob, *this, block_pos);
             }
         }
         ++i;
@@ -313,10 +324,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         generate_world(*this);
     }
+    if (!this->name.empty()) load_vendings(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
+    if (!this->name.empty()) save_vendings(*this);
     {
         ::blob blob;
 
@@ -548,6 +561,17 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
             {
                 blob.push_back(tree->to_blob(true));
             }
+            break;
+        }
+        case type::DISPLAY_BLOCK:
+        {
+            auto display = std::ranges::find(world.displays, gamePacket.punch, &::display::pos);
+            blob.u32(display != world.displays.end() ? display->id : 0);
+            break;
+        }
+        case type::VENDING_MACHINE:
+        {
+            vending_extra(blob, world, gamePacket.punch);
             break;
         }
     }
