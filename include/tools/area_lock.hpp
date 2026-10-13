@@ -5,7 +5,7 @@
  * the access list may build or break there. kept in the `world_area_lock` table, the world blob stays the same */
 
 enum area_lock_flag : int {
-    AL_IGNORE_AIR  = 0x1, // @note "Ignore empty air": empty tiles get locked too
+    AL_IGNORE_AIR  = 0x1, // @note "Ignore empty air": only blocks get locked, empty tiles are skipped
     AL_BUILD_ONLY  = 0x2, // @note Builder's Lock: people with access can only build
     AL_BREAK_ONLY  = 0x4  // @note Builder's Lock: people with access can only break
 };

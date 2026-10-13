@@ -45,7 +45,7 @@ static bool has_access(const ::peer &p, const ::area_lock &lock)
 }
 
 /* @note spreads from the lock over connected tiles, nearest first, skipping tiles another lock already owns.
- * empty tiles stop the spread unless "Ignore empty air" is on. the main door and bedrock are never locked */
+ * empty air is locked too (like real Growtopia) unless "Ignore empty air" is on. the main door and bedrock are never locked */
 static std::vector<u_short> fill(::world &world, const ::area_lock &lock)
 {
     const int width = 100, height = static_cast<int>(world.blocks.size()) / width;
@@ -75,7 +75,7 @@ static std::vector<u_short> fill(::world &world, const ::area_lock &lock)
             seen[next] = true;
 
             const ::block &block = world.blocks[next];
-            if (block.fg == 0 && block.bg == 0 && !(lock.flags & AL_IGNORE_AIR)) continue;
+            if (block.fg == 0 && block.bg == 0 && (lock.flags & AL_IGNORE_AIR)) continue;
             const ::item &item = id_to_item(block.fg);
             if (block.fg != 0 && (item.type == type::MAIN_DOOR || item.type == type::STRONG || item.type == type::LOCK)) continue;
 
