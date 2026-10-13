@@ -4,6 +4,8 @@
 #include "tools/profile.hpp"
 #include "tools/wrench_menu.hpp"
 
+#include "tools/jammer.hpp"
+
 #include "social.hpp"
 
 static constexpr int MAX_FRIENDS = 50;
@@ -135,7 +137,7 @@ void send_friends(ENetEvent &event, bool show_offline)
         ENetPeer *on = online(name);
         if (on) ++count_online;
         if (!on && !show_offline) continue;
-        const std::string where = on ? std::format("`2online`` in `w{}``", static_cast<::peer*>(on->data)->recent_worlds.back()) : "`4offline``";
+        const std::string where = on ? std::format("`2online`` in `w{}``", world_display(static_cast<::peer*>(on->data)->recent_worlds.back(), p)) : "`4offline``";
         rows += std::format("add_smalltext|`w{}`` - {}|left|\n", name, where);
         if (show_offline) rows += std::format("add_button|unfriend_{}|Remove {}|noflags|0|0|\n", name, name);
     }

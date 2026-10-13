@@ -32,6 +32,7 @@ Made by @Mike, for local/private use.
 - Surgery on Surg-E (`include/tools/surgery.cpp`): 6 diagnoses, all 13 surgical tools, surgeon skill and malpractice saved to the database
 - 76 more punch effects, double jump from back items, bedrock breakable by developers
 - System worlds (`include/tools/system_worlds.cpp`): START (hub with the MikeTopia sky title, hall, signs, doors to PARKOUR/TRADE, garden, platform climb) and PARKOUR (jump course with checkpoints, daily 2500 gems at the finish) are built with a design when first opened; only staff can edit them; `/rebuild {START|PARKOUR}` (owner), `/parkour`
+- Jammers (`include/tools/jammer.cpp`): Signal, Punch, Zombie, Balloon Jammer and Antigravity Generator turn on/off by punching (tile update + message); Signal Jammer hides the world from Top Worlds, /sb and friend lists (staff still see it); "World X [JAMMED, NOPUNCH...] entered" tags
 - System broadcasts: placeholders in `resources/broadcast.txt` ({online} {players} {worlds} {event} {next_event}), "event in 5 minutes" warning, event popup notification, hourly server stats, new player welcome, level milestones (every 10 levels) and achievements announced to everyone
 
 **Saving & fixes**

@@ -14,6 +14,7 @@
 #include "tools/cps.hpp"
 #include "tools/rank.hpp"
 #include "tools/system_worlds.hpp"
+#include "tools/jammer.hpp"
 #include "action/quit_to_exit.hpp"
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
@@ -252,6 +253,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::CHEST:
                 {
                     block.state[2] ^= S_TOGGLE;
+                    if (is_jammer(block.fg)) jammer_toggled(event, *world, block, gamePacket.punch);
                     break;
                 }
                 case type::RANDOM:

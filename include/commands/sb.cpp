@@ -3,6 +3,7 @@
 #include "onVariant/SetBux.hpp"
 #include "tools/rank.hpp"
 #include "tools/wrench_menu.hpp"
+#include "tools/jammer.hpp"
 
 #include "sb.hpp"
 
@@ -15,7 +16,7 @@ void sb(ENetEvent& event, const std::string_view text)
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
 
-    std::string display = pPeer->recent_worlds.back();
+    std::string display = jammer_on(*world, jammer::SIGNAL) ? "`4JAMMED!``" : pPeer->recent_worlds.back(); // @note Signal Jammer
 
     /* @note owner broadcast: gold header + a pop-up notification for everyone */
     if (pPeer->role >= OWNER)

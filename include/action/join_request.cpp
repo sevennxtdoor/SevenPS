@@ -9,6 +9,7 @@
 #include "commands/moderation.hpp"
 #include "tools/worldban.hpp"
 #include "tools/time.hpp"
+#include "tools/jammer.hpp"
 
 #include "join_request.hpp"
 
@@ -96,8 +97,8 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
 
         on::ConsoleMessage(event.peer, 
             std::format(
-                "World `w{}`` entered.  There are `w{}`` other people here, `w{}`` online.", 
-                world.name, world.visitors, peers().size()
+                "World `w{}``{} entered.  There are `w{}`` other people here, `w{}`` online.", 
+                world.name, jammer_tags(world), world.visitors, peers().size()
             )
         );
         ++world.visitors;
