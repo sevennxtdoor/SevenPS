@@ -5,6 +5,7 @@
 #include "tools/profile.hpp"
 #include "tools/rank.hpp"
 #include "tools/cps.hpp"
+#include "tools/economy.hpp"
 
 #include "system_worlds.hpp"
 
@@ -25,7 +26,7 @@ namespace
     constexpr int GROUND = 37; // @note first solid row, players walk on row 36 like a normal world
 
     const ::pos PARKOUR_FINISH{ 96, 13 };
-    constexpr int PARKOUR_REWARD = 2500; // @note gems, once a day (+ rank bonus)
+    constexpr int PARKOUR_REWARD = 1000; // @note gems, once a day (+ rank bonus)
 }
 
 bool is_system_world(std::string_view name)
@@ -121,7 +122,7 @@ static void build_start(::world &w)
     main_door(w, 50);
 
     put_sign(w, 48, GROUND - 1, "`9Welcome to MikeTopia!`` Type `$/help`` for all commands. Have fun and be nice!");
-    put_sign(w, 52, GROUND - 1, "`2Get started:`` `$/find`` free items, `$/rank`` ranks, `$/event`` events, `$/top`` leaderboard, `$/online`` who's here.");
+    put_sign(w, 52, GROUND - 1, "`2Get started:`` lock a world, plant your starter seeds and break the blocks for gems. A `wWorld Lock`` costs 2000 gems in the store!");
     put_sign(w, 43, GROUND - 1, "`4Rules:`` no scamming, no spamming, no bad words. Staff decisions are final. Scammed? Report with wrench > Report.");
     put_sign(w, 57, GROUND - 1, "`5Daily:`` wrench yourself for Grow Pass, Goals & Quests and Achievements. Online 30 minutes = free gems!");
     put_door(w, 39, GROUND - 1, "`2PARKOUR``", "PARKOUR");
@@ -207,6 +208,7 @@ void system_checkpoint(ENetEvent &event, ::world &world, const ::pos &tile)
     add_stat(event, "parkour");
     const int gems = gem_bonus(*pPeer, PARKOUR_REWARD);
     pPeer->gems += gems;
+    econ("parkour", gems);
     on::SetBux(event);
     send_action(*event.peer, "play_sfx", "file|audio/cash_register.wav\ndelayMS|0\n");
     send_varlist(event.peer, { "OnTextOverlay", std::format("`2Parkour finished! ``+{} gems", gems) });

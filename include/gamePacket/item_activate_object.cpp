@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/economy.hpp"
 #include "onVariant/SetBux.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 
@@ -33,6 +34,7 @@ void item_activate_object(ENetEvent& event, ::gamePacket gamePacket)
     else 
     {
         pPeer->gems += object->count;
+        econ("gems from blocks", object->count);
         object->count = 0;
         on::SetBux(event);
     }

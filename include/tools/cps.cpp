@@ -10,6 +10,7 @@
 #include "tools/social.hpp"
 #include "tools/rank.hpp"
 #include "tools/wrench_menu.hpp"
+#include "tools/economy.hpp"
 
 #include "cps.hpp"
 
@@ -22,6 +23,7 @@ namespace
     constexpr int QUIZ_TIME      = 90;
     constexpr int ONLINE_REWARD_GAP = 30 * 60;
     constexpr int ONLINE_REWARD     = 300; // @note gems, + rank bonus
+    constexpr int ONLINE_REWARDS_PER_DAY = 6; // @note at most 1800 gems a day from playing time, against inflation
 
     event_type current = event_type::NONE;
     std::time_t event_ends{}, next_event = std::time(nullptr) + 30 * 60, next_broadcast = std::time(nullptr) + BROADCAST_GAP;
@@ -174,7 +176,7 @@ static void to_all_quiz(const std::string &question)
 
 static void start_quiz()
 {
-    quiz_reward = RandomRange(5, 15) * 100;
+    quiz_reward = RandomRange(1, 3) * 100; // @note small on purpose: the economy is farming-based
     quiz_ends = std::time(nullptr) + QUIZ_TIME;
     if (RandomRange(0, 1) == 0) // @note math
     {
@@ -207,6 +209,7 @@ bool check_quiz(ENetEvent &event, const std::string &text)
     quiz_answer.clear();
 
     pPeer->gems += quiz_reward;
+    econ("chat quiz", quiz_reward);
     on::SetBux(event);
     send_action(*event.peer, "play_sfx", "file|audio/cash_register.wav\ndelayMS|0\n");
     to_all(std::format("`9** QUIZ:`` {} `9answered `w{}`` first and won `w{}`` gems!``", pPeer->display_growid, answer, quiz_reward));
@@ -225,11 +228,24 @@ static void online_rewards(std::time_t now)
         if (mark == 0 || now - mark < ONLINE_REWARD_GAP) continue;
 
         pset(*pp, "online_mark", static_cast<int>(now));
+
+        /* @note only for really playing (broke, placed or harvested something since last time), not for standing AFK */
+        const int activity = pget(*pp, "broken") + pget(*pp, "placed") + pget(*pp, "harvested");
+        const bool active = activity - pget(*pp, "online_activity") >= 20;
+        pset(*pp, "online_activity", activity);
+        if (!active) { on::ConsoleMessage(p, "`oNo online reward this time: break, place or harvest something to earn it!``"); continue; }
+
+        const int today = static_cast<int>(now / 86400);
+        if (pget(*pp, "online_day") != today) pset(*pp, "online_day", today), pset(*pp, "online_count", 0);
+        if (pget(*pp, "online_count") >= ONLINE_REWARDS_PER_DAY) continue; // @note daily limit reached, quietly
+        pset(*pp, "online_count", pget(*pp, "online_count") + 1);
+
         const int gems = gem_bonus(*pp, ONLINE_REWARD);
         pp->gems += gems;
+        econ("online reward", gems);
         ENetEvent e{ .peer = p };
         on::SetBux(e);
-        on::ConsoleMessage(p, std::format("`2Thanks for playing!`` You got `w{}`` gems for being online 30 minutes.", gems));
+        on::ConsoleMessage(p, std::format("`2Thanks for playing!`` You got `w{}`` gems for 30 active minutes. (`w{}/{}`` today)", gems, pget(*pp, "online_count"), ONLINE_REWARDS_PER_DAY));
     }
 }
 
@@ -291,10 +307,11 @@ void announce_join(ENetEvent &event)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
     pset(*pPeer, "online_mark", static_cast<int>(std::time(nullptr))); // @note online reward timer starts now
+    pset(*pPeer, "online_activity", pget(*pPeer, "broken") + pget(*pPeer, "placed") + pget(*pPeer, "harvested"));
     int online = 0;
     peers("", PEER_ALL, [&](ENetPeer &p) { if (::peer *pp = static_cast<::peer*>(p.data); pp && !pp->growid.empty()) ++online; });
 
-    on::ConsoleMessage(event.peer, "`o>> Type `$/start`` to visit the START world, `$/find`` to get items and `$/top`` to see the best players!``");
+    on::ConsoleMessage(event.peer, "`o>> Type `$/start`` to visit the START world, `$/rules`` for the rules and `$/top`` to see the best players!``");
     if (current != event_type::NONE)
         on::ConsoleMessage(event.peer, std::format("`9** Event running: {} `9({} minutes left) ``{}", event_name(current),
             (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));
@@ -304,7 +321,12 @@ void announce_join(ENetEvent &event)
     {
         pset(*pPeer, "welcomed", 1);
         joined = std::format("`2** Welcome our new player ``{}`2! Say hi and help them out! (`w{}`` `2online)``", pPeer->display_growid, online);
-        on::ConsoleMessage(event.peer, "`2Welcome to MikeTopia!`` Start in the `wSTART`` world: read the signs, try the `wPARKOUR`` and type `$/find`` for free items.");
+        on::ConsoleMessage(event.peer, "`2Welcome to MikeTopia!`` Start in the `wSTART`` world, read the signs and try the `wPARKOUR``.");
+        /* @note starter pack: a lock for your first world and farmable seeds, so earning your first World Lock isn't a grind */
+        for (const auto &[id, count] : { std::pair<short, short>{ 9640, 1 }, { 4585, 20 }, { 5667, 10 }, { 202, 2 } })
+            modify_item_inventory(event, ::slot(id, count));
+        on::ConsoleMessage(event.peer, "`9Starter pack:`` `wMy First World Lock``, `w20 Pepper Tree Seeds``, `w10 Laser Grid Seeds`` and `w2 Small Locks``. "
+            "Lock a world, plant the seeds, break the blocks for gems and buy a `wWorld Lock`` (2000 gems) in the store!");
     }
     peers("", PEER_ALL, [&](ENetPeer &p)
     {
@@ -317,21 +339,9 @@ void announce_join(ENetEvent &event)
 
 std::string find_blocked(const ::peer &p, short id)
 {
-    if (p.role >= DEVELOPER) return ""; // @note staff can find anything
-
-    static const std::unordered_set<short> special{
-        18, 32,                         // @note fist, wrench
-        112,                            // @note gems
-        242, 1796, 7188, 9640,          // @note world lock, diamond lock, blue gem lock, my first world lock
-        4298, 1506, 4324, 4326, 4328, 4330, // @note surgery rewards (Caduceus, Medical Scarf, Biotronic, Plague Doctor set)
-        1458, 9350,                     // @note golden heart crystal, super golden booty chest
-    };
-    if (special.contains(id)) return "This item is special: get it from events, surgery or other players!";
-
-    for (const auto &[tab, shouhin] : shouhin_tachi)
-        for (const auto &[item, count] : shouhin.items)
-            if (item == id) return "This item is sold in the `2Store``! Buy it with gems.";
-    return "";
+    /* @note like real Growtopia, items aren't free: farm them, buy them in the store or trade. only staff can /find */
+    if (p.role >= MODERATOR) return "";
+    return "Items aren't free on MikeTopia! Farm them, buy them in the `2Store`` or trade with other players.";
 }
 
 /* ---------- commands ---------- */

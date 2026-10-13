@@ -3,7 +3,7 @@
 # Colors: `2 green, `4 red, `9 gold, `5 pink, `$ yellow, `w white, end a color with ``
 # Filled in automatically: {online} players online, {players} registered players, {worlds} open worlds,
 # {event} the running event, {next_event} minutes until the next event.
-Ketik `$/find`` untuk ambil item gratis!
+Item tidak gratis di MikeTopia: farming, beli di `2Store``, atau trade dengan pemain lain!
 Cek `$/event`` untuk melihat event yang sedang berjalan atau berikutnya.
 Siapa pemain terbaik? Ketik `$/top level`` atau `$/top gems``!
 Wrench dirimu sendiri lalu klik `2Grow Pass`` untuk hadiah harian.
@@ -12,11 +12,14 @@ Simpan World Lock kamu di `2World Lock Bank`` (wrench dirimu) supaya aman.
 Coba operasi `2Surg-E`` dan naikkan Surgeon Level kamu!
 Ketik `$/start`` untuk pergi ke world START.
 Beli rank `2VIP`` sampai `4GOD`` pakai gems: ketik `$/rank``!
-Online 30 menit = gems gratis. Tetap main ya!
+Main aktif 30 menit = 300 gems (maksimal 6x sehari). AFK tidak dapat!
 Jawab `9QUIZ`` di chat paling cepat untuk menang gems!
 Ada `w{online}`` pemain online sekarang. Ajak temanmu main di MikeTopia!
-Coba `2PARKOUR``: ketik `$/parkour`` dan sampai di FINISH untuk gems setiap hari!
+Coba `2PARKOUR``: ketik `$/parkour`` dan sampai di FINISH untuk 1000 gems setiap hari!
 Event sekarang: {event}``. Event berikutnya sekitar `w{next_event}`` menit lagi.
 Sudah `w{players}`` pemain bergabung di MikeTopia. Terima kasih!
 Kena scam? Wrench pemainnya lalu klik `4Report``. Staff akan cek.
 Jangan kasih password kamu ke siapa pun, termasuk yang mengaku staff!
+Harga patokan: 1 `wWorld Lock`` = 2000 gems di Store. Jangan mau dibohongi saat trade!
+Pemain baru dapat starter pack: My First World Lock + seed Pepper Tree & Laser Grid. Tanam, panen, jadi kaya!
+Jual barangmu pakai `wVending Machine`` dengan harga World Lock.

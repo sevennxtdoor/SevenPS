@@ -5,6 +5,7 @@
 #include "tools/wrench_menu.hpp"
 #include "tools/jammer.hpp"
 #include "commands/gtos.hpp"
+#include "tools/economy.hpp"
 
 #include "sb.hpp"
 
@@ -56,6 +57,7 @@ void sb(ENetEvent& event, const std::string_view text)
             return;
         }
         pPeer->gems -= SB_COST;
+        econ("super broadcasts", -SB_COST);
         on::SetBux(event);
     }
     peers("", PEER_ALL, [&event, &pPeer, message, display](ENetPeer& peer)

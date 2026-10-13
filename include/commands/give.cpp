@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/economy.hpp"
 #include <sstream>
 #include "onVariant/SetBux.hpp"
 #include "onVariant/ConsoleMessage.hpp"
@@ -81,7 +82,9 @@ void givegems(ENetEvent& event, const std::string_view text)
     if (target)
     {
         ::peer *pTarget = static_cast<::peer*>(target->data);
+        const signed before = pTarget->gems;
         pTarget->gems = static_cast<signed>(std::clamp(pTarget->gems + amount, 0LL, (long long)std::numeric_limits<signed>::max()));
+        econ("staff /givegems", pTarget->gems - before);
         ENetEvent other{ .peer = target };
         on::SetBux(other);
         if (target != event.peer)

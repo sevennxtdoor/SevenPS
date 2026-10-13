@@ -14,6 +14,7 @@
 #include "tools/rank.hpp"
 #include "tools/system_worlds.hpp"
 #include "gtos.hpp"
+#include "tools/economy.hpp"
 #include "ghost.hpp"
 #include "give.hpp"
 #include "setrole.hpp"
@@ -33,16 +34,16 @@ static constexpr std::string_view emotes[24]{
 
 /* named commands with their usage hint, shown in /help */
 static constexpr std::string_view named_help =
-    "/time /sb {msg} /find /warp {world} /punch {id} /skin {id} /who /me {msg} "
+    "/time /sb {msg} /warp {world} /punch {id} /skin {id} /who /me {msg} "
     "/news /weather {id} /ghost /wban {growid} /uba /title /start /event /top {level|gems|surgeon|rich} /rank /msg {growid} {msg} /online /parkour /pay {growid} {gems} /go /rules /mods /radio /info {item} /status";
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
-    "/warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
+    "/find /warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
 
 /* developer+, shown in /help to DEVELOPER and OWNER */
 static constexpr std::string_view dev_help =
-    "/kickall /giverank {growid} {0-5} /event start {gems|xp|lucky|surgery} {minutes} /event stop /give {id} {amount} /givegems {growid} {amount} /setrole {growid} {player|mod} /givetitle {growid} {dr|legend|bluename|all|none}";
+    "/economy /kickall /giverank {growid} {0-5} /event start {gems|xp|lucky|surgery} {minutes} /event stop /give {id} {amount} /givegems {growid} {amount} /setrole {growid} {player|mod} /givetitle {growid} {dr|legend|bluename|all|none}";
 
 /* owner only */
 static constexpr std::string_view owner_help =
@@ -109,6 +110,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"msg", &msg_command},
         {"online", &online_command},
         {"rebuild", &rebuild_command},
+        {"economy", &economy_command},
         {"pay", &pay}, {"go", &go}, {"rules", &rules}, {"mods", &mods}, {"radio", &radio}, {"info", &info}, {"status", &status},
         {"warpto", &warpto}, {"mute", &mute}, {"unmute", &unmute}, {"curse", &curse}, {"uncurse", &uncurse}, {"warn", &warn}, {"kickall", &kickall},
         {"parkour", [](ENetEvent &event, const std::string_view) { warp(event, "warp PARKOUR"); }}

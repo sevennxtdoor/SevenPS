@@ -6,6 +6,7 @@
 #include "commands/titles.hpp"
 
 #include "tools/cps.hpp"
+#include "tools/economy.hpp"
 
 #include "profile.hpp"
 
@@ -90,6 +91,7 @@ static void sfx(ENetPeer &p, std::string_view file) { send_action(p, "play_sfx",
 static void add_gems(ENetEvent &event, int gems)
 {
     me(event).gems += gems;
+    econ(gems > 0 ? "daily goals & grow pass" : "card battle license", gems);
     on::SetBux(event);
 }
 

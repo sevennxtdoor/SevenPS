@@ -2,6 +2,7 @@
 #include "store.hpp"
 #include "onVariant/SetBux.hpp"
 #include "database/shouhin.hpp"
+#include "tools/economy.hpp"
 #include "buy.hpp"
 
 
@@ -86,6 +87,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
                 });
                 return;
             }
+            const std::size_t fixed_items = shouhin.items.size(); // @note packs add random items below, removed again after the purchase
             std::vector<short> ids{};
             if (shouhin.btn == "basic_splice") // @note source: https://growtopia.fandom.com/wiki/Basic_Splicing_Kit
             {
@@ -132,7 +134,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
                 else modify_item_inventory(event, {item.first, item.second});
                 received.append(std::format("{}, ", raw_name)); // @todo add green text to rare items, or something cool.
             }
-            shouhin.items.clear(); // @todo
+            shouhin.items.resize(fixed_items); // @note was clear(): it emptied the store item, so a 2nd World Lock bought gave nothing
 
             send_varlist(event.peer, { "OnStorePurchaseResult", (_tab < 5) ? 
                 std::format(
@@ -142,7 +144,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
                     "You've purchased `0{}`` for `${}`` `2Growtokens``.\nYou have `${}`` `2Growtokens`` left.\n\n`5Received: ```0{}``",
                     shouhin.name, growtoken_cost, growtoken->count - growtoken_cost, received)
             });
-            if (_tab < 5/*growtoken tab*/) on::SetBux(event);
+            if (_tab < 5/*growtoken tab*/) on::SetBux(event), econ("store", -shouhin.cost);
             else modify_item_inventory(event, ::slot(growtoken->id, -growtoken_cost));
             break;
         }

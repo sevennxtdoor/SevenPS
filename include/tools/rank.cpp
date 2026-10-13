@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include <fstream>
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/economy.hpp"
 #include "onVariant/SetBux.hpp"
 #include "onVariant/NameChanged.hpp"
 #include "tools/string.hpp"
@@ -125,6 +126,7 @@ void rank_return(ENetEvent &event, const ::hPipe &hPipe)
         return on::ConsoleMessage(event.peer, std::format("`4You need `w{}`` gems for {}[{}]``.``", it->price, it->color, it->name));
 
     pPeer->gems -= it->price;
+    econ("ranks", -it->price);
     on::SetBux(event);
     pPeer->mysql_update<signed>("gems", pPeer->gems); // @note save right away, gems were spent
     apply_rank(*event.peer, level);

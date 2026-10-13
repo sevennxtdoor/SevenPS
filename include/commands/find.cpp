@@ -3,6 +3,8 @@
 
 void find(ENetEvent& event, const std::string_view text)
 {
+    if (static_cast<::peer*>(event.peer->data)->role < MODERATOR) // @note real-Growtopia economy: staff only
+        return send_action(*event.peer, "log", "msg|`4/find is for staff only.`` Farm items, buy them in the `2Store`` or trade!");
     send_varlist(event.peer, {
         "OnDialogRequest", 
         "set_default_color|`o\n"

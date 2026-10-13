@@ -36,6 +36,7 @@ Made by @Mike, for local/private use.
 - Consumables (`include/tools/consumables.cpp`, item list from GTOS): Grow Spray & Deluxe Grow Spray, Fortune & Lucky Fortune Cookie, Winter Gift, Bronze/Silver/Gold Architect Chest, Winter & Spring Chest, Small Seed Pack, Surgery Gatcha, Gift of Growganoth, fragments that combine (Devil Wings, Teeny Devil Wings, Vampire Cape, Black Cat, Skeletal Dragon Claw, Nightmare Magnifying Glass, Emerald & Ruby Lock, Cupid), Valentine's Card, Green Beer, g-Virus & Antidote; GrowScan 9000 world stats (wrench)
 - Playmods (`include/tools/playmods.cpp`, `resources/playmods.txt`): speed & gravity of worn items, zombies are slow, Antigravity Generator lowers gravity for everyone in the world
 - Commands from GTOS' list: /pay /go /rules /mods /radio /info /status, staff /warpto /mute /unmute /curse /uncurse (stuck in HELL) /warn /kickall
+- Economy like real Growtopia (`include/tools/economy.cpp`): /find is staff only, World Lock = 2000 gems is the price reference, starter pack for new players (My First World Lock, Pepper Tree & Laser Grid seeds, Small Locks), online reward only for active players and max 6 a day, smaller quiz rewards, parkour 1000 gems; every gem made/spent is counted per source and shown with `/economy` (developer+)
 - System broadcasts: placeholders in `resources/broadcast.txt` ({online} {players} {worlds} {event} {next_event}), "event in 5 minutes" warning, event popup notification, hourly server stats, new player welcome, level milestones (every 10 levels) and achievements announced to everyone
 
 **Saving & fixes**
@@ -43,6 +44,7 @@ Made by @Mike, for local/private use.
 - Server shutdown now saves online players and worlds
 - Display block and vending machine tile data is now sent to the client
 - Door destinations are saved (`world_door` table), so doors still work after a restart
+- Store: buying an item a second time gave nothing (the store entry was emptied after each purchase)
 - Tree growth uses the real clock (the old monotonic clock reset on every PC reboot)
 - "X left" message now goes to the other players instead of the one leaving
 - MikeTopia gazette and login messages

@@ -7,6 +7,7 @@
 #include "tools/jammer.hpp"
 #include "tools/playmods.hpp"
 #include "tools/profile.hpp"
+#include "tools/economy.hpp"
 
 #include "consumables.hpp"
 
@@ -65,6 +66,7 @@ static void give(ENetEvent &event, ::world &world, short id, int count)
     if (id == GEMS)
     {
         me(event).gems += count;
+        econ("chests & cookies", count);
         on::SetBux(event);
         return;
     }
