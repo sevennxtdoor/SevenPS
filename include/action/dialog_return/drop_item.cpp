@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/economy.hpp"
 
 #include "drop_item.hpp"
 
@@ -9,13 +10,15 @@ void drop_item(ENetEvent& event, const ::hPipe &hPipe)
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
 
-    const short itemID = atoi(hPipe["itemID"].c_str());
-    short count = atoi(hPipe["count"].c_str());
+    if (staff_locked(*pPeer)) return staff_locked_message(*event.peer);
 
-    for (const ::slot &slot : pPeer->slots)
-        if (slot.id == itemID)
-            if (count > slot.count) count = slot.count;
-            else if (count < 0) count = 0;
+    /* @note never trust the dialog: it can be sent by a proxy with any item and count. before this check, dropping an
+     * item you didn't own (or a negative count) created items out of nothing */
+    const short itemID = static_cast<short>(atoi(hPipe["itemID"].c_str()));
+    auto slot = std::ranges::find(pPeer->slots, itemID, &::slot::id);
+    if (itemID == 18 || itemID == 32 || slot == pPeer->slots.end() || (id_to_item(itemID).cat & CAT_UNTRADEABLE)) return;
+    const short count = static_cast<short>(std::clamp(atoi(hPipe["count"].c_str()), 0, static_cast<int>(slot->count)));
+    if (count <= 0) return;
 
     modify_item_inventory(event, ::slot(itemID, -count));
 

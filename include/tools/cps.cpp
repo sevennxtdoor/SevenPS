@@ -340,7 +340,7 @@ void announce_join(ENetEvent &event)
 std::string find_blocked(const ::peer &p, short id)
 {
     /* @note like real Growtopia, items aren't free: farm them, buy them in the store or trade. only staff can /find */
-    if (p.role >= MODERATOR) return "";
+    if (p.role >= DEVELOPER) return ""; // @note moderators moderate, they don't spawn items
     return "Items aren't free on MikeTopia! Farm them, buy them in the `2Store`` or trade with other players.";
 }
 

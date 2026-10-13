@@ -142,7 +142,7 @@ void rank_return(ENetEvent &event, const ::hPipe &hPipe)
 void giverank(ENetEvent &event, const std::string_view text)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    if (pPeer->role < DEVELOPER) return send_action(*event.peer, "log", "msg|`4Unknown command.`` Enter `$/?`` for a list of valid commands.");
+    if (pPeer->role < OWNER) return send_action(*event.peer, "log", "msg|`4Unknown command.`` Enter `$/?`` for a list of valid commands."); // @note ranks are worth millions of gems
 
     std::vector<std::string> args = readch(std::string{ text }, ' ');
     if (args.size() < 3) return on::ConsoleMessage(event.peer, "`oUsage: /giverank {growid} {0-5} (0 removes the rank)``");
@@ -154,6 +154,7 @@ void giverank(ENetEvent &event, const std::string_view text)
         if (::peer *pp = static_cast<::peer*>(p->data); pp && to_lower(pp->growid) == to_lower(args[1]))
         {
             apply_rank(*p, level);
+            staff_log(*pPeer, "/giverank", pp->growid, 0, level);
             on::ConsoleMessage(event.peer, std::format("`oGave rank `w{}`` to {}.``", level, pp->display_growid));
             on::ConsoleMessage(p, std::format("`9You received a rank from {}! Type `$/rank``.``", pPeer->display_growid));
             return;

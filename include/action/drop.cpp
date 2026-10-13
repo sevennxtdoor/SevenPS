@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "tools/create_dialog.hpp"
+#include "tools/economy.hpp"
 #include "drop.hpp"
 
 void action::drop(ENetEvent& event, const std::string& header)
@@ -14,6 +15,7 @@ void action::drop(ENetEvent& event, const std::string& header)
         return;
     }
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    if (staff_locked(*pPeer)) return staff_locked_message(*event.peer);
     
     for (const ::slot &slot : pPeer->slots)
         if (slot.id == item.id) 

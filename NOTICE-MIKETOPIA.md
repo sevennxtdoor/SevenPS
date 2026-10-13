@@ -37,6 +37,7 @@ Made by @Mike, for local/private use.
 - Playmods (`include/tools/playmods.cpp`, `resources/playmods.txt`): speed & gravity of worn items, zombies are slow, Antigravity Generator lowers gravity for everyone in the world
 - Commands from GTOS' list: /pay /go /rules /mods /radio /info /status, staff /warpto /mute /unmute /curse /uncurse (stuck in HELL) /warn /kickall
 - Economy like real Growtopia (`include/tools/economy.cpp`): /find is staff only, World Lock = 2000 gems is the price reference, starter pack for new players (My First World Lock, Pepper Tree & Laser Grid seeds, Small Locks), online reward only for active players and max 6 a day, smaller quiz rewards, parkour 1000 gems; every gem made/spent is counted per source and shown with `/economy` (developer+)
+- Staff accounts (`include/tools/economy.cpp`): /find and /give are developer+, moderator & developer accounts can't drop, trade, use vending machines or /pay; /givegems to others and /giverank are owner only; every spawn is logged in `staff_log`, read with `/stafflog`
 - System broadcasts: placeholders in `resources/broadcast.txt` ({online} {players} {worlds} {event} {next_event}), "event in 5 minutes" warning, event popup notification, hourly server stats, new player welcome, level milestones (every 10 levels) and achievements announced to everyone
 
 **Saving & fixes**
@@ -44,6 +45,7 @@ Made by @Mike, for local/private use.
 - Server shutdown now saves online players and worlds
 - Display block and vending machine tile data is now sent to the client
 - Door destinations are saved (`world_door` table), so doors still work after a restart
+- Drop dialog: dropping an item you didn't own (with a proxy) created items out of nothing
 - Store: buying an item a second time gave nothing (the store entry was emptied after each purchase)
 - Tree growth uses the real clock (the old monotonic clock reset on every PC reboot)
 - "X left" message now goes to the other players instead of the one leaving

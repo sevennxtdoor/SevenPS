@@ -8,6 +8,7 @@
 #include "tools/jammer.hpp"
 #include "tools/playmods.hpp"
 #include "tools/wrench_menu.hpp"
+#include "tools/economy.hpp"
 
 #include "gtos.hpp"
 
@@ -66,6 +67,7 @@ void pay(ENetEvent &event, const std::string_view text)
     if (args.size() < 3) return on::ConsoleMessage(event.peer, "`oUsage: /pay {growid} {gems}``");
     const long long amount = atoll(args[2].c_str());
     ::peer &p = me(event);
+    if (staff_locked(p)) return staff_locked_message(*event.peer);
     if (amount <= 0 || amount > p.gems) return on::ConsoleMessage(event.peer, std::format("`4You can pay between 1 and {} gems.``", p.gems));
 
     ENetPeer *target = find_online(args[1]);

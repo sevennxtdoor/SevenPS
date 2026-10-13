@@ -79,9 +79,10 @@ void create_table_if_not_exist()
             "id INT AUTO_INCREMENT PRIMARY KEY, time INT, a VARCHAR(18), b VARCHAR(18), a_items VARCHAR(255), b_items VARCHAR(255), INDEX (a), INDEX (b)"
         ")";
     std::string query_doors = "CREATE TABLE IF NOT EXISTS world_door (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, dest VARCHAR(64), door_id VARCHAR(64), PRIMARY KEY (world, x, y))"; // @note door destinations
+    std::string query_staff_log = "CREATE TABLE IF NOT EXISTS staff_log (id INT AUTO_INCREMENT PRIMARY KEY, time INT, staff VARCHAR(18), action VARCHAR(16), target VARCHAR(18), item INT, amount INT, INDEX (staff))"; // @note /stafflog
     std::string query_weather = "CREATE TABLE IF NOT EXISTS world_weather (world VARCHAR(24) NOT NULL PRIMARY KEY, weather INT DEFAULT 0)"; // @note /weather
     if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()) || mysql_query(db, query_weather.c_str()) ||
-        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()))
+        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_staff_log.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }

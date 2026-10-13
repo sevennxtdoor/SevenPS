@@ -41,6 +41,7 @@ void give(ENetEvent& event, const std::string_view text)
     }
 
     modify_item_inventory(event, ::slot{(short)id, (short)amount});
+    staff_log(*pPeer, "/give", "", id, amount);
     send_action(*event.peer, "log", std::format("msg|`2Given `w{}`` `w{}`` `2(id {}).``", amount, id_to_item(id).raw_name, id));
 }
 
@@ -73,6 +74,12 @@ void givegems(ENetEvent& event, const std::string_view text)
         return;
     }
     amount = std::clamp(amount, -2'000'000'000LL, 2'000'000'000LL);
+    if (pPeer->role < OWNER && to_lower(growid) != to_lower(pPeer->growid)) // @note a developer could hand out unlimited gems
+    {
+        send_action(*event.peer, "log", "msg|`4Only the owner can give gems to other players.`` You can only /givegems yourself.");
+        return;
+    }
+    staff_log(*pPeer, "/givegems", growid, 0, static_cast<int>(amount));
 
     /* @note online: change memory (saved on logout). offline: change the database directly */
     ENetPeer *target{};

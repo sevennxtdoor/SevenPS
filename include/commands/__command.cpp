@@ -39,15 +39,15 @@ static constexpr std::string_view named_help =
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
-    "/find /warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
+    "/warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
 
 /* developer+, shown in /help to DEVELOPER and OWNER */
 static constexpr std::string_view dev_help =
-    "/economy /kickall /giverank {growid} {0-5} /event start {gems|xp|lucky|surgery} {minutes} /event stop /give {id} {amount} /givegems {growid} {amount} /setrole {growid} {player|mod} /givetitle {growid} {dr|legend|bluename|all|none}";
+    "/find /economy /kickall /event start {gems|xp|lucky|surgery} {minutes} /event stop /give {id} {amount} /givegems {growid} {amount} /setrole {growid} {player|mod} /givetitle {growid} {dr|legend|bluename|all|none}";
 
 /* owner only */
 static constexpr std::string_view owner_help =
-    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR}";
+    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR} /giverank {growid} {0-5} /stafflog {growid}";
 
 std::array<std::string_view, 14> cmd_requires_arg{
     "sb", "warp", "punch", "skin", "me", "weather", "give", "setrole", "kick", "ban", "unban", "wban", "givetitle", "givegems"
@@ -111,6 +111,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"online", &online_command},
         {"rebuild", &rebuild_command},
         {"economy", &economy_command},
+        {"stafflog", &stafflog_command},
         {"pay", &pay}, {"go", &go}, {"rules", &rules}, {"mods", &mods}, {"radio", &radio}, {"info", &info}, {"status", &status},
         {"warpto", &warpto}, {"mute", &mute}, {"unmute", &unmute}, {"curse", &curse}, {"uncurse", &uncurse}, {"warn", &warn}, {"kickall", &kickall},
         {"parkour", [](ENetEvent &event, const std::string_view) { warp(event, "warp PARKOUR"); }}

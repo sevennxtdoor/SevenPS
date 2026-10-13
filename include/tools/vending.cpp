@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/economy.hpp"
 #include <unordered_map>
 #include "onVariant/ConsoleMessage.hpp"
 
@@ -204,6 +205,8 @@ void vending_return(ENetEvent &event, const ::hPipe &hPipe)
 
     ::vending &v = get_or_add(*world, pos);
     const std::string clicked = hPipe["buttonClicked"];
+    if (staff_locked(*pPeer) && (!hPipe["stockitem"].empty() || clicked == "addvend" || !hPipe["buycount"].empty()))
+        return staff_locked_message(*event.peer); // @note no selling spawned items, no paying players with spawned World Locks
 
     if (is_owner(*pPeer, *world))
     {

@@ -3,6 +3,7 @@
 #include "onVariant/SetClothing.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/cps.hpp"
+#include "tools/economy.hpp"
 
 #include "find_item.hpp"
 
@@ -37,4 +38,5 @@ void find_item(ENetEvent& event, const ::hPipe &hPipe)
         return;
     }
     modify_item_inventory(event, ::slot(id, amount));
+    staff_log(*pPeer, "/find", "", id, amount);
 }

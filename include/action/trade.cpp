@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/economy.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "trade.hpp"
@@ -129,6 +130,12 @@ void request_trade(ENetEvent& event, ENetPeer &target)
     ::peer *pPeer = data(*event.peer);
     ::peer *pTarget = data(target);
     if (pTarget->user_id == pPeer->user_id) return;
+    if (staff_locked(*pPeer)) return staff_locked_message(*event.peer);
+    if (staff_locked(*pTarget))
+    {
+        send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wStaff accounts can't trade.``", 0u });
+        return;
+    }
     if (pTarget->trading)
     {
         send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThat person is busy.``", 0u });
@@ -162,9 +169,11 @@ void action::trade_started(ENetEvent& event, const std::string& header)
     const int netid = atoi(hPipe["netid"].c_str());
     if (netid == 0) return;
 
+    if (staff_locked(*pPeer)) return staff_locked_message(*event.peer);
     pPeer->trade_netid = netid;
     ENetPeer *partner = partner_of(*event.peer);
     if (!partner) return;
+    if (staff_locked(*data(*partner))) { pPeer->trade_netid = 0; return; }
 
     ::peer *pPartner = data(*partner);
     if (pPartner->trade_netid == pPeer->netid) // @note both opened the window, start!
@@ -187,6 +196,7 @@ void action::mod_trade(ENetEvent& event, const std::string& header)
     ::hPipe hPipe{ header };
     const short id = static_cast<short>(atoi(hPipe["itemID"].c_str()));
 
+    if (staff_locked(*pPeer)) return;
     const short have = owned(*pPeer, id);
     if (id == 18 || id == 32 || have <= 0) // @note fist & wrench
     {
@@ -224,6 +234,7 @@ void trade_add(ENetEvent& event, const ::hPipe &hPipe)
 {
     ::peer *pPeer = data(*event.peer);
     const short id = static_cast<short>(atoi(hPipe["itemID"].c_str()));
+    if (staff_locked(*pPeer)) return;
     const int count = std::clamp(atoi(hPipe["count"].c_str()), 0, (int)owned(*pPeer, id));
     if (id == 18 || id == 32 || count <= 0) return;
     if (pPeer->trade_items.size() >= 4 && std::ranges::find(pPeer->trade_items, id, &::slot::id) == pPeer->trade_items.end()) return;
