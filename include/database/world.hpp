@@ -53,7 +53,7 @@ struct block
 
     ::blob to_blob() const;
 };
-#define cord(x,y) (y * 100 + x)
+#define cord(x,y) ((y) * 100 + (x))
 
 struct door 
 {

@@ -242,6 +242,8 @@ T world::mysql_select(const std::string &column, const std::string &arg)
         value.resize(length);
     else if constexpr (std::is_same_v<T, ::blob>)
         value.resize(length);
+    else if constexpr (std::is_same_v<T, std::vector<u_char>>)
+        value.resize(std::min<std::size_t>(length, value.size())); // @note else the unused buffer was read as ~3750 empty drops
 
     return value;
 }
@@ -253,6 +255,11 @@ void world::mysql_select_all()
     {
         this->trees.clear();
         ::blob blob = this->mysql_select<::blob>("blocks");
+        if (blob.size() < cord(0, 60) * 8) // @note never saved (e.g. the server crashed), the caller generates it again
+        {
+            this->blocks.clear();
+            return;
+        }
         this->blocks.resize(cord(0, 60));
 
         const int x = this->blocks.size() / 60;
@@ -312,6 +319,7 @@ void world::mysql_select_all()
             memcpy(&object.count, u8 + i, sizeof(u_short)); i += sizeof(u_short);
             memcpy(&object.uid,   u8 + i, sizeof(u_int));   i += sizeof(u_int);
         }
+        std::erase_if(this->objects, [](const ::object &o) { return o.id == 0 || o.count == 0; }); // @note empty drops saved by the old bug
     } // @note delete blob, i
 }
 
@@ -320,7 +328,8 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
     if (this->exists(this->name)) 
     {
         this->mysql_select_all();
-        if (is_system_world(this->name) && this->signs.empty()) build_system_world(*this); // @note an old plain START gets its design (it has no signs yet)
+        if (this->blocks.empty()) { if (!build_system_world(*this)) generate_world(*this); } // @note broken/empty save
+        else if (is_system_world(this->name) && this->signs.empty()) build_system_world(*this); // @note an old plain START gets its design (it has no signs yet)
     }
     else 
     {
