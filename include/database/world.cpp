@@ -7,6 +7,7 @@
 #include "world.hpp"
 #include "tools/vending.hpp"
 #include "tools/system_worlds.hpp"
+#include "tools/area_lock.hpp"
 
 char get_type(const ::item &item)
 {
@@ -137,9 +138,10 @@ void block::reset()
                 if (!is_tile_lock(block.fg)) this->is_public = (block.state[2] & S_PUBLIC); // @note check if world lock has S_PUBLIC flag, i will change this later
                 int access = std::ranges::count_if(this->access, std::identity{});
                 
-                blob.u8(this->lock_state);
-                blob.i32(this->owner);
-                blob.i32(access);
+                const ::area_lock *area = is_tile_lock(block.fg) ? area_lock_at(*this, block_pos) : nullptr;
+                blob.u8(area ? 0x00 : this->lock_state);
+                blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : this->owner); // @note an area lock shows its own owner
+                blob.i32(is_tile_lock(block.fg) ? 0 : access);
                 /* @todo access list */
             }
             else if (type == '\x04'/*seed*/)
@@ -336,12 +338,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this), load_doors(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
-    if (!this->name.empty()) save_vendings(*this), save_doors(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this);
     {
         ::blob blob;
 
@@ -562,9 +564,11 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
             if (!is_tile_lock(block.fg)) world.is_public = (block.state[2] & S_PUBLIC); // @note check if world lock has S_PUBLIC flag, i will change this later
             int access = std::ranges::count_if(world.access, std::identity{});
 
-            blob.u8(world.lock_state);
-            blob.i32(world.owner);
-            blob.i32(access);
+            const ::area_lock *area = is_tile_lock(block.fg) ? area_lock_at(world, gamePacket.punch) : nullptr;
+            blob.u8(area ? 0x00 : world.lock_state);
+            blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : world.owner); // @note an area lock shows its own owner
+            blob.i32(is_tile_lock(block.fg) ? 0 : access);
+            break;
         }
         case type::SEED:
         {

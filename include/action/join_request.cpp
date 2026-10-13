@@ -11,6 +11,7 @@
 #include "tools/time.hpp"
 #include "tools/jammer.hpp"
 #include "commands/gtos.hpp"
+#include "tools/area_lock.hpp"
 
 #include "join_request.hpp"
 
@@ -111,6 +112,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);
         on::CountryState(event);
+        send_area_locks(*event.peer, world); // @note Small/Big/Huge/Builder's Lock areas
     }
     catch (const std::exception& exc)
     {

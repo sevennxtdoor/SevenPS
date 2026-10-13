@@ -8,6 +8,7 @@
 #include "tools/random.hpp"
 #include "tools/time.hpp"
 #include "tools/playmods.hpp"
+#include "tools/area_lock.hpp"
 #include "tools/create_dialog.hpp"
 #include "tools/vending.hpp"
 #include "tools/surgery.hpp"
@@ -51,9 +52,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         if (!(item.cat & CAT_PUBLIC)) // @note if block is public skip validating if peer is owner or access
             if ((world->owner && !world->is_public && !pPeer->role) &&
                 (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end())) return;
+        if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC))) // @note Small/Big/Huge/Builder's Lock: owner & access list only
+            if (!area_lock_allows(event, *world, gamePacket.punch, gamePacket.id)) return;
 
         bool tile_update{};
         bool lock_visuals{}; // @todo this looks sloppy
+        bool area_lock_visuals{};
         
         if (gamePacket.id == 18) // @note punching a block
         {
@@ -315,6 +319,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 if (++pPeer->gbc_pity % 100 == 0) modify_item_inventory(event, ::slot{9350, 1});
             }
+            else if (is_tile_lock(item.id)) area_lock_removed(*world, gamePacket.punch);
             else if (item.type == type::LOCK && !is_tile_lock(item.id))
             {
                 pPeer->display_growid = pPeer->name_as("`w");
@@ -570,7 +575,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             {
                 case type::LOCK:
                 {
-                    if (is_tile_lock(item.id)) break; // @todo seperate area for 'range_lock'
+                    if (is_tile_lock(item.id)) return area_lock_dialog(event, *world, gamePacket.punch);
 
                     if (pPeer->user_id == world->owner)
                     {
@@ -757,7 +762,14 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::LOCK:
                 {
-                    if (is_tile_lock(item.id)) break; // @note seperate area for 'range_lock'
+                    if (is_tile_lock(item.id))
+                    {
+                        area_lock_place(event, *world, item.id, gamePacket.punch);
+                        area_lock_visuals = true;
+                        break;
+                    }
+                    if (std::string other = area_lock_other_owner(*world, pPeer->user_id); !other.empty())
+                        throw std::runtime_error(std::format("`wThat area is owned by {}``", other));
 
                     if (!world->owner)
                     {
@@ -811,6 +823,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         {
             send_tile_update(event, std::move(gamePacket), block, *world);
         }
+        if (area_lock_visuals) send_area_lock_visuals(event, *world, gamePacket.punch);
         if (lock_visuals) 
         {
             state_visuals(*event.peer, ::gamePacket{

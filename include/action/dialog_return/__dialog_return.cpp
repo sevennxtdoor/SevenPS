@@ -18,6 +18,7 @@
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
 #include "tools/rank.hpp"
+#include "tools/area_lock.hpp"
 
 #include "__dialog_return.hpp"
 
@@ -53,4 +54,5 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"mt_friend", std::bind(&friend_request_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_report", std::bind(&report_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_rank", std::bind(&rank_return, std::placeholders::_1, std::placeholders::_2)},
+    {"area_lock", std::bind(&area_lock_return, std::placeholders::_1, std::placeholders::_2)},
 };

@@ -9,6 +9,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
+    if (world->owner == 0 || pPeer->user_id != world->owner) return; // @note never trust the dialog: anyone can send a fake lock_edit
 
     ::pos pos{};
     pos.x = atoi(hPipe["tilex"].c_str());
