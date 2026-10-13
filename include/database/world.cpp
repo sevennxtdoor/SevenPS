@@ -8,6 +8,7 @@
 #include "tools/vending.hpp"
 #include "tools/system_worlds.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/boxes.hpp"
 
 char get_type(const ::item &item)
 {
@@ -338,12 +339,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
-    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this);
     {
         ::blob blob;
 

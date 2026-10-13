@@ -4,6 +4,7 @@
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "vending.hpp"
+#include "tools/area_lock.hpp"
 
 namespace
 {
@@ -101,9 +102,11 @@ static void update_tile(ENetEvent &event, ::world &world, const ::pos &pos)
     send_tile_update(event, gamePacket, world.blocks[cord(pos.x_int(), pos.y_int())], world);
 }
 
-static bool is_owner(const ::peer &p, const ::world &world)
+/* @note the World Lock owner, or the area lock owner when the machine stands in one. no lock at all = anyone (like before) */
+static bool is_owner(const ::peer &p, ::world &world, const ::pos &pos)
 {
-    return world.owner == 0 || world.owner == p.user_id || p.role >= DEVELOPER;
+    const int owner = tile_owner(world, pos);
+    return owner == 0 || owner == p.user_id || p.role >= DEVELOPER;
 }
 
 static std::string sale_text(const ::vending &v)
@@ -124,7 +127,7 @@ void send_vending_dialog(ENetEvent &event, ::world &world, const ::pos &pos)
     const std::string withdraw = (v.earned > 0) ?
         std::format("add_smalltext|`oYou have earned `w{}`` World Locks.``|left|\nadd_button|withdraw|Withdraw World Locks|noflags|0|0|\n", v.earned) : "";
 
-    if (is_owner(*pPeer, world))
+    if (is_owner(*pPeer, world, pos))
     {
         if (v.item == 0 || v.stock <= 0)
         {
@@ -208,7 +211,7 @@ void vending_return(ENetEvent &event, const ::hPipe &hPipe)
     if (staff_locked(*pPeer) && (!hPipe["stockitem"].empty() || clicked == "addvend" || !hPipe["buycount"].empty()))
         return staff_locked_message(*event.peer); // @note no selling spawned items, no paying players with spawned World Locks
 
-    if (is_owner(*pPeer, *world))
+    if (is_owner(*pPeer, *world, pos))
     {
         if (const std::string stockitem = hPipe["stockitem"]; !stockitem.empty() && (v.item == 0 || v.stock <= 0))
         {

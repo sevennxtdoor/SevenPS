@@ -41,5 +41,19 @@ extern void send_area_lock_visuals(ENetEvent &event, ::world &world, const ::pos
 extern void area_lock_dialog(ENetEvent &event, ::world &world, const ::pos &pos); // @note wrench on the lock
 extern void area_lock_return(ENetEvent &event, const ::hPipe &hPipe); // @note dialog_return "area_lock"
 
+/* ---------- who may change a tile (used by every dialog that edits something in the world) ---------- */
+
+/* @note x, y inside the world's blocks. dialogs send tilex/tiley back and they can be faked */
+extern bool in_world(const ::world &world, int x, int y);
+
+/* @note same rules as building: system worlds staff only, World Lock owner/access (or public), area lock owner/access, else anyone */
+extern bool can_build(const ::peer &p, ::world &world, const ::pos &tile);
+
+/* @note World Lock owner, else the area lock's owner, else 0 (nobody owns this tile) */
+extern int tile_owner(::world &world, const ::pos &tile);
+
+/* @note owner or on the access list of the lock that protects this tile. false when nobody owns it */
+extern bool tile_access(const ::peer &p, ::world &world, const ::pos &tile);
+
 extern void load_area_locks(::world &world);
 extern void save_area_locks(::world &world);

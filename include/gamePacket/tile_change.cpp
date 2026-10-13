@@ -9,6 +9,7 @@
 #include "tools/time.hpp"
 #include "tools/playmods.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/boxes.hpp"
 #include "tools/create_dialog.hpp"
 #include "tools/vending.hpp"
 #include "tools/surgery.hpp"
@@ -49,10 +50,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             if (gamePacket.id == 18) send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThis world is protected by MikeTopia.``", 0u, 1u });
             return;
         }
-        if (!(item.cat & CAT_PUBLIC)) // @note if block is public skip validating if peer is owner or access
+        if (!(item.cat & CAT_PUBLIC) && gamePacket.id != 32) // @note if block is public skip validating if peer is owner or access. wrenching is checked by each dialog
             if ((world->owner && !world->is_public && !pPeer->role) &&
                 (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end())) return;
-        if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC))) // @note Small/Big/Huge/Builder's Lock: owner & access list only
+        if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC)) && gamePacket.id != 32) // @note Small/Big/Huge/Builder's Lock: owner & access list only
             if (!area_lock_allows(event, *world, gamePacket.punch, gamePacket.id)) return;
 
         bool tile_update{};
@@ -146,6 +147,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     break;
                 }
                 case type::MAIN_DOOR: throw std::runtime_error("(stand over and punch to use)");
+                case type::STORAGE_BOX: case type::SAFE_VAULT: case type::DONATION_BOX:
+                {
+                    if (box_in_use(*world, gamePacket.punch)) throw std::runtime_error("Empty the box first!");
+                    break;
+                }
                 case type::VENDING_MACHINE:
                 {
                     if (vending_in_use(*world, gamePacket.punch)) throw std::runtime_error("Empty the machine first!");
@@ -288,6 +294,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             /* @todo update these changes with tile_update() */
             block.state[2] = 0x00; // @note reset tile direction
             add_stat(event, "broken");
+            if (box_type(item) != box_kind::NONE) box_removed(*world, gamePacket.punch); // @note letters on a broken mailbox are gone
             block.state[3] &= ~S_VANISH; // @note remove paint
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
@@ -565,6 +572,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         else if (gamePacket.id == 32)
         {
+            /* @note visitors may wrench (vending, boxes, mailbox, locks show their own dialog), but only builders get edit dialogs */
+            const bool builder = can_build(*pPeer, *world, gamePacket.punch);
+            if (box_type(item) != box_kind::NONE) return box_dialog(event, *world, gamePacket.punch);
+            if (item.id == 4296 && !builder) return;
             if (item.id == 4296) // @note Surg-E
             {
                 send_surgery_dialog(event, *world, gamePacket.punch);
@@ -613,6 +624,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::DOOR:
                 case type::PORTAL:
                 {
+                    if (!builder) break;
                     std::string label, dest, id{};
                     for (::door& door : world->doors)
                         if (door.pos == gamePacket.punch) { label = door.label, dest = door.dest, id = door.id; break; }
@@ -640,6 +652,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::SIGN:
                 {
+                    if (!builder) break;
                     std::string label{};
                     for (::sign& sign : world->signs)
                         if (sign.pos == gamePacket.punch) { label = sign.label; break; }
@@ -662,6 +675,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::ENTRANCE:
                 {
+                    if (!builder) break;
                     send_varlist(event.peer, {
                         "OnDialogRequest",
                         std::format(

@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/area_lock.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "lock_edit.hpp"
@@ -14,6 +15,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     ::pos pos{};
     pos.x = atoi(hPipe["tilex"].c_str());
     pos.y = atoi(hPipe["tiley"].c_str());
+    if (!in_world(*world, pos.x_int(), pos.y_int())) return;
     
     world->is_public = atoi(hPipe["checkbox_public"].c_str());
     if (atoi(hPipe["checkbox_disable_music"].c_str()) != 0)

@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/area_lock.hpp"
 
 #include "gateway_edit.hpp"
 
@@ -11,6 +12,7 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
+    if (!can_build(*pPeer, *world, ::pos{ tilex, tiley })) return; // @note never trust the dialog: bounds + who may edit (a faked dialog could rename START's doors or write outside the world)
 
     block &block = world->blocks[cord(tilex, tiley)];
 
@@ -49,7 +51,7 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
     else if (hPipe["dialog_name"] == "gateway_edit") 
     {
         block.state[2] &= ~(S_PUBLIC | S_LOCKED);
-        block.state[2] |= stoi(hPipe["checkbox_public"]) ? S_PUBLIC : S_LOCKED;
+        block.state[2] |= atoi(hPipe["checkbox_public"].c_str()) ? S_PUBLIC : S_LOCKED;
     }
 
     send_tile_update(event, {

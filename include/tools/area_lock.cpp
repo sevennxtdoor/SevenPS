@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/string.hpp"
+#include "tools/system_worlds.hpp"
 
 #include "area_lock.hpp"
 
@@ -282,6 +283,38 @@ void area_lock_return(ENetEvent &event, const ::hPipe &hPipe)
         on::ConsoleMessage(event.peer, std::format("Lock re-applied: `w{}``/{} tiles.", lock->tiles.size(), lock_size(lock->item)));
     }
     send_area_lock_visuals(event, *world, pos);
+}
+
+/* ---------- permissions ---------- */
+
+bool in_world(const ::world &world, int x, int y)
+{
+    return x >= 0 && y >= 0 && x < 100 && cord(x, y) < static_cast<int>(world.blocks.size());
+}
+
+int tile_owner(::world &world, const ::pos &tile)
+{
+    if (world.owner != 0) return world.owner;
+    const ::area_lock *lock = area_lock_at(world, tile);
+    return lock ? lock->owner : 0;
+}
+
+bool tile_access(const ::peer &p, ::world &world, const ::pos &tile)
+{
+    if (world.owner != 0)
+        return p.user_id == world.owner || std::ranges::find(world.access, p.user_id) != world.access.end();
+    const ::area_lock *lock = area_lock_at(world, tile);
+    return lock && has_access(p, *lock);
+}
+
+bool can_build(const ::peer &p, ::world &world, const ::pos &tile)
+{
+    if (!in_world(world, tile.x_int(), tile.y_int())) return false;
+    if (is_system_world(world.name)) return p.role >= DEVELOPER;
+    if (p.role >= MODERATOR) return true;
+    if (world.owner != 0 && !world.is_public && !tile_access(p, world, tile)) return false;
+    const ::area_lock *lock = area_lock_at(world, tile);
+    return lock == nullptr || has_access(p, *lock);
 }
 
 /* ---------- database ---------- */

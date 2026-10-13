@@ -19,6 +19,7 @@
 #include "tools/social.hpp"
 #include "tools/rank.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/boxes.hpp"
 
 #include "__dialog_return.hpp"
 
@@ -55,4 +56,5 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"mt_report", std::bind(&report_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_rank", std::bind(&rank_return, std::placeholders::_1, std::placeholders::_2)},
     {"area_lock", std::bind(&area_lock_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_box", std::bind(&box_return, std::placeholders::_1, std::placeholders::_2)},
 };
