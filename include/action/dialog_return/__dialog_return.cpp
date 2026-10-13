@@ -13,6 +13,11 @@
 #include "commands/titles.hpp"
 #include "action/trade.hpp"
 #include "tools/vending.hpp"
+#include "tools/surgery.hpp"
+#include "tools/wrench_menu.hpp"
+#include "tools/profile.hpp"
+#include "tools/social.hpp"
+#include "tools/rank.hpp"
 
 #include "__dialog_return.hpp"
 
@@ -38,4 +43,14 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"trade_add", std::bind(&trade_add, std::placeholders::_1, std::placeholders::_2)},
     {"trade_confirm", std::bind(&trade_confirm, std::placeholders::_1, std::placeholders::_2)},
     {"vending", std::bind(&vending_return, std::placeholders::_1, std::placeholders::_2)},
+    {"surge", std::bind(&surgery_return, std::placeholders::_1, std::placeholders::_2)},
+    {"notebook", std::bind(&notebook_return, std::placeholders::_1, std::placeholders::_2)},
+    {"wl_bank", std::bind(&wl_bank_return, std::placeholders::_1, std::placeholders::_2)},
+    {"online_status", std::bind(&online_status_return, std::placeholders::_1, std::placeholders::_2)},
+    {"sendpm", std::bind(&sendpm_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_profile", std::bind(&profile_return, std::placeholders::_1, std::placeholders::_2)},
+    {"friends", std::bind(&friends_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_friend", std::bind(&friend_request_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_report", std::bind(&report_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_rank", std::bind(&rank_return, std::placeholders::_1, std::placeholders::_2)},
 };

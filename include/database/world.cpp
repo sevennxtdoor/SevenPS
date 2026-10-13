@@ -1,10 +1,12 @@
 #include "pch.hpp"
+#include "tools/profile.hpp"
 #include "tools/random.hpp"
 #include "tools/time.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "world.hpp"
 #include "tools/vending.hpp"
+#include "tools/system_worlds.hpp"
 
 char get_type(const ::item &item)
 {
@@ -322,14 +324,14 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
     else 
     {
         this->mysql_insert("name", this->name); // @note DEFAULT
-        generate_world(*this);
+        if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
-    if (!this->name.empty()) save_vendings(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this);
     {
         ::blob blob;
 
@@ -603,6 +605,7 @@ void remove_fire(ENetEvent &event, gamePacket gamePacket, ::block &block, ::worl
 
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
+    add_stat(event, "fires");
     if (++pPeer->fires_removed % 100 == 0) 
     {
         on::ConsoleMessage(event.peer, "`oI'm so good at fighting fires, I rescused this `2Highly Combustible Box``!");

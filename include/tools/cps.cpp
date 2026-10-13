@@ -1,0 +1,464 @@
+#include "pch.hpp"
+#include <fstream>
+#include <unordered_set>
+#include "onVariant/ConsoleMessage.hpp"
+#include "database/shouhin.hpp"
+#include "commands/warp.hpp"
+#include "tools/random.hpp"
+#include "onVariant/SetBux.hpp"
+#include "tools/profile.hpp"
+#include "tools/social.hpp"
+#include "tools/rank.hpp"
+#include "tools/wrench_menu.hpp"
+
+#include "cps.hpp"
+
+namespace
+{
+    constexpr int EVENT_LENGTH   = 30 * 60; // @note automatic events last 30 minutes...
+    constexpr int EVENT_GAP      = 90 * 60; // @note ...with 90 minutes between them (one every 2 hours)
+    constexpr int BROADCAST_GAP  = 10 * 60;
+    constexpr int QUIZ_GAP       = 15 * 60;
+    constexpr int QUIZ_TIME      = 90;
+    constexpr int ONLINE_REWARD_GAP = 30 * 60;
+    constexpr int ONLINE_REWARD     = 300; // @note gems, + rank bonus
+
+    event_type current = event_type::NONE;
+    std::time_t event_ends{}, next_event = std::time(nullptr) + 30 * 60, next_broadcast = std::time(nullptr) + BROADCAST_GAP;
+    std::size_t broadcast_index{};
+
+    std::time_t next_stats = std::time(nullptr) + 20 * 60; // @note server stats every hour
+    bool event_warned{};         // @note "event starts in 5 minutes" was sent
+
+    std::string quiz_answer{};   // @note empty = no quiz running
+    int quiz_reward{};
+    std::time_t quiz_ends{}, next_quiz = std::time(nullptr) + 5 * 60, next_online_check{};
+}
+
+static std::string to_lower(std::string s) { for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c))); return s; }
+
+static bool logged_in(ENetPeer &p)
+{
+    ::peer *pp = static_cast<::peer*>(p.data);
+    return pp != nullptr && !pp->growid.empty();
+}
+
+static std::string_view event_name(event_type type)
+{
+    switch (type)
+    {
+        case event_type::GEMS:    return "`2Gems x2``";
+        case event_type::XP:      return "`5XP x2``";
+        case event_type::LUCKY:   return "`9Lucky Drops``";
+        case event_type::SURGERY: return "`3Surgery Day``";
+        default:                  return "none";
+    }
+}
+
+static std::string_view event_description(event_type type)
+{
+    switch (type)
+    {
+        case event_type::GEMS:    return "Breaking blocks drops double gems!";
+        case event_type::XP:      return "Everything gives double XP!";
+        case event_type::LUCKY:   return "Blocks drop extra seeds!";
+        case event_type::SURGERY: return "Surgery rewards are doubled and malpractice is only 15 minutes!";
+        default:                  return "";
+    }
+}
+
+event_type active_event() { return current; }
+bool event_on(event_type type) { return current == type; }
+
+/* @note everyone who is logged in (not on the login screen) */
+static void to_all(const std::string &message, bool overlay = false)
+{
+    peers("", PEER_ALL, [&](ENetPeer &p)
+    {
+        ::peer *pp = static_cast<::peer*>(p.data);
+        if (pp == nullptr || pp->growid.empty()) return;
+        on::ConsoleMessage(&p, message);
+        if (overlay) send_varlist(&p, { "OnTextOverlay", message });
+    });
+}
+
+void system_broadcast(const std::string &message, bool notification)
+{
+    to_all(message);
+    if (notification)
+        peers("", PEER_ALL, [&](ENetPeer &p)
+        {
+            ::peer *pp = static_cast<::peer*>(p.data);
+            if (pp && !pp->growid.empty())
+                send_varlist(&p, { "OnAddNotification", "interface/science_button.rttex", message, "audio/hub_open.wav", 0 });
+        });
+}
+
+static int online_count()
+{
+    return static_cast<int>(std::ranges::count_if(peers(), [](ENetPeer *p) { return logged_in(*p); }));
+}
+
+static int registered_count()
+{
+    ::hStmt hStmt{ "SELECT COUNT(*) FROM peer" };
+    signed count{};
+    MYSQL_BIND result = make_bind_out(count);
+    mysql_stmt_bind_result(hStmt.pStmt, &result);
+    hStmt.execute();
+    hStmt.fetch();
+    return count;
+}
+
+/* @note {online}, {players}, {worlds}, {event} and {next_event} in broadcast.txt are filled in */
+static std::string fill(std::string text)
+{
+    const auto replace = [&text](std::string_view key, const std::function<std::string()> &value)
+    {
+        for (std::size_t at = text.find(key); at != std::string::npos; at = text.find(key, at))
+        {
+            const std::string v = value();
+            text.replace(at, key.size(), v);
+            at += v.size();
+        }
+    };
+    replace("{online}", [] { return std::to_string(online_count()); });
+    replace("{players}", [] { return std::to_string(registered_count()); });
+    replace("{worlds}", [] { return std::to_string(worlds.size()); });
+    replace("{event}", [] { return std::string{ (current == event_type::NONE) ? "`onone``" : event_name(current) }; });
+    replace("{next_event}", [] { return std::to_string(std::max<long long>(0, (next_event - std::time(nullptr) + 59) / 60)); });
+    return text;
+}
+
+static void start_event(event_type type, int seconds)
+{
+    current = type;
+    event_ends = std::time(nullptr) + seconds;
+    event_warned = false;
+    to_all(std::format("`9** EVENT STARTED: {} `9for {} minutes! ``{}", event_name(type), seconds / 60, event_description(type)), true);
+    peers("", PEER_ALL, [&](ENetPeer &p)
+    {
+        ::peer *pp = static_cast<::peer*>(p.data);
+        if (pp && !pp->growid.empty())
+            send_varlist(&p, { "OnAddNotification", "interface/science_button.rttex", std::format("`9EVENT: {} `9started!``", event_name(type)), "audio/hub_open.wav", 0 });
+    });
+}
+
+static void stop_event()
+{
+    if (current == event_type::NONE) return;
+    to_all(std::format("`9** EVENT ENDED: {}`9. Thanks for playing!``", event_name(current)));
+    current = event_type::NONE;
+    next_event = std::time(nullptr) + EVENT_GAP;
+}
+
+/* @note resources/broadcast.txt: one message per line, '#' = comment. edit it any time, it's read again each broadcast */
+static std::vector<std::string> broadcasts()
+{
+    std::vector<std::string> list{};
+    std::ifstream file("resources/broadcast.txt");
+    for (std::string line; std::getline(file, line); )
+    {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (!line.empty() && !line.starts_with('#')) list.push_back(line);
+    }
+    return list;
+}
+
+/* ---------- chat quiz ---------- */
+
+static void to_all_quiz(const std::string &question)
+{
+    to_all(std::format("`9** QUIZ!`` {} `9First to answer in chat wins `w{}`` gems!``", question, quiz_reward));
+}
+
+static void start_quiz()
+{
+    quiz_reward = RandomRange(5, 15) * 100;
+    quiz_ends = std::time(nullptr) + QUIZ_TIME;
+    if (RandomRange(0, 1) == 0) // @note math
+    {
+        const int a = RandomRange(10, 99), b = RandomRange(10, 99), c = RandomRange(2, 9);
+        switch (RandomRange(0, 2))
+        {
+            case 0:  quiz_answer = std::to_string(a + b); to_all_quiz(std::format("What is `w{} + {}``?", a, b)); break;
+            case 1:  quiz_answer = std::to_string(a * c); to_all_quiz(std::format("What is `w{} x {}``?", a, c)); break;
+            default: quiz_answer = std::to_string(a + b * c); to_all_quiz(std::format("What is `w{} + {} x {}``?", a, b, c)); break;
+        }
+    }
+    else // @note unscramble a growtopia word
+    {
+        constexpr std::array<std::string_view, 16> words{ "growtopia", "diamond", "surgery", "vending", "weather", "dragon",
+            "pinata", "rainbow", "lockdown", "magplant", "wrench", "farmable", "growtoken", "backpack", "caduceus", "megaphone" };
+        std::string word{ words[RandomRange(0, words.size() - 1)] };
+        std::string scrambled = word;
+        for (int tries = 0; tries < 10 && scrambled == word; ++tries)
+            for (std::size_t i = scrambled.size() - 1; i > 0; --i) std::swap(scrambled[i], scrambled[RandomRange(0, i)]);
+        quiz_answer = word;
+        to_all_quiz(std::format("Unscramble this word: `w{}``", scrambled));
+    }
+}
+
+bool check_quiz(ENetEvent &event, const std::string &text)
+{
+    if (quiz_answer.empty() || to_lower(text) != quiz_answer) return false;
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    const std::string answer = quiz_answer;
+    quiz_answer.clear();
+
+    pPeer->gems += quiz_reward;
+    on::SetBux(event);
+    send_action(*event.peer, "play_sfx", "file|audio/cash_register.wav\ndelayMS|0\n");
+    to_all(std::format("`9** QUIZ:`` {} `9answered `w{}`` first and won `w{}`` gems!``", pPeer->display_growid, answer, quiz_reward));
+    return true;
+}
+
+/* ---------- online reward ---------- */
+
+static void online_rewards(std::time_t now)
+{
+    for (ENetPeer *p : peers())
+    {
+        if (!logged_in(*p)) continue;
+        ::peer *pp = static_cast<::peer*>(p->data);
+        const int mark = pget(*pp, "online_mark");
+        if (mark == 0 || now - mark < ONLINE_REWARD_GAP) continue;
+
+        pset(*pp, "online_mark", static_cast<int>(now));
+        const int gems = gem_bonus(*pp, ONLINE_REWARD);
+        pp->gems += gems;
+        ENetEvent e{ .peer = p };
+        on::SetBux(e);
+        on::ConsoleMessage(p, std::format("`2Thanks for playing!`` You got `w{}`` gems for being online 30 minutes.", gems));
+    }
+}
+
+void cps_tick()
+{
+    const std::time_t now = std::time(nullptr);
+
+    if (!quiz_answer.empty() && now >= quiz_ends)
+    {
+        to_all(std::format("`9** QUIZ:`` Time's up! The answer was `w{}``.", quiz_answer));
+        quiz_answer.clear();
+    }
+    else if (quiz_answer.empty() && now >= next_quiz)
+    {
+        next_quiz = now + QUIZ_GAP;
+        if (std::ranges::any_of(peers(), [](ENetPeer *p) { return logged_in(*p); })) start_quiz();
+    }
+    if (now >= next_online_check)
+    {
+        next_online_check = now + 60;
+        online_rewards(now);
+    }
+
+    if (current == event_type::NONE && !event_warned && next_event - now <= 5 * 60)
+    {
+        event_warned = true;
+        to_all("`9** A random event starts in `w5`` minutes! Get ready (gems x2, XP x2, lucky drops or surgery day).``");
+    }
+    if (current != event_type::NONE && now >= event_ends) stop_event();
+    else if (current == event_type::NONE && now >= next_event)
+        start_event(static_cast<event_type>(RandomRange(1, 4)), EVENT_LENGTH);
+
+    if (now >= next_broadcast)
+    {
+        next_broadcast = now + BROADCAST_GAP;
+        if (const std::vector<std::string> list = broadcasts(); !list.empty())
+            to_all(std::format("`9[MikeTopia]`` {}", fill(list[broadcast_index++ % list.size()])));
+    }
+    if (now >= next_stats)
+    {
+        next_stats = now + 60 * 60;
+        if (const int online = online_count(); online > 0)
+            to_all(std::format("`9[MikeTopia]`` `wServer stats:`` `2{}`` online, `2{}`` players registered, `2{}`` worlds open. Thanks for playing!", online, registered_count(), worlds.size()));
+    }
+}
+
+void announce_level(const ::peer &p, int level)
+{
+    if (level % 10 == 0 || level == 125)
+        system_broadcast(std::format("`9** ``{} `9reached level `w{}``{}``", p.display_growid, level, (level == 125) ? "`9, the max level! LEGEND!" : "`9!"), level >= 50);
+}
+
+void announce_achievement(const ::peer &p, std::string_view name)
+{
+    to_all(std::format("`9** ``{} `9unlocked the achievement `w{}``!``", p.display_growid, name));
+}
+
+void announce_join(ENetEvent &event)
+{
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    pset(*pPeer, "online_mark", static_cast<int>(std::time(nullptr))); // @note online reward timer starts now
+    int online = 0;
+    peers("", PEER_ALL, [&](ENetPeer &p) { if (::peer *pp = static_cast<::peer*>(p.data); pp && !pp->growid.empty()) ++online; });
+
+    on::ConsoleMessage(event.peer, "`o>> Type `$/start`` to visit the START world, `$/find`` to get items and `$/top`` to see the best players!``");
+    if (current != event_type::NONE)
+        on::ConsoleMessage(event.peer, std::format("`9** Event running: {} `9({} minutes left) ``{}", event_name(current),
+            (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));
+
+    std::string joined = std::format("`5** ``{} `5joined MikeTopia! (`w{}`` `5online)``", pPeer->display_growid, online);
+    if (!pget(*pPeer, "welcomed")) // @note first time ever
+    {
+        pset(*pPeer, "welcomed", 1);
+        joined = std::format("`2** Welcome our new player ``{}`2! Say hi and help them out! (`w{}`` `2online)``", pPeer->display_growid, online);
+        on::ConsoleMessage(event.peer, "`2Welcome to MikeTopia!`` Start in the `wSTART`` world: read the signs, try the `wPARKOUR`` and type `$/find`` for free items.");
+    }
+    peers("", PEER_ALL, [&](ENetPeer &p)
+    {
+        ::peer *pp = static_cast<::peer*>(p.data);
+        if (pp && !pp->growid.empty() && pp != pPeer) on::ConsoleMessage(&p, joined);
+    });
+}
+
+/* ---------- /find rule ---------- */
+
+std::string find_blocked(const ::peer &p, short id)
+{
+    if (p.role >= DEVELOPER) return ""; // @note staff can find anything
+
+    static const std::unordered_set<short> special{
+        18, 32,                         // @note fist, wrench
+        112,                            // @note gems
+        242, 1796, 7188, 9640,          // @note world lock, diamond lock, blue gem lock, my first world lock
+        4298, 1506, 4324, 4326, 4328, 4330, // @note surgery rewards (Caduceus, Medical Scarf, Biotronic, Plague Doctor set)
+        1458, 9350,                     // @note golden heart crystal, super golden booty chest
+    };
+    if (special.contains(id)) return "This item is special: get it from events, surgery or other players!";
+
+    for (const auto &[tab, shouhin] : shouhin_tachi)
+        for (const auto &[item, count] : shouhin.items)
+            if (item == id) return "This item is sold in the `2Store``! Buy it with gems.";
+    return "";
+}
+
+/* ---------- commands ---------- */
+
+void event_command(ENetEvent &event, const std::string_view text)
+{
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    std::vector<std::string> args = readch(std::string{ text }, ' ');
+
+    if (args.size() >= 2 && pPeer->role >= DEVELOPER)
+    {
+        if (args[1] == "stop") return stop_event();
+        if (args[1] == "start" && args.size() >= 3)
+        {
+            const std::string &type = args[2];
+            const event_type t =
+                (type == "gems") ? event_type::GEMS : (type == "xp") ? event_type::XP :
+                (type == "lucky") ? event_type::LUCKY : (type == "surgery") ? event_type::SURGERY : event_type::NONE;
+            if (t == event_type::NONE) return on::ConsoleMessage(event.peer, "`4Types: gems, xp, lucky, surgery``");
+            const int minutes = (args.size() >= 4) ? std::clamp(atoi(args[3].c_str()), 1, 24 * 60) : 30;
+            if (current != event_type::NONE) stop_event();
+            return start_event(t, minutes * 60);
+        }
+    }
+    if (current != event_type::NONE)
+        on::ConsoleMessage(event.peer, std::format("`9** Event running: {} `9({} minutes left) ``{}", event_name(current),
+            (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));
+    else
+        on::ConsoleMessage(event.peer, std::format("`oNo event right now. The next one starts in `w{}`` minutes.``", std::max<long long>(0, (next_event - std::time(nullptr) + 59) / 60)));
+    if (pPeer->role >= DEVELOPER) on::ConsoleMessage(event.peer, "`6Staff:`` /event start {gems|xp|lucky|surgery} {minutes}, /event stop");
+}
+
+void top(ENetEvent &event, const std::string_view text)
+{
+    std::vector<std::string> args = readch(std::string{ text }, ' ');
+    const std::string what = (args.size() >= 2) ? args[1] : "";
+
+    /* @note column & title. the column names are fixed here, never from the player (no SQL injection) */
+    std::string column{}, title{};
+    if (what == "level")        column = "level",         title = "Highest Level";
+    else if (what == "gems")    column = "gems",          title = "Richest in Gems";
+    else if (what == "surgeon") column = "surgery_skill", title = "Best Surgeons";
+    else if (what == "rich")    column = "wl_bank",       title = "Biggest World Lock Bank";
+    else return on::ConsoleMessage(event.peer, "`oUsage: `w/top level``, `w/top gems``, `w/top surgeon``, `w/top rich``");
+
+    /* @note online players are only saved on logout, write their current numbers first */
+    peers("", PEER_ALL, [](ENetPeer &p)
+    {
+        ::peer *pp = static_cast<::peer*>(p.data);
+        if (pp == nullptr || pp->growid.empty()) return;
+        pp->mysql_update<signed>("level", pp->level.front());
+        pp->mysql_update<signed>("xp", pp->level.back());
+        pp->mysql_update<signed>("gems", pp->gems);
+        pp->mysql_update<signed>("surgery_skill", pp->surgery_skill);
+        pp->mysql_update<signed>("wl_bank", pp->wl_bank);
+    });
+
+    ::hStmt hStmt{ std::format("SELECT growid, {} FROM peer WHERE banned = 0 ORDER BY {} DESC LIMIT 10", column, column) };
+    char name[32]{};
+    u_long length{};
+    signed value{};
+    MYSQL_BIND result[2]{};
+    result[0].buffer_type = MYSQL_TYPE_STRING;
+    result[0].buffer = name;
+    result[0].buffer_length = sizeof(name);
+    result[0].length = &length;
+    result[1] = make_bind_out(value);
+    mysql_stmt_bind_result(hStmt.pStmt, result);
+    hStmt.execute();
+    mysql_stmt_store_result(hStmt.pStmt);
+
+    std::string rows{};
+    for (int rank = 1; mysql_stmt_fetch(hStmt.pStmt) == 0; ++rank)
+    {
+        const std::string_view medal = (rank == 1) ? "`9" : (rank == 2) ? "`w" : (rank == 3) ? "`6" : "`o";
+        rows += std::format("add_smalltext|{}#{}`` `w{}`` - `2{}``|left|\n", medal, rank, std::string(name, std::min<u_long>(length, sizeof(name))), value);
+    }
+    send_varlist(event.peer, { "OnDialogRequest", std::format(
+        "set_default_color|`o\n"
+        "add_label|big|`wTop 10: {}``|left|\n"
+        "add_spacer|small|\n"
+        "{}"
+        "add_spacer|small|\n"
+        "add_smalltext|Other lists: /top level, /top gems, /top surgeon, /top rich|left|\n"
+        "end_dialog|popup||OK|\n", title, rows.empty() ? "add_textbox|Nobody yet!|left|\n" : rows) });
+}
+
+void start_command(ENetEvent &event, const std::string_view text)
+{
+    warp(event, "warp START");
+}
+
+void msg_command(ENetEvent &event, const std::string_view text)
+{
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    std::vector<std::string> args = readch(std::string{ text }, ' ');
+    if (args.size() < 3) return on::ConsoleMessage(event.peer, "`oUsage: /msg {growid} {message}``");
+
+    const std::size_t start = text.find(' ', text.find(' ') + 1);
+    const std::string message = clean_text(std::string{ text.substr(start + 1) }, 120);
+    for (ENetPeer *p : peers())
+    {
+        ::peer *pp = static_cast<::peer*>(p->data);
+        if (!logged_in(*p) || to_lower(pp->growid) != to_lower(args[1])) continue;
+        if (pp == pPeer) return on::ConsoleMessage(event.peer, "`4You can't message yourself.``");
+        if (!is_ignoring(*pp, pPeer->growid))
+        {
+            on::ConsoleMessage(p, std::format("`c>> (Message from ``{}`c) {}``", pPeer->display_growid, message));
+            send_action(*p, "play_sfx", "file|audio/pay_time.wav\ndelayMS|0\n");
+        }
+        on::ConsoleMessage(event.peer, std::format("`6>> (Sent to ``{}`6) {}``", pp->display_growid, message));
+        return;
+    }
+    on::ConsoleMessage(event.peer, "`4That player is offline.``");
+}
+
+void online_command(ENetEvent &event, const std::string_view text)
+{
+    std::string names{};
+    int count = 0;
+    for (ENetPeer *p : peers())
+        if (logged_in(*p))
+        {
+            ::peer *pp = static_cast<::peer*>(p->data);
+            if (pp->state & S_GHOST && pp->role >= MODERATOR) continue; // @note hidden staff
+            names += std::format("{}{}", names.empty() ? "" : "`o, ", pp->display_growid);
+            ++count;
+        }
+    on::ConsoleMessage(event.peer, std::format("`o** `w{}`` players online: {}``", count, names));
+}

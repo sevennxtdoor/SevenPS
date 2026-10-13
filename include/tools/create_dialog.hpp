@@ -26,6 +26,7 @@ public:
     create_dialog& add_custom_margin(short x, short y);
     create_dialog& add_achieve(std::string total);
     create_dialog& add_quick_exit();
+    create_dialog& raw(const std::string &lines); // @note already formatted dialog lines (each ending with \n)
     create_dialog& add_popup_name(std::string popup_name);
     create_dialog& add_player_info(std::string label, std::string progress_bar_name, int progress, int total_progress);
     create_dialog& add_item_picker(std::string id, std::string label, std::string selection_prompt);

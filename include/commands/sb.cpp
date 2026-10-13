@@ -1,12 +1,15 @@
 #include "pch.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "onVariant/SetBux.hpp"
+#include "tools/rank.hpp"
+#include "tools/wrench_menu.hpp"
 
 #include "sb.hpp"
 
 void sb(ENetEvent& event, const std::string_view text)
 {
     if (text.size() <= sizeof("sb ")-1) return; // @note "/sb" with no message: substr() would throw and crash the server
-    const std::string message{ text.substr(sizeof("sb ")-1) };
+    const std::string message = clean_text(std::string{ text.substr(sizeof("sb ")-1) }, 120);
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
@@ -40,6 +43,18 @@ void sb(ENetEvent& event, const std::string_view text)
         return;
     }
 
+    /* @note like CreativePS, a super broadcast costs gems (free for ranks with the perk) */
+    constexpr int SB_COST = 1000;
+    if (const ::rank *r = get_rank(*pPeer); !(r && r->sb_free))
+    {
+        if (pPeer->gems < SB_COST)
+        {
+            on::ConsoleMessage(event.peer, std::format("`4A super broadcast costs `w{}`` gems.`` Get a rank (`$/rank``) for free broadcasts!", SB_COST));
+            return;
+        }
+        pPeer->gems -= SB_COST;
+        on::SetBux(event);
+    }
     peers("", PEER_ALL, [&event, &pPeer, message, display](ENetPeer& peer)
     {
         on::ConsoleMessage(&peer,

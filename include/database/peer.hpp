@@ -3,6 +3,7 @@
 #include <cmath> // @note std::floor
 #include <deque> // @note std::deque
 #include <functional>
+#include <unordered_map>
 
 enum bgra : u_int
 {
@@ -167,6 +168,22 @@ public:
 
     u_short fires_removed{};
     u_short gbc_pity{}; // @note GBC pity; for each 100 will receive super GBC
+
+    /* @note surgery (tools/surgery.cpp) */
+    int surgery_skill{}; // @note 0-100, +1 per successful surgery. lowers the skill fail chance
+    int malpractice{};   // @note unix time when the malpractice ban ends (failed surgery)
+
+    /* @note wrench menu (tools/wrench_menu.cpp) */
+    std::string notebook{};      // @note saved
+    int wl_bank{};               // @note world locks in the World Lock Bank, saved
+    int playtime{};              // @note seconds played before this login, saved
+    std::time_t login_time{};    // @note when this session started
+    u_char online_status{};      // @note 0 online, 1 busy, 2 away. not saved
+
+    /* @note stats, achievements, goals, grow pass, wardrobe, pet, ignore list... (tools/profile.cpp), saved */
+    std::unordered_map<std::string, std::string> profile{};
+
+    int rank_level{}; // @note CreativePS-style rank bought with gems (tools/rank.cpp), 0 = none. saved
 };
 
 extern ENetHost* host;

@@ -2,6 +2,8 @@
 #include "commands/__command.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/time.hpp"
+#include "tools/social.hpp"
+#include "tools/cps.hpp"
 #include "input.hpp"
 
 void action::input(ENetEvent& event, const std::string& header)
@@ -76,8 +78,10 @@ void action::input(ENetEvent& event, const std::string& header)
         const std::string &message = std::format("CP:0_PL:0_OID:_CT:[W]_ `6<{}>`` {}{}````", pPeer->display_growid, staff_color.empty() ? "`$`$" : staff_color, text);
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, player_chat, message](ENetPeer& p) 
         {
+            if (is_ignoring(*static_cast<::peer*>(p.data), pPeer->growid)) return; // @note they ignored us
             send_varlist(&p, { "OnTalkBubble", pPeer->netid, player_chat });
             on::ConsoleMessage(&p, message);
         });
+        check_quiz(event, text); // @note chat quiz answer
     }
 }

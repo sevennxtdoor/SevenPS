@@ -1,0 +1,22 @@
+# MikeTopia broadcast messages: one per line, sent to everyone every 10 minutes (in this order).
+# You can edit this file while the server is running. Lines starting with # are ignored.
+# Colors: `2 green, `4 red, `9 gold, `5 pink, `$ yellow, `w white, end a color with ``
+# Filled in automatically: {online} players online, {players} registered players, {worlds} open worlds,
+# {event} the running event, {next_event} minutes until the next event.
+Ketik `$/find`` untuk ambil item gratis!
+Cek `$/event`` untuk melihat event yang sedang berjalan atau berikutnya.
+Siapa pemain terbaik? Ketik `$/top level`` atau `$/top gems``!
+Wrench dirimu sendiri lalu klik `2Grow Pass`` untuk hadiah harian.
+Selesaikan `2Goals & Quests`` setiap hari untuk gems dan World Lock!
+Simpan World Lock kamu di `2World Lock Bank`` (wrench dirimu) supaya aman.
+Coba operasi `2Surg-E`` dan naikkan Surgeon Level kamu!
+Ketik `$/start`` untuk pergi ke world START.
+Beli rank `2VIP`` sampai `4GOD`` pakai gems: ketik `$/rank``!
+Online 30 menit = gems gratis. Tetap main ya!
+Jawab `9QUIZ`` di chat paling cepat untuk menang gems!
+Ada `w{online}`` pemain online sekarang. Ajak temanmu main di MikeTopia!
+Coba `2PARKOUR``: ketik `$/parkour`` dan sampai di FINISH untuk gems setiap hari!
+Event sekarang: {event}``. Event berikutnya sekitar `w{next_event}`` menit lagi.
+Sudah `w{players}`` pemain bergabung di MikeTopia. Terima kasih!
+Kena scam? Wrench pemainnya lalu klik `4Report``. Staff akan cek.
+Jangan kasih password kamu ke siapa pun, termasuk yang mengaku staff!

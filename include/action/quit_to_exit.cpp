@@ -2,12 +2,14 @@
 #include "onVariant/RequestWorldSelectMenu.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "trade.hpp"
+#include "tools/surgery.hpp"
 #include "quit_to_exit.hpp"
 
 void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip_selection = false) 
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
     if (pPeer->trade_netid != 0) end_trade(*event.peer); // @note leaving the world cancels a trade
+    abandon_surgery(event); // @note ...and fails a surgery
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return; // @note peer was not in a world, therefore nothing to exit from.
@@ -20,7 +22,7 @@ void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip
         ::peer *pOthers = static_cast<::peer*>(peer.data);
         if (pOthers->user_id == pPeer->user_id) return;
 
-        on::ConsoleMessage(event.peer, message);
+        on::ConsoleMessage(&peer, message);
         send_varlist(&peer, { "OnRemove", netid, pId }); // @todo
     });
 

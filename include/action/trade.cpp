@@ -2,6 +2,8 @@
 #include "onVariant/ConsoleMessage.hpp"
 
 #include "trade.hpp"
+#include "tools/profile.hpp"
+#include "tools/social.hpp"
 
 static ::peer *data(ENetPeer &p) { return static_cast<::peer*>(p.data); }
 
@@ -343,6 +345,10 @@ void trade_confirm(ENetEvent& event, const ::hPipe &hPipe)
     });
     sfx(*event.peer, "audio/keypad_hit.wav");
     sfx(*partner, "audio/keypad_hit.wav");
+
+    log_trade(pPeer->growid, pPartner->growid, items_for_message(*pPeer), items_for_message(*pPartner));
+    add_stat(mine, "trades");
+    add_stat(theirs, "trades");
 
     reset(*pPeer); reset(*pPartner);
 }

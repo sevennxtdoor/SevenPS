@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/rank.hpp"
 #include <sstream>
 #include "onVariant/CountryState.hpp"
 #include "onVariant/SetClothing.hpp"
@@ -162,7 +163,8 @@ void givetitle(ENetEvent& event, const std::string_view text)
 void nick(ENetEvent& event, const std::string_view text)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    if (pPeer->role < MODERATOR)
+    const ::rank *r = get_rank(*pPeer);
+    if (pPeer->role < MODERATOR && !(r && r->nick)) // @note staff, or a rank with the /nick perk
     {
         send_action(*event.peer, "log", "msg|`4Unknown command.`` Enter `$/?`` for a list of valid commands.");
         return;

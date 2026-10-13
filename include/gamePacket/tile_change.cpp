@@ -9,6 +9,11 @@
 #include "tools/time.hpp"
 #include "tools/create_dialog.hpp"
 #include "tools/vending.hpp"
+#include "tools/surgery.hpp"
+#include "tools/profile.hpp"
+#include "tools/cps.hpp"
+#include "tools/rank.hpp"
+#include "tools/system_worlds.hpp"
 #include "action/quit_to_exit.hpp"
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
@@ -35,6 +40,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 return; // @note avoid hitting the block
             }
 
+        if (is_system_world(world->name) && pPeer->role < DEVELOPER) // @note START & PARKOUR: only staff can build or break
+        {
+            if (gamePacket.id == 18) send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThis world is protected by MikeTopia.``", 0u, 1u });
+            return;
+        }
         if (!(item.cat & CAT_PUBLIC)) // @note if block is public skip validating if peer is owner or access
             if ((world->owner && !world->is_public && !pPeer->role) &&
                 (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end())) return;
@@ -102,6 +112,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             switch (item.id)
             {
+                case 4296: // @note Surg-E
+                {
+                    if (surgery_in_use(*world, gamePacket.punch)) throw std::runtime_error("Someone is operating on it!");
+                    break;
+                }
                 case 758: // @note Roulette Wheel
                 {
                     const u_char number = RandomRange(0, 36);
@@ -193,22 +208,42 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     {
                         block.hits[0] = 99;
                         add_drop(event, ::slot(item.id - 1, RandomRange(1, tree->fruit*3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
+                        add_stat(event, "harvested");
                     }
                     break;
                 }
                 case type::WEATHER_MACHINE:
+                case type::SFX_WEATHER_MACHINE:    // @note Heatwave, Balloon Warz, Background, Valentine's, St. Paddy's, Digital Rain
+                case type::SPRITE_WEATHER_MACHINE: // @note Stuff
                 {
-                    ::block &weather_machine = world->blocks[cord(world->weather.x, world->weather.y)];
+                    if (get_weather_id(item.id) == 0 && item.id != 932/*Sunny*/)
+                    {
+                        send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "This weather machine isn't supported yet." });
+                        break; // @note still takes damage so it can be broken
+                    }
+                    block.state[2] ^= S_TOGGLE; // @note punching again turns it off
+                    const bool on = block.state[2] & S_TOGGLE;
 
-                    if (!(block.state[2] & S_TOGGLE) && !(weather_machine.state[2] & S_TOGGLE)) weather_machine.state[2] &= ~S_TOGGLE; // @note so we can avoid the upcoming ^= if the weather machine is already toggled
-                    block.state[2] ^= S_TOGGLE; // @note if punched twice it can detoggle that is why we use ^= not |=
-                    
+                    if (on) // @note only one machine runs at a time, turn the others off (else the wrong one wins when entering the world)
+                    {
+                        const int width = world->blocks.size() / 60;
+                        for (int i = 0; i < (int)world->blocks.size(); ++i)
+                        {
+                            ::block &other = world->blocks[i];
+                            if (&other == &block || !(other.state[2] & S_TOGGLE) || other.fg == 0 || !is_weather_machine(other.fg)) continue;
+                            other.state[2] &= ~S_TOGGLE;
+                            ::gamePacket update{};
+                            update.punch = ::pos{ i % width, i / width };
+                            send_tile_update(event, update, other, *world);
+                        }
+                    }
                     world->weather = gamePacket.punch;
                     clear_weather_override(world->name); // @note the machine wins over /weather
 
-                    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [block, item](ENetPeer& p)
+                    const int weather_id = on ? get_weather_id(item.id) : 0;
+                    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [weather_id](ENetPeer& p)
                     {
-                        send_varlist(&p, { "OnSetCurrentWeather", (block.state[2] & S_TOGGLE) ? get_weather_id(item.id) : 0 });
+                        send_varlist(&p, { "OnSetCurrentWeather", weather_id });
                     });
                     break;
                 }
@@ -242,6 +277,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             
             /* @todo update these changes with tile_update() */
             block.state[2] = 0x00; // @note reset tile direction
+            add_stat(event, "broken");
             block.state[3] &= ~S_VANISH; // @note remove paint
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
@@ -304,13 +340,14 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (!RandomRange(0, (rarity_to_gem > 1) ? 1 : 4)) // @note double chances if farmable.
                     {
                         /* @todo merge gems more effectively */
-                        u_char gems = RandomRange(1, rarity_to_gem);
+                        int gems = gem_bonus(*pPeer, RandomRange(1, rarity_to_gem)) * (event_on(event_type::GEMS) ? 2 : 1); // @note rank bonus, Gems x2 event
                         for (short i : {10, 5, 1}/* gem type */)
                             for (; gems >= i; gems -= i/* downgrade type */)
                                 add_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
                     }
                     if (!RandomRange(0, (rarity_to_gem > 1) ? 2 : 4)) add_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); 
                     else if (!RandomRange(0, (rarity_to_gem > 1) ? 4 : 8)) add_drop(event, ::slot(item.id, 1), gamePacket.punch.by_32(), *world);
+                    if (event_on(event_type::LUCKY) && !RandomRange(0, 2)) add_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); // @note Lucky Drops event
                 } /* ~gem drop */
 
                 pPeer->add_xp(event, std::trunc(1.0f + item.rarity / 5.0f));
@@ -517,6 +554,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         else if (gamePacket.id == 32)
         {
+            if (item.id == 4296) // @note Surg-E
+            {
+                send_surgery_dialog(event, *world, gamePacket.punch);
+                return;
+            }
             switch (item.type)
             {
                 case type::LOCK:
@@ -754,6 +796,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             block.state[2] |= (pPeer->facing_left) ? S_LEFT : S_RIGHT;
             (item.type == type::BACKGROUND) ? block.bg = gamePacket.id : block.fg = gamePacket.id;
             pPeer->emplace(::slot(item.id, -1));
+            add_stat(event, "placed");
         }
         gamePacket.netid = pPeer->netid; // @todo sometimes rgt has this as 0
         state_visuals(*event.peer, std::move(gamePacket)); // finished.

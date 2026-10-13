@@ -101,6 +101,11 @@ create_dialog& create_dialog::add_achieve(std::string total)
     _d.append(std::format("add_achieve|||left|{}|\n", total)); // @todo
     return *this;
 }
+create_dialog& create_dialog::raw(const std::string &lines)
+{
+    _d.append(lines);
+    return *this;
+}
 create_dialog& create_dialog::add_quick_exit()
 {
     _d.append("add_quick_exit|\n");

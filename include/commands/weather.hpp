@@ -1,6 +1,7 @@
 #pragma once
 
 extern int get_weather_id(u_int item_id);
+extern bool is_weather_machine(u_short item_id); // @note normal, SFX (Heatwave...) and sprite (Stuff...) weather machines
 
 /* @note weather to show when entering a world: /weather override first, otherwise a toggled weather machine, otherwise sunny */
 extern int current_weather(const ::world &world);

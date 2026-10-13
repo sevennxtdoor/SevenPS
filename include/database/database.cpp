@@ -19,7 +19,16 @@ void create_table_if_not_exist()
             "banned TINYINT UNSIGNED DEFAULT 0,"
             "titles INT DEFAULT 0,"
             "titles_on INT DEFAULT 0,"
-            "gems INT DEFAULT 0"
+            "gems INT DEFAULT 0,"
+            "surgery_skill INT DEFAULT 0,"
+            "malpractice INT DEFAULT 0,"
+            "notebook VARCHAR(255) DEFAULT '',"
+            "wl_bank INT DEFAULT 0,"
+            "playtime INT DEFAULT 0,"
+            "profile TEXT,"
+            "level INT DEFAULT 1,"
+            "xp INT DEFAULT 0,"
+            "rank_level INT DEFAULT 0"
         ")";
     /* @note older tables made before these columns existed */
     std::string query_peer_role =
@@ -29,7 +38,16 @@ void create_table_if_not_exist()
             "ADD COLUMN IF NOT EXISTS banned TINYINT UNSIGNED DEFAULT 0,"
             "ADD COLUMN IF NOT EXISTS titles INT DEFAULT 0,"
             "ADD COLUMN IF NOT EXISTS titles_on INT DEFAULT 0,"
-            "ADD COLUMN IF NOT EXISTS gems INT DEFAULT 0";
+            "ADD COLUMN IF NOT EXISTS gems INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS surgery_skill INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS malpractice INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS notebook VARCHAR(255) DEFAULT '',"
+            "ADD COLUMN IF NOT EXISTS wl_bank INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS playtime INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS profile TEXT,"
+            "ADD COLUMN IF NOT EXISTS level INT DEFAULT 1,"
+            "ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS rank_level INT DEFAULT 0";
     std::string query_nuked = "CREATE TABLE IF NOT EXISTS nuked (name VARCHAR(24) NOT NULL PRIMARY KEY)";
     std::string query_world = 
         "CREATE TABLE IF NOT EXISTS world ("
@@ -50,7 +68,20 @@ void create_table_if_not_exist()
             "earned INT DEFAULT 0,"
             "PRIMARY KEY (world, x, y)"
         ")";
-    if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()))
+    /* @note tools/social.cpp */
+    std::string query_friends = "CREATE TABLE IF NOT EXISTS friends (a VARCHAR(18) NOT NULL, b VARCHAR(18) NOT NULL, PRIMARY KEY (a, b))";
+    std::string query_reports =
+        "CREATE TABLE IF NOT EXISTS reports ("
+            "id INT AUTO_INCREMENT PRIMARY KEY, reporter VARCHAR(18), target VARCHAR(18), world VARCHAR(24), reason VARCHAR(128), created_at INT"
+        ")";
+    std::string query_trades =
+        "CREATE TABLE IF NOT EXISTS trade_log ("
+            "id INT AUTO_INCREMENT PRIMARY KEY, time INT, a VARCHAR(18), b VARCHAR(18), a_items VARCHAR(255), b_items VARCHAR(255), INDEX (a), INDEX (b)"
+        ")";
+    std::string query_doors = "CREATE TABLE IF NOT EXISTS world_door (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, dest VARCHAR(64), door_id VARCHAR(64), PRIMARY KEY (world, x, y))"; // @note door destinations
+    std::string query_weather = "CREATE TABLE IF NOT EXISTS world_weather (world VARCHAR(24) NOT NULL PRIMARY KEY, weather INT DEFAULT 0)"; // @note /weather
+    if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()) || mysql_query(db, query_weather.c_str()) ||
+        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }

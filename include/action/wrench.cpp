@@ -2,6 +2,9 @@
 #include "tools/create_dialog.hpp"
 #include "tools/worldban.hpp"
 #include "commands/titles.hpp"
+#include "tools/wrench_menu.hpp"
+#include "tools/profile.hpp"
+#include "tools/social.hpp"
 #include "wrench.hpp"
 
 void action::wrench(ENetEvent& event, const std::string& header) 
@@ -18,6 +21,11 @@ void action::wrench(ENetEvent& event, const std::string& header)
             if (pOthers->netid == netid)
             {
                 u_short lvl = pOthers->level.front();
+                const std::time_t now = std::time(nullptr);
+                const int account_days = static_cast<int>((now - pOthers->created_at) / 86400);
+                const double hours_played = (pOthers->playtime + (now - pOthers->login_time)) / 3600.0;
+                const int malpractice_left = pOthers->malpractice - static_cast<int>(now);
+                const std::size_t people = peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD).size();
                 /* wrench yourself */
                 if (pOthers->user_id == pPeer->user_id)
                 {
@@ -29,7 +37,7 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .set_default_color("`o")
                             .add_player_info(pOthers->display_growid, std::to_string(lvl), pOthers->level.back(), 50 * (lvl * lvl + 2))
                             .add_spacer("small")
-                            .add_textbox(std::format("`oStatus: {}", status_label(*pOthers)))
+                            .add_textbox(std::format("`oStatus: {} `o({})``", status_label(*pOthers), online_status_label(*pOthers)))
                             .add_spacer("small")
                             .add_button("renew_pvp_license", "Get Card Battle License")
                             .add_spacer("small")
@@ -44,7 +52,7 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_custom_button("bonus", "image:interface/large/gui_wrench_daily_bonus_active.rttex;image_size:400,260;width:0.19;")
                             .add_custom_button("my_worlds", "image:interface/large/gui_wrench_my_worlds.rttex;image_size:400,260;width:0.19;")
                             .add_custom_button("alist", "image:interface/large/gui_wrench_achievements.rttex;image_size:400,260;width:0.19;")
-                            .add_custom_label("(0/173)"/*@todo add achivements*/, "target:alist;top:0.72;left:0.5;size:small")
+                            .add_custom_label(std::format("({}/{})", achievements_unlocked(*pOthers), achievements_total()), "target:alist;top:0.72;left:0.5;size:small")
                             .add_custom_button("emojis", "image:interface/large/gui_wrench_growmojis.rttex;image_size:400,260;width:0.19;")
                             .add_custom_button("marvelous_missions", "image:interface/large/gui_wrench_marvelous_missions.rttex;image_size:400,260;width:0.19;")
                             .add_custom_button("title_edit", "image:interface/large/gui_wrench_title.rttex;image_size:400,260;width:0.19;")
@@ -57,19 +65,21 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_spacer("small")
                             .set_custom_spacing(0, 0) // @todo research why rgt adds this too. is 0, 0 unaffecting? or is this resetting the previous 5, 10 spacing
                             .add_spacer("small")
-                            .add_textbox("Surgeon Level: 0")
+                            .add_textbox(std::format("Surgeon Level: {}", pOthers->surgery_skill))
                             .add_spacer("small")
                             .add_textbox("`wActive effects:``")
-                            /* @todo handle peer's effects */
+                            .add_smalltext(malpractice_left > 0 ?
+                                std::format("`$Malpractice``: can't perform surgery (`w{}`` mins left)", (malpractice_left + 59) / 60) : "`oNone``")
                             .add_spacer("small")
                             .add_smalltext(std::format("Fires Put Out: {}", pOthers->fires_removed))
                             .add_spacer("small")
                             .add_textbox(std::format("`oYou have `w{}`` backpack slots.``", pOthers->slot_size))
-                            .add_textbox(std::format("`oCurrent world: `w{}`` (`w{}``, `w{}``) (`w0`` person)````", 
-                                                    pOthers->recent_worlds.back(), pOthers->pos.by_32(true).x_int(), pOthers->pos.by_32(true).y_int()))
+                            .add_textbox(std::format("`oCurrent world: `w{}`` (`w{}``, `w{}``) (`w{}`` {})````",
+                                                    pOthers->recent_worlds.back(), pOthers->pos.by_32(true).x_int(), pOthers->pos.by_32(true).y_int(),
+                                                    people, (people == 1) ? "person" : "people"))
                             .add_textbox("`oYou are standing on the note \"A\".``")
                             .add_spacer("small")
-                            .add_textbox("`oTotal time played is `w0.0`` hours.  This account was created `w0`` days ago.``")
+                            .add_textbox(std::format("`oTotal time played is `w{:.1f}`` hours.  This account was created `w{}`` days ago.``", hours_played, account_days))
                             .add_spacer("small")
                             .add_quick_exit()
                             .end_dialog("popup", "", "Continue")
@@ -86,23 +96,20 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_label_with_icon("big", std::format("{} (`2{}``)``", pOthers->display_growid, lvl), 18)
                             .embed_data("netID", netid)
                             .add_spacer("small")
-                            .add_achieve("0"/*@todo add achivements*/)
+                            .add_achieve(std::to_string(achievements_unlocked(*pOthers)))
                             .add_custom_margin(75, -70.85)
                             .add_custom_margin(-75, 70.85)
                             .add_spacer("small")
-                            .add_label("small", "`1Achievements:`` 0/173"/*add total achivements*/)
+                            .add_label("small", std::format("`1Account Age:`` {} days", account_days))
                             .add_spacer("small")
-                            .add_label("small", "`1Account Age:`` 0 days")
-                            .add_spacer("small")
-                            .add_label("small", std::format("`1Status:`` {}", status_label(*pOthers)))
+                            .add_label("small", std::format("`1Status:`` {} `o({})``", status_label(*pOthers), online_status_label(*pOthers)))
+                            .raw(profile_public_lines(*pOthers)) // @note bio, achievements, surgeon level, play time, pet, license
                             .add_spacer("small")
                             .add_button("trade", "`wTrade``")
                             .add_button("sendpm", "`wSend Message``")
-                            .add_textbox("(No Battle Leash equipped)")
-                            .add_textbox("You need a valid license to battle!")
-                            .add_button("friend_add", "`wAdd as friend``")
+                            .add_button("friend_add", are_friends(pPeer->growid, pOthers->growid) ? "`wRemove friend``" : "`wAdd as friend``")
                             .add_button("show_clothes", "`wView worn clothes``")
-                            .add_button("ignore_player", "`wIgnore Player``")
+                            .add_button("ignore_player", is_ignoring(*pPeer, pOthers->growid) ? "`wUnignore Player``" : "`wIgnore Player``")
                             .add_button("report_player", "`wReport Player``");
 
                     /* @note world owner (or staff) controls */

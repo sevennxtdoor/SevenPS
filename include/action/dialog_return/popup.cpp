@@ -2,12 +2,15 @@
 #include "tools/worldban.hpp"
 #include "commands/titles.hpp"
 #include "action/trade.hpp"
+#include "tools/wrench_menu.hpp"
 
 #include "popup.hpp"
 
 void popup(ENetEvent& event, const ::hPipe &hPipe)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+
+    if (wrench_menu_button(event, hPipe)) return; // @note notebook, world lock bank, online status, clothes, message...
 
     /* wrench menu: pull / kick / worldban (world owner or staff) */
     if (const std::string clicked{ hPipe["buttonClicked"] }; clicked == "pull" || clicked == "kick" || clicked == "worldban" || clicked == "trade")

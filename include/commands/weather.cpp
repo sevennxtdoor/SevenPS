@@ -35,7 +35,8 @@ int get_weather_id(u_int item_id)
         case 3832: return 29; // @note stuff
         case 4242: return 30; // @note pagoda
         case 4486: return 31; // @note apocalypse
-        case 4774: return 32; // @note jungle (blast)
+        case 4774: // @note jungle (blast)
+        case 4776: return 32; // @note jungle (weather machine)
         case 4892: return 33; // @note balloon warz
         case 5000: return 34; // @note background
         case 5112: return 35; // @note autumn
@@ -76,24 +77,64 @@ int get_weather_id(u_int item_id)
     return 0; // @note sunny
 }
 
+bool is_weather_machine(u_short item_id)
+{
+    const u_char t = id_to_item(item_id).type;
+    return t == type::WEATHER_MACHINE || t == type::SFX_WEATHER_MACHINE || t == type::SPRITE_WEATHER_MACHINE;
+}
+
 namespace
 {
-    std::unordered_map<std::string, int> weather_override{}; // @note world name -> weather id set by /weather (memory only)
+    /* @note world name -> weather id set by /weather, -1 = none. cached from the `world_weather` table so it survives restarts */
+    std::unordered_map<std::string, int> weather_override{};
+}
+
+static int get_override(const std::string &world_name)
+{
+    if (auto it = weather_override.find(world_name); it != weather_override.end()) return it->second;
+
+    int id = -1;
+    ::hStmt hStmt{ "SELECT weather FROM world_weather WHERE world = ? LIMIT 1" };
+    MYSQL_BIND param = make_bind_in(world_name);
+    hStmt.bind_param(&param);
+    signed value{};
+    MYSQL_BIND result = make_bind_out(value);
+    mysql_stmt_bind_result(hStmt.pStmt, &result);
+    hStmt.execute();
+    mysql_stmt_store_result(hStmt.pStmt);
+    if (mysql_stmt_fetch(hStmt.pStmt) == 0) id = value;
+
+    weather_override[world_name] = id;
+    return id;
+}
+
+static void set_override(const std::string &world_name, int id)
+{
+    weather_override[world_name] = id;
+    ::hStmt hStmt{ "REPLACE INTO world_weather (world, weather) VALUES (?, ?)" };
+    MYSQL_BIND params[2] = { make_bind_in(world_name), make_bind_in(id) };
+    hStmt.bind_param(params);
+    hStmt.execute();
 }
 
 int current_weather(const ::world &world)
 {
-    if (auto it = weather_override.find(world.name); it != weather_override.end()) return it->second;
+    if (const int id = get_override(world.name); id >= 0) return id;
 
     for (const ::block &block : world.blocks)
-        if (block.fg != 0 && (block.state[2] & S_TOGGLE) && id_to_item(block.fg).type == type::WEATHER_MACHINE)
+        if (block.fg != 0 && (block.state[2] & S_TOGGLE) && is_weather_machine(block.fg))
             return get_weather_id(block.fg);
     return 0;
 }
 
 void clear_weather_override(const std::string &world_name)
 {
-    weather_override.erase(world_name);
+    if (get_override(world_name) < 0) return; // @note nothing to clear, skip the query
+    weather_override[world_name] = -1;
+    ::hStmt hStmt{ "DELETE FROM world_weather WHERE world = ?" };
+    MYSQL_BIND param = make_bind_in(world_name);
+    hStmt.bind_param(&param);
+    hStmt.execute();
 }
 
 /* /weather {id} - weather id (0-100) or a weather machine's item id.
@@ -102,7 +143,13 @@ void weather(ENetEvent& event, const std::string_view text)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
-    int id = atoi(std::string{ text.substr(strlen("weather ")) }.c_str());
+    const std::string_view arg = (text.size() > strlen("weather ")) ? text.substr(strlen("weather ")) : std::string_view{};
+    int id = arg.empty() ? -1 : atoi(std::string{ arg }.c_str()); // @note "/weather" alone shows the usage
+    if (id > 100 && get_weather_id(id) == 0 && id != 932/*Sunny*/)
+    {
+        send_action(*event.peer, "log", "msg|`4That weather machine isn't supported yet.``");
+        return;
+    }
     if (id > 100) id = get_weather_id(id); // @note item id of a weather machine, e.g. 934 (Night)
     if (id < 0)
     {
@@ -116,7 +163,7 @@ void weather(ENetEvent& event, const std::string_view text)
 
     if (whole_world)
     {
-        weather_override[world->name] = id;
+        set_override(world->name, id);
         peers(world->name, PEER_SAME_WORLD, [id](ENetPeer &p) { send_varlist(&p, { "OnSetCurrentWeather", id }); });
         on::ConsoleMessage(event.peer, std::format("`oWeather changed to `w{}`` for the whole world.``", id));
     }

@@ -1,4 +1,7 @@
 #include "pch.hpp"
+#include "tools/profile.hpp"
+#include "tools/cps.hpp"
+#include "tools/rank.hpp"
 #include "items.hpp"
 #include "world.hpp"
 #include "onVariant/SetClothing.hpp"
@@ -95,6 +98,16 @@ void peer::mysql_select_all()
     this->titles     = this->mysql_select<signed>("titles");
     this->titles_on  = this->mysql_select<signed>("titles_on");
     this->gems       = this->mysql_select<signed>("gems");
+    this->surgery_skill = this->mysql_select<signed>("surgery_skill");
+    this->malpractice   = this->mysql_select<signed>("malpractice");
+    this->notebook      = this->mysql_select<std::string>("notebook");
+    this->wl_bank       = this->mysql_select<signed>("wl_bank");
+    this->playtime      = this->mysql_select<signed>("playtime");
+    this->login_time    = std::time(nullptr);
+    profile_load(*this, this->mysql_select<std::string>("profile"));
+    this->level.front() = static_cast<u_short>(std::clamp(this->mysql_select<signed>("level"), 1, 125));
+    this->level.back()  = static_cast<u_short>(std::max(this->mysql_select<signed>("xp"), 0));
+    this->rank_level    = this->mysql_select<signed>("rank_level");
 
     auto blob = this->mysql_select<std::vector<u_char>>("inventory");
     const u_char *u8 = blob.data();
@@ -132,6 +145,7 @@ void peer::mysql_select_all()
 
 int peer::owned_titles() const
 {
+    if (const ::rank *r = get_rank(*this); r && r->titles) return T_ALL; // @note rank perk
     return (this->role >= MODERATOR) ? T_ALL : this->titles; // @note super supporter perk
 }
 
@@ -146,10 +160,16 @@ std::string peer::name_as(std::string_view color) const
             case MODERATOR: color = "`#"; tag = "@"; break;
         }
     const int shown = this->titles_on & this->owned_titles();
-    if (tag.empty() && (shown & T_DOCTOR)) color = "`4"; // @note like real growtopia, the Dr. title turns the name red (staff keep their role color)
+    if (tag.empty() && (shown & T_DOCTOR)) color = "`4";
+    std::string rank_tag{};
+    if (const ::rank *r = get_rank(*this); r && tag.empty() && this->nick.empty()) // @note staff show their @ tag instead
+    {
+        color = r->color;
+        rank_tag = std::format("[{}] ", r->name);
+    } // @note like real growtopia, the Dr. title turns the name red (staff keep their role color)
     /* @note Blue Name is not a color code: on::CountryState sends |maxLevel and the client draws it blue */
 
-    return std::format("{}{}{}{}{}``", color, tag,
+    return std::format("{}{}{}{}{}{}``", color, rank_tag, tag,
         (shown & T_DOCTOR) ? "Dr. " : "",
         this->nick.empty() ? this->growid : this->nick,
         (shown & T_LEGEND) ? " of Legend" : "");
@@ -189,6 +209,17 @@ peer::~peer()
     this->mysql_update<std::vector<u_char>>("clothing", this->serialize_clothing().data());
     this->mysql_update<signed>("titles_on", this->titles_on); // @note `titles` (owned) is written by /givetitle directly
     this->mysql_update<signed>("gems", this->gems);
+    this->mysql_update<signed>("surgery_skill", this->surgery_skill);
+    this->mysql_update<signed>("malpractice", this->malpractice);
+    this->mysql_update<std::string>("notebook", this->notebook);
+    if (this->login_time != 0)
+    {
+        this->mysql_update<std::string>("profile", profile_serialize(*this));
+        this->mysql_update<signed>("level", this->level.front());
+        this->mysql_update<signed>("xp", this->level.back());
+    }
+    this->mysql_update<signed>("wl_bank", this->wl_bank);
+    if (this->login_time != 0) this->mysql_update<signed>("playtime", this->playtime + static_cast<int>(std::time(nullptr) - this->login_time));
 }
 
 u_short peer::emplace(::slot slot) 
@@ -210,6 +241,8 @@ u_short peer::emplace(::slot slot)
 
 void peer::add_xp(ENetEvent &event, u_short value) 
 {
+    value = static_cast<u_short>(xp_bonus(*this, value)); // @note rank bonus
+    if (event_on(event_type::XP)) value *= 2; // @note XP x2 event
     u_short &lvl = this->level.front();
     u_short &xp = this->level.back() += value; // @note factor the new xp amount
 
@@ -233,6 +266,7 @@ void peer::add_xp(ENetEvent &event, u_short value)
         std::string message = std::format("{} is now level {}!", this->display_growid, lvl);
         send_varlist(event.peer, { "OnTalkBubble", this->netid, message, 0u });
         on::ConsoleMessage(event.peer, message);
+        announce_level(*this, lvl);
     }
 }
 

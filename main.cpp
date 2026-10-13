@@ -11,6 +11,8 @@
 #include "include/database/database_config.hpp" // @note load_database_config(), gDatabase_config
 #include "include/automate/holiday.hpp" // @note holiday
 #include "include/commands/restart.hpp" // @note restart_tick()
+#include "include/tools/cps.hpp" // @note cps_tick()
+#include "include/tools/rank.hpp" // @note load_ranks()
 #include <csignal>
 
 namespace
@@ -46,6 +48,7 @@ int main()
     mysql_connect();
     decode_items();      // @note reads items.dat into legible class members (id, item name, ect)
     parse_store();       // @todo thread loop this so the store can update without restarting server (stored in .\resource\store.txt)
+    load_ranks();        // @note .\resources\ranks.txt
     check_for_holiday(); // @note check for any holidays using local time (your VPS or local time) - @todo thread loop so it can change the holiday without restarting
 
     ENetEvent event{};
@@ -56,6 +59,7 @@ int main()
             if (const auto i = eventType_pool.find(event.type); i != eventType_pool.end())
                 i->second(event);
         restarting = restart_tick(); // @note /restart countdown
+        cps_tick(); // @note automatic events & broadcasts
     }
 
     safe_disconnect_peers(gSignal);

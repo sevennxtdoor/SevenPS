@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "action/join_request.hpp"
 #include "action/quit_to_exit.hpp"
+#include "tools/system_worlds.hpp"
 #include "tile_activate.hpp"
 
 void tile_activate(ENetEvent& event, ::gamePacket gamePacket)
@@ -59,6 +60,7 @@ void tile_activate(ENetEvent& event, ::gamePacket gamePacket)
             pPeer->rest_pos = gamePacket.punch.by_32();
             block.state[2] |= S_TOGGLE; // @note toggle current checkpoint
             send_tile_update(event, ::gamePacket{.id = block.fg, .punch = gamePacket.punch}, block, *world);
+            system_checkpoint(event, *world, gamePacket.punch); // @note PARKOUR finish
             break;
         }
     }
