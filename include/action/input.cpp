@@ -4,6 +4,7 @@
 #include "tools/time.hpp"
 #include "tools/social.hpp"
 #include "tools/cps.hpp"
+#include "commands/gtos.hpp"
 #include "input.hpp"
 
 void action::input(ENetEvent& event, const std::string& header)
@@ -26,6 +27,10 @@ void action::input(ENetEvent& event, const std::string& header)
         on::ConsoleMessage(event.peer,
             "`6>>`4Spam detected! ``Please wait a bit before typing anything else.  "  
             "Please note, any form of bot/macro/auto-paste will get all your accounts banned, so don't do it!");
+    }
+    else if (muted_left(*pPeer) > 0 && (!text.starts_with('/') || text.starts_with("/sb") || text.starts_with("/msg") || text.starts_with("/me ")))
+    {
+        on::ConsoleMessage(event.peer, std::format("`4You are muted for {} more minutes.``", (muted_left(*pPeer) + 59) / 60));
     }
     else if (text.starts_with('/')) 
     {

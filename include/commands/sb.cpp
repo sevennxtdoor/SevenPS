@@ -4,6 +4,7 @@
 #include "tools/rank.hpp"
 #include "tools/wrench_menu.hpp"
 #include "tools/jammer.hpp"
+#include "commands/gtos.hpp"
 
 #include "sb.hpp"
 
@@ -17,6 +18,7 @@ void sb(ENetEvent& event, const std::string_view text)
     if (world == worlds.end()) return;
 
     std::string display = jammer_on(*world, jammer::SIGNAL) ? "`4JAMMED!``" : pPeer->recent_worlds.back(); // @note Signal Jammer
+    set_last_sb_world(pPeer->recent_worlds.back()); // @note /go
 
     /* @note owner broadcast: gold header + a pop-up notification for everyone */
     if (pPeer->role >= OWNER)
@@ -58,6 +60,7 @@ void sb(ENetEvent& event, const std::string_view text)
     }
     peers("", PEER_ALL, [&event, &pPeer, message, display](ENetPeer& peer)
     {
+        if (::peer *pp = static_cast<::peer*>(peer.data); pp && pp != pPeer && radio_off(*pp)) return; // @note /radio off
         on::ConsoleMessage(&peer,
             std::format(
                 "CP:0_PL:0_OID:_CT:[SB]_ `5** from ({}```5) in [```${}```5] ** : ```${}``",

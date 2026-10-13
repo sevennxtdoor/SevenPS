@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "onVariant/SetClothing.hpp"
 
 #include "jammer.hpp"
 
@@ -59,4 +60,6 @@ void jammer_toggled(ENetEvent &event, ::world &world, ::block &block, const ::po
     send_tile_update(event, update, block, world); // @note everyone sees it switch on/off
     send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, std::format("`w{}`` {}``", id_to_item(block.fg).raw_name, on ? "`2ON" : "`4OFF"), 0u, 1u });
     peers(world.name, PEER_SAME_WORLD, [&message](ENetPeer &p) { on::ConsoleMessage(&p, message); });
+    if (block.fg == jammer::ANTIGRAVITY) // @note everyone's gravity changes right away
+        peers(world.name, PEER_SAME_WORLD, [](ENetPeer &p) { on::SetClothing(p); });
 }

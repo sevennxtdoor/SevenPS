@@ -15,6 +15,7 @@
 #include "tools/rank.hpp"
 #include "tools/system_worlds.hpp"
 #include "tools/jammer.hpp"
+#include "tools/consumables.hpp"
 #include "action/quit_to_exit.hpp"
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
@@ -542,7 +543,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case 3822: break; // Red Hair Dye
                 case 3824: break; // Green Hair Dye
                 case 3826: break; // Blue Hair Dye
-                default: return; // @note prevent taking the consumeable if nothing happended
+                default: use_consumable(event, *world, block, gamePacket.punch, item); return; // @note takes the item itself, only if something happened
             }
             if (particle > 0.0f)
             {
@@ -561,6 +562,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 send_surgery_dialog(event, *world, gamePacket.punch);
                 return;
             }
+            if (item.id == 6016) return growscan_dialog(event, *world); // @note GrowScan 9000
             switch (item.type)
             {
                 case type::LOCK:

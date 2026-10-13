@@ -78,6 +78,7 @@ enum pstate : int
     S_GHOST       = 0x00000001,
     S_DOUBLE_JUMP = 0x00000002,
     S_DUCT_TAPE   = 0x00002000,
+    S_ZOMBIE      = 0x00010000, // @note g-Virus: green zombie look (65536 in SetClothing's list), slow
     S_SUPER_SUPPORTER = 0x01000000 // @note bigger name + green swinging wrench. bit 24, from GTOS' getState() (haveSuperSupporterName)
 };
 

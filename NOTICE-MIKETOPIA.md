@@ -33,6 +33,9 @@ Made by @Mike, for local/private use.
 - 76 more punch effects, double jump from back items, bedrock breakable by developers
 - System worlds (`include/tools/system_worlds.cpp`): START (hub with the MikeTopia sky title, hall, signs, doors to PARKOUR/TRADE, garden, platform climb) and PARKOUR (jump course with checkpoints, daily 2500 gems at the finish) are built with a design when first opened; only staff can edit them; `/rebuild {START|PARKOUR}` (owner), `/parkour`
 - Jammers (`include/tools/jammer.cpp`): Signal, Punch, Zombie, Balloon Jammer and Antigravity Generator turn on/off by punching (tile update + message); Signal Jammer hides the world from Top Worlds, /sb and friend lists (staff still see it); "World X [JAMMED, NOPUNCH...] entered" tags
+- Consumables (`include/tools/consumables.cpp`, item list from GTOS): Grow Spray & Deluxe Grow Spray, Fortune & Lucky Fortune Cookie, Winter Gift, Bronze/Silver/Gold Architect Chest, Winter & Spring Chest, Small Seed Pack, Surgery Gatcha, Gift of Growganoth, fragments that combine (Devil Wings, Teeny Devil Wings, Vampire Cape, Black Cat, Skeletal Dragon Claw, Nightmare Magnifying Glass, Emerald & Ruby Lock, Cupid), Valentine's Card, Green Beer, g-Virus & Antidote; GrowScan 9000 world stats (wrench)
+- Playmods (`include/tools/playmods.cpp`, `resources/playmods.txt`): speed & gravity of worn items, zombies are slow, Antigravity Generator lowers gravity for everyone in the world
+- Commands from GTOS' list: /pay /go /rules /mods /radio /info /status, staff /warpto /mute /unmute /curse /uncurse (stuck in HELL) /warn /kickall
 - System broadcasts: placeholders in `resources/broadcast.txt` ({online} {players} {worlds} {event} {next_event}), "event in 5 minutes" warning, event popup notification, hourly server stats, new player welcome, level milestones (every 10 levels) and achievements announced to everyone
 
 **Saving & fixes**
@@ -40,6 +43,7 @@ Made by @Mike, for local/private use.
 - Server shutdown now saves online players and worlds
 - Display block and vending machine tile data is now sent to the client
 - Door destinations are saved (`world_door` table), so doors still work after a restart
+- Tree growth uses the real clock (the old monotonic clock reset on every PC reboot)
 - "X left" message now goes to the other players instead of the one leaving
 - MikeTopia gazette and login messages
 

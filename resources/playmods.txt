@@ -1,0 +1,17 @@
+# MikeTopia playmods: what a worn item does to movement. One item per line:
+#   item id|speed|gravity|name
+# Normal speed is 250 (higher = faster, lower = slower), normal gravity is 1000 (lower = higher jumps).
+# Use 0 to leave speed or gravity unchanged. You can edit this file while the server runs.
+# Back items (wings, capes) already give double jump.
+4988|330|0|Speedy (Speed Medallion)
+4990|330|0|Speedy (Skateboard)
+9038|330|0|Speedy (Speedy High Heels)
+8948|330|0|Speedy (Speeder)
+6982|330|0|Speedy (Wheelchair Speedster)
+5418|300|0|Speedy (Ice Skates of Winter)
+1146|0|750|High Jump (Moon Boots)
+8014|0|750|High Jump (Spring Flinger Shoes)
+8016|0|650|High Jump (Ultra Spring Flinger Shoes)
+898|130|0|Slow (Dear John Tractor)
+1830|130|0|Slow (Harvester)
+1966|130|0|Slow (Harvester Of Sorrows)

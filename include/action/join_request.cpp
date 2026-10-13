@@ -10,6 +10,7 @@
 #include "tools/worldban.hpp"
 #include "tools/time.hpp"
 #include "tools/jammer.hpp"
+#include "commands/gtos.hpp"
 
 #include "join_request.hpp"
 
@@ -27,6 +28,11 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         if (!alnum(name)) throw std::runtime_error("Sorry, spaces and special characters are not allowed in world or door names.  Try again.");
 
         for (char &c : name) c = std::toupper(c); // @note start -> START
+        if (pPeer->role < MODERATOR && cursed_left(*pPeer) > 0 && name != "HELL") // @note /curse: stuck in HELL until it ends
+        {
+            on::ConsoleMessage(event.peer, std::format("`4You are cursed for {} more minutes and can't leave HELL.``", (cursed_left(*pPeer) + 59) / 60));
+            name = "HELL";
+        }
         if (pPeer->role < MODERATOR && is_nuked(name)) throw std::runtime_error("That world is inaccessible.");
         if (pPeer->role < MODERATOR)
             if (const int left = world_ban_left(name, pPeer->user_id); left > 0)

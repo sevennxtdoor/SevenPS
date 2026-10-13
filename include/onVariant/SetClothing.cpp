@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/playmods.hpp"
 #include "SetClothing.hpp"
 
 void on::SetClothing(ENetPeer &peer)
@@ -20,7 +21,7 @@ void on::SetClothing(ENetPeer &peer)
         .count = 125.0f, // @note gtnoob has this as 'waterspeed'
         .id = pPeer->state, // @note 04 invisible (only eyes/mouth), 08 no arms, 16 no face, 32 invisible (only legs/arms), 64 devil horns, 128 angel halo, 2048 frozen, 4096 gray skin?,8192 ducttape, 16384 Onion effect, 32768 stars effect, 65536 zombie, 131072 hit by lava, 262144 shadow effect, 524288 irradiated effect, 1048576 spotlight, 2097152 pineapple thingy
         .pos = ::pos{ 1200.0f, 200.0f }, // @todo magic numbers
-        .speed = ::pos{ 250.0f, 1000.0f }, // @todo magic numbers
+        .speed = player_physics(*pPeer), // @note {speed, gravity}: playmods, zombie, Antigravity Generator
         .punch = ::pos{ pPeer->hair_color, 0x00000000u } // @todo can this even be unsigned?
         
     };

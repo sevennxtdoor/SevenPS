@@ -4,7 +4,5 @@
 
 u_int ticks()
 {
-    struct timespec ts{};
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (u_int)(ts.tv_sec);
+    return static_cast<u_int>(std::time(nullptr)); // @note real time: tree ages are saved, the monotonic clock restarted at every PC boot
 }
