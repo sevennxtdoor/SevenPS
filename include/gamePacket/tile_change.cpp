@@ -7,6 +7,7 @@
 #include "item_activate.hpp"
 #include "tools/random.hpp"
 #include "tools/time.hpp"
+#include "tools/playmods.hpp"
 #include "tools/create_dialog.hpp"
 #include "tools/vending.hpp"
 #include "tools/surgery.hpp"
@@ -274,8 +275,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             tile_apply_damage(event, std::move(gamePacket), block, apply_damage_value);
 
-            if (block.hits[0] >= item.hits) block.fg = 0, block.hits[0] = 0;
-            else if (block.hits[1] >= item.hits) block.bg = 0, block.hits[1] = 0;
+            /* @note Enhanced Digging (Pickaxe, Cybernetic Arm...): one hit less, never below 1 */
+            const u_char hits = (item.hits > 1 && has_playmod(*pPeer, PM_DIG)) ? item.hits - 1 : item.hits;
+            if (block.hits[0] >= hits) block.fg = 0, block.hits[0] = 0;
+            else if (block.hits[1] >= hits) block.bg = 0, block.hits[1] = 0;
             else return;
             
             /* @todo update these changes with tile_update() */

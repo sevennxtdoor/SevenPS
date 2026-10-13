@@ -1,17 +1,67 @@
-# MikeTopia playmods: what a worn item does to movement. One item per line:
-#   item id|speed|gravity|name
+# MikeTopia playmods: what a worn item does to your account. One item per line:
+#   item id|speed|gravity|name|extra
 # Normal speed is 250 (higher = faster, lower = slower), normal gravity is 1000 (lower = higher jumps).
 # Use 0 to leave speed or gravity unchanged. You can edit this file while the server runs.
+# extra (optional, comma separated): dj = double jump, dig = Enhanced Digging (blocks need 1 hit less)
 # Back items (wings, capes) already give double jump.
+
+# Speedy
+496|330|0|Speedy (Air Robinsons)
+1822|330|0|Speedy (Golden Air Robinsons)
+3894|330|0|Speedy (Harvest Robinsons)
+592|330|0|Speedy (Tiny Horsie)
+1018|330|0|Speedy (Tiny Appaloosa)
+1274|330|0|Speedy (Edison Zoomster)
+2214|330|0|Speedy (Ice Horse)
+4536|330|0|Speedy (Cosmic Sky Horse)
+4948|330|0|Speedy (Solar Chariot)
 4988|330|0|Speedy (Speed Medallion)
 4990|330|0|Speedy (Skateboard)
-9038|330|0|Speedy (Speedy High Heels)
-8948|330|0|Speedy (Speeder)
-6982|330|0|Speedy (Wheelchair Speedster)
+5264|330|0|Speedy (Neon Nerves)
 5418|300|0|Speedy (Ice Skates of Winter)
+5650|330|0|Speedy (Golden Talaria)
+6294|330|0|Speedy (Raptor Legs)
+6982|330|0|Speedy (Wheelchair Speedster)
+7146|330|0|Speedy (Mountain Dire Wolf)
+7432|330|0|Speedy (Snow Husky Sledge)
+8018|330|0|Speedy (S.P.I.D.E.R. Legs)
+8488|330|0|Speedy (Chaos Corruption)
+8494|330|0|Speedy (Snakewolf)
+8512|330|0|Speedy (Slippery Pineapple Squishers)
+8948|330|0|Speedy (Speeder)
+9038|330|0|Speedy (Speedy High Heels)
+9174|330|0|Speedy (Armored WinterBot - Feet)
+9360|330|0|Speedy (Armored Riding Troll)
+9426|330|0|Speedy (Dala Horsie)
+9612|330|0|Speedy (Mexican Pointy Boots)
+10066|330|0|Speedy (Riding Gorilla)
+12636|330|0|Speedy (Super Speeder)
+4412|330|0|Speedy + Double Jump (Pegasus)|dj
+4414|330|0|Speedy + Double Jump (Golden Pegasus)|dj
+
+# Double jump on items that are not back items
+3442|0|0|Double Jump (Riding Bumblebee)|dj
+4184|0|0|Double Jump (Riding Raven)|dj
+4628|0|0|Double Jump (Kudo's Carriage)|dj
+
+# High Jump
+160|0|750|High Jump (Jetpack)
+1140|0|750|High Jump (Astronaut Pack)
+2050|0|700|High Jump (Rocket Pack)
+10534|0|700|High Jump (Confetti Jump Pack)
 1146|0|750|High Jump (Moon Boots)
 8014|0|750|High Jump (Spring Flinger Shoes)
 8016|0|650|High Jump (Ultra Spring Flinger Shoes)
+
+# Enhanced Digging
+98|0|0|Enhanced Digging (Pickaxe)|dig
+734|0|0|Enhanced Digging (Cybernetic Arm)|dig
+1708|0|0|Enhanced Digging (Explorer's Shovel)|dig
+4590|0|0|Enhanced Digging (Zraei's Dragoscarf)|dig
+7434|0|0|Enhanced Digging (Poseidon's Digger's Trident)|dig
+8492|0|0|Enhanced Digging (Wormtouch)|dig
+
+# Slow
 898|130|0|Slow (Dear John Tractor)
 1830|130|0|Slow (Harvester)
 1966|130|0|Slow (Harvester Of Sorrows)

@@ -10,6 +10,7 @@
 #include "commands/punch.hpp"
 #include "action/quit_to_exit.hpp"
 #include "tools/string.hpp"
+#include "tools/playmods.hpp"
 
 #include "peer.hpp"
 
@@ -280,8 +281,8 @@ void peer::update_effects()
             this->punch_effect = punch_id;
     }
 
-    /* @note any back item (wings, capes) grants double jump */
-    if (this->clothing[clothing::BACK] != 0) this->state |= S_DOUBLE_JUMP;
+    /* @note any back item (wings, capes) grants double jump, so do 'dj' items in playmods.txt (Pegasus, Riding Raven...) */
+    if (this->clothing[clothing::BACK] != 0 || has_playmod(*this, PM_DOUBLE_JUMP)) this->state |= S_DOUBLE_JUMP;
     else                                     this->state &= ~S_DOUBLE_JUMP;
 
     /* @note staff are super supporters: bigger name + green wrench, unless /hidestatus */
