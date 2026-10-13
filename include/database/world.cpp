@@ -320,6 +320,7 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
     if (this->exists(this->name)) 
     {
         this->mysql_select_all();
+        if (is_system_world(this->name) && this->signs.empty()) build_system_world(*this); // @note an old plain START gets its design (it has no signs yet)
     }
     else 
     {
