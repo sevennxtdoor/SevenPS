@@ -49,11 +49,11 @@ namespace
         return (it != p.slots.end()) ? it->count : 0;
     }
 
-    /* @note room for one more of this item: a stack below 200 or a free slot */
+    /* @note room for one more of this item: its slot below 200 (an emptied slot stays in peer::slots) or a free slot */
     bool backpack_room(const ::peer &p, short id)
     {
-        const int have = held(p, id);
-        return have > 0 ? have < 200 : static_cast<int>(p.slots.size()) < p.slot_size;
+        if (std::ranges::find(p.slots, id, &::slot::id) != p.slots.end()) return held(p, id) < 200;
+        return static_cast<int>(p.slots.size()) < p.slot_size;
     }
 
     /* @note signs go into a dialog line, so '|' and new lines would add dialog elements */

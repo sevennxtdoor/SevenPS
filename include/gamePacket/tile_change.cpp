@@ -401,6 +401,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         } // @note delete im, id
         else if (item.cloth_type != clothing::NONE) 
         {
+            if (id_to_item(block.fg).type == type::MANNEQUIN) // @note dressing a mannequin, not yourself
+            {
+                if (!from_remote) mannequin_use_item(event, *world, gamePacket.punch, gamePacket.id);
+                return;
+            }
             if (gamePacket.punch != pPeer->pos.by_32(true)) throw std::runtime_error("To wear clothing, use on yourself");
 
             item_activate(event, gamePacket);
