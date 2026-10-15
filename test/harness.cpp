@@ -580,16 +580,16 @@ int main()
     }
 
     /* ================= News & rules ================= */
-    std::puts("\n[N1] gazette in Indonesian with a rules button");
+    std::puts("\n[N1] gazette in English with a rules button");
     outbox.clear(); on::RequestGazette(ev);
-    CHECK(said("Koran MikeTopia") && said("Update Terbaru"), "Indonesian gazette");
+    CHECK(said("The MikeTopia Gazette") && said("Latest Updates"), "English gazette");
     {
-        constexpr std::array<std::string_view, 12> bulan{ "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember" };
+        constexpr std::array<std::string_view, 12> month{ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         std::tm t = localtime();
-        CHECK(said(std::format("{} {} {}", t.tm_mday, bulan[t.tm_mon], t.tm_year + 1900)), "date like '16 Oktober 2026'");
+        CHECK(said(std::format("{} {}", month[t.tm_mon], t.tm_mday)), "date like 'October 16th'");
     }
-    CHECK(said("add_button|mt_rules|"), "Peraturan Server button");
-    CHECK(!said("/find`` untuk ambil item"), "no more 'free /find' (it's staff only now)");
+    CHECK(said("add_button|mt_rules|`wServer Rules"), "Server Rules button");
+    CHECK(!said("/find"), "no more 'free /find' (it's staff only now)");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|mt_rules"));
     CHECK(said("Peraturan MikeTopia") && said("Saya Mengerti"), "button opens the Indonesian rules");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|"));
