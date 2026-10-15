@@ -24,6 +24,7 @@
 #include "item_activate_object.hpp"
 
 #include "tools/password_door.hpp"
+#include "tools/magplant.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -35,6 +36,18 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         if (world == worlds.end()) return;
 
         ::block &block = world->blocks[cord(gamePacket.punch.x, gamePacket.punch.y)];
+
+        bool from_remote{}; // @note placing with the Magplant 5000 Remote: the item comes out of the machine, not the backpack
+        if (gamePacket.id == MAGPLANT_REMOTE_ID)
+        {
+            gamePacket.id = magplant_remote_item(event, *world);
+            from_remote = true;
+        }
+        else if (gamePacket.id != 18 && gamePacket.id != 32) // @note never trust the client: you can only place/use what you have
+        {
+            auto slot = std::ranges::find(pPeer->slots, static_cast<short>(gamePacket.id), &::slot::id);
+            if (slot == pPeer->slots.end() || slot->count < 1) return;
+        }
 
         const ::item &item = id_to_item((gamePacket.id != 32 && gamePacket.id != 18) ? gamePacket.id : (block.fg != 0) ? block.fg : block.bg);
         if (item.id == 0) return;
@@ -158,6 +171,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (vending_in_use(*world, gamePacket.punch)) throw std::runtime_error("Empty the machine first!");
                     break;
                 }
+                case type::MAGPLANT:
+                {
+                    if (block.hits[0] == 0) magplant_punched(event, *world, gamePacket.punch); // @note first hit switches building mode
+                    else if (magplant_in_use(*world, gamePacket.punch)) throw std::runtime_error(std::format("Empty the {} before breaking!", item.raw_name));
+                    break;
+                }
                 case type::LOCK:
                 {
                     if (is_tile_lock(item.id)) break; // @todo seperate area for 'range_lock'
@@ -177,23 +196,23 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 u_char gems = RandomRange(1, 100); // @note source: https://growtopia.fandom.com/wiki/ATM_Machine
                                 for (short i : {100, 50, 10, 5, 1}/* gem type */)
                                     for (; gems >= i; gems -= i/* downgrade type */)
-                                        add_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
+                                        magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
                                         
                                 break;
                             }
                             case 872:/*chicken*/ case 866:/*cow*/ case 1632:/*coffee maker*/ case 3888:/*sheep*/
                             {
-                                add_drop(event, ::slot(item.id+2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
+                                magplant_drop(event, ::slot(item.id+2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
                                 break;
                             }
                             case 5116:/*tea set*/
                             {
-                                add_drop(event, ::slot(item.id-2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
+                                magplant_drop(event, ::slot(item.id-2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
                                 break;
                             }
                             case 2798:/*well*/
                             {
-                                add_drop(event, ::slot(822/*water bucket*/, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
+                                magplant_drop(event, ::slot(822/*water bucket*/, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
                                 break;
                             }
                             case 928:/*science station*/ // @note source: https://growtopia.fandom.com/wiki/Science_Station
@@ -203,7 +222,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                     (!RandomRange(0, 8))  ? chemcial = 920/*B*/ : 
                                     (!RandomRange(0, 6))  ? chemcial = 924/*Y*/ : 
                                     (!RandomRange(0, 4))  ? chemcial = 916/*R*/ : chemcial = 914/*G*/;
-                                add_drop(event, {chemcial, 1}, gamePacket.punch.by_32(), *world);
+                                magplant_drop(event, {chemcial, 1}, gamePacket.punch.by_32(), *world);
                                 break;
                             }
                         }
@@ -221,7 +240,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (ticks() - tree->tick >= item.tick) // @todo limit this check.
                     {
                         block.hits[0] = 99;
-                        add_drop(event, ::slot(item.id - 1, RandomRange(1, tree->fruit*3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
+                        magplant_drop(event, ::slot(item.id - 1, RandomRange(1, tree->fruit*3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
                         add_stat(event, "harvested");
                     }
                     break;
@@ -296,6 +315,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             block.state[2] = 0x00; // @note reset tile direction
             add_stat(event, "broken");
             if (box_type(item) != box_kind::NONE) box_removed(*world, gamePacket.punch); // @note letters on a broken mailbox are gone
+            if (item.type == type::MAGPLANT) magplant_removed(event, *world, gamePacket.punch);
             block.state[3] &= ~S_VANISH; // @note remove paint
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
@@ -316,7 +336,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     388; // @note Perfume
                     // @todo add all the remaining drops - https://growtopia.fandom.com/wiki/Golden_Booty_Chest
 
-                add_drop(event, ::slot(reward, (reward == 3408 || reward == 3404) ? 10 : 1), gamePacket.punch.by_32(), *world);
+                magplant_drop(event, ::slot(reward, (reward == 3408 || reward == 3404) ? 10 : 1), gamePacket.punch.by_32(), *world);
                 if (reward == 1458)
                 {
                     std::string message = std::format("msg|`4The Power of Love! `2{} found a `#Golden Heart Crystal`2 in a `#{}`2!", pPeer->growid, item.raw_name);
@@ -362,11 +382,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                         int gems = gem_bonus(*pPeer, RandomRange(1, rarity_to_gem)) * (event_on(event_type::GEMS) ? 2 : 1); // @note rank bonus, Gems x2 event
                         for (short i : {10, 5, 1}/* gem type */)
                             for (; gems >= i; gems -= i/* downgrade type */)
-                                add_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
+                                magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
                     }
-                    if (!RandomRange(0, (rarity_to_gem > 1) ? 2 : 4)) add_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); 
-                    else if (!RandomRange(0, (rarity_to_gem > 1) ? 4 : 8)) add_drop(event, ::slot(item.id, 1), gamePacket.punch.by_32(), *world);
-                    if (event_on(event_type::LUCKY) && !RandomRange(0, 2)) add_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); // @note Lucky Drops event
+                    if (!RandomRange(0, (rarity_to_gem > 1) ? 2 : 4)) magplant_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); 
+                    else if (!RandomRange(0, (rarity_to_gem > 1) ? 4 : 8)) magplant_drop(event, ::slot(item.id, 1), gamePacket.punch.by_32(), *world);
+                    if (event_on(event_type::LUCKY) && !RandomRange(0, 2)) magplant_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); // @note Lucky Drops event
                 } /* ~gem drop */
 
                 pPeer->add_xp(event, std::trunc(1.0f + item.rarity / 5.0f));
@@ -705,6 +725,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     send_vending_dialog(event, *world, gamePacket.punch);
                     break;
                 }
+                case type::MAGPLANT:
+                {
+                    magplant_dialog(event, *world, gamePacket.punch); // @note checks owner/access itself
+                    break;
+                }
             }
             return; // @note leave early else wrench will act as a block unlike fist which breaks. this is cause of state_visuals()
         }
@@ -754,7 +779,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 if (update_tile)
                 {
-                    modify_item_inventory(event, ::slot(gamePacket.id, -1));
+                    if (from_remote) magplant_remote_used(event, *world);
+                    else modify_item_inventory(event, ::slot(gamePacket.id, -1));
                     send_tile_update(event, std::move(gamePacket), block, *world);
                     return;
                 }
@@ -777,6 +803,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::SIGN:
                 {
                     world->signs.emplace_back("", gamePacket.punch);
+                    tile_update = true;
+                    break;
+                }
+                case type::MAGPLANT:
+                {
+                    magplant_placed(*world, gamePacket.punch);
                     tile_update = true;
                     break;
                 }
@@ -834,7 +866,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             block.state[2] |= (pPeer->facing_left) ? S_LEFT : S_RIGHT;
             (item.type == type::BACKGROUND) ? block.bg = gamePacket.id : block.fg = gamePacket.id;
-            pPeer->emplace(::slot(item.id, -1));
+            if (from_remote) magplant_remote_used(event, *world);
+            else pPeer->emplace(::slot(item.id, -1));
             add_stat(event, "placed");
         }
         gamePacket.netid = pPeer->netid; // @todo sometimes rgt has this as 0
