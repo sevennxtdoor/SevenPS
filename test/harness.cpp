@@ -15,6 +15,8 @@
 #include "tools/item_hunt.hpp"
 #include "gamePacket/item_activate_object.hpp"
 #include "action/input.hpp"
+#include "onVariant/RequestGazette.hpp"
+#include "automate/holiday.hpp"
 #include <cstdio>
 #include <fstream>
 #include <windows.h>
@@ -576,6 +578,22 @@ int main()
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTHUNT'" }; del.execute();
     }
+
+    /* ================= News & rules ================= */
+    std::puts("\n[N1] gazette in Indonesian with a rules button");
+    outbox.clear(); on::RequestGazette(ev);
+    CHECK(said("Koran MikeTopia") && said("Update Terbaru"), "Indonesian gazette");
+    {
+        constexpr std::array<std::string_view, 12> bulan{ "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember" };
+        std::tm t = localtime();
+        CHECK(said(std::format("{} {} {}", t.tm_mday, bulan[t.tm_mon], t.tm_year + 1900)), "date like '16 Oktober 2026'");
+    }
+    CHECK(said("add_button|mt_rules|"), "Peraturan Server button");
+    CHECK(!said("/find`` untuk ambil item"), "no more 'free /find' (it's staff only now)");
+    outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|mt_rules"));
+    CHECK(said("Peraturan MikeTopia") && said("Saya Mengerti"), "button opens the Indonesian rules");
+    outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|"));
+    CHECK(outbox.empty(), "OK button does nothing");
 
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTTEST'" }; del.execute();

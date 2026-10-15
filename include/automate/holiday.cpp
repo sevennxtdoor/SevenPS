@@ -36,10 +36,10 @@ std::pair<std::string, std::string> holiday_greeting()
 {
     switch (holiday)
     {
-        case H_VALENTINES: return {"`5Valentine's Week!``",   "`4Happy Valentine's Week!``"};
-        case H_PATRICKS:   return {"`5St. Patrick's Week!``", "`2Happy St. Patrick's Day!``"};
-        case H_SUMMERFEST: return {"`5Summerfest``",          "`3Party down, it's `4Summerfest!`` Collect Fireworks and celebrate!``"};
-        case H_G4G:        return {"`5Grow4Good Week!``",     "It's `2Grow4Good!`` Complete tasks, earn rewards and contribute to a great cause!"};
+        case H_VALENTINES: return {"`5Minggu Valentine!``",       "`4Selamat Minggu Valentine!``"};
+        case H_PATRICKS:   return {"`5Minggu St. Patrick!``",     "`2Selamat Hari St. Patrick!``"};
+        case H_SUMMERFEST: return {"`5Summerfest``",              "`3Ayo berpesta, sekarang `4Summerfest!`` Kumpulkan Fireworks dan rayakan!``"};
+        case H_G4G:        return {"`5Minggu Grow4Good!``",       "Sekarang `2Grow4Good!`` Selesaikan tugas, dapatkan hadiah, dan ikut berbuat baik!"};
     }
     return {"", ""};
 }

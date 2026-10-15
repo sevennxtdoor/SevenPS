@@ -96,16 +96,19 @@ void rules(ENetEvent &event, const std::string_view text)
 {
     send_varlist(event.peer, { "OnDialogRequest",
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`wMikeTopia Rules``|left|242|\n"
+        "add_label_with_icon|big|`wPeraturan MikeTopia``|left|242|\n"
         "add_spacer|small|\n"
-        "add_textbox|`w1.`` No scamming. Trade with the trade window, never \"drop first\".|left|\n"
-        "add_textbox|`w2.`` No spamming, no bad words, no begging.|left|\n"
-        "add_textbox|`w3.`` Never share your password, staff will never ask for it.|left|\n"
-        "add_textbox|`w4.`` No hacks, bots, macros or auto clickers.|left|\n"
-        "add_textbox|`w5.`` Respect everyone. Staff decisions are final.|left|\n"
+        "add_textbox|`w1. Dilarang scam.`` Selalu trade lewat `2trade window``, jangan pernah mau \"drop duluan\". Hasil Roulette Wheel yang asli hanya muncul dari putaran sungguhan, bukan dari chat.|left|\n"
+        "add_textbox|`w2. Jaga password kamu.`` Jangan bagikan ke siapa pun. Staff `4tidak pernah`` meminta password.|left|\n"
+        "add_textbox|`w3. Dilarang cheat.`` Tidak boleh pakai hack, client mod, bot, macro atau auto clicker.|left|\n"
+        "add_textbox|`w4. Dilarang memakai bug.`` Kalau menemukan bug, laporkan ke staff. Jangan dimanfaatkan.|left|\n"
+        "add_textbox|`w5. Jaga sopan santun.`` Dilarang spam, kata kasar, SARA, menghina, dan mengemis.|left|\n"
+        "add_textbox|`w6. Nama yang pantas.`` Nama world, sign dan GrowID tidak boleh kasar atau menyinggung.|left|\n"
+        "add_textbox|`w7. Taruhan risiko sendiri.`` Staff tidak mengganti item atau World Lock yang hilang karena casino/taruhan antar pemain.|left|\n"
+        "add_textbox|`w8. Hormati semua orang.`` Keputusan staff bersifat final.|left|\n"
         "add_spacer|small|\n"
-        "add_smalltext|Breaking the rules can get you muted, cursed or banned. Report players with wrench > Report.|left|\n"
-        "end_dialog|rules||I understand|\n" });
+        "add_smalltext|Pelanggaran bisa kena `4mute``, `4curse`` (dikirim ke HELL), `4world ban`` atau `4ban``. Laporkan pemain lewat wrench > Report, dan ketik /mods untuk melihat staff yang online.|left|\n"
+        "end_dialog|rules||Saya Mengerti|\n" });
 }
 
 void mods(ENetEvent &event, const std::string_view text)
