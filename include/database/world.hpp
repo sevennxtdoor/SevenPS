@@ -63,6 +63,7 @@ struct door
     std::string label{};
     std::string dest{};
     std::string id{};
+    std::string password{}; // @note Password Door only, never sent to clients (tools/password_door.cpp)
 
     ::pos pos{};
 

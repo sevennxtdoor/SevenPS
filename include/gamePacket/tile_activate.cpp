@@ -2,6 +2,7 @@
 #include "action/join_request.hpp"
 #include "action/quit_to_exit.hpp"
 #include "tools/system_worlds.hpp"
+#include "tools/password_door.hpp"
 #include "tile_activate.hpp"
 
 void tile_activate(ENetEvent& event, ::gamePacket gamePacket)
@@ -20,35 +21,13 @@ void tile_activate(ENetEvent& event, ::gamePacket gamePacket)
             action::quit_to_exit(event, "", false);
             break;
         }
-        case type::DOOR: // @todo add door-to-door with door::id
+        case type::DOOR:
         case type::PORTAL:
         {
-            auto door = std::ranges::find(world->doors, gamePacket.punch, &::door::pos);
-            if (door != world->doors.end() && !door->dest.empty())
-            {
-                const std::string_view dest{ door->dest };
-
-                action::quit_to_exit(event, "", true);
-                action::join_request(event, "", dest);
-            }
-            else {
-                send_varlist(event.peer, ::VariantList{
-                    "OnSetPos", 
-                    CL_Vec2f{pPeer->rest_pos.x, pPeer->rest_pos.y}
-                }, pPeer->netid);
-                send_varlist(event.peer, ::VariantList{
-                    "OnZoomCamera",
-                    10000.0f,
-                    1000u
-                });
-                send_varlist(event.peer, ::VariantList{
-                    "OnSetFreezeState", 
-                    0u
-                }, pPeer->netid);
-                
-                // audio/teleport.wav
-            }
-            break;
+            const ::pos tile = gamePacket.punch;
+            state_visuals(*event.peer, std::move(gamePacket)); // @note before we leave, so this world sees us go in
+            door_activate(event, *world, tile); // @note WORLD, WORLD:ID, :ID and the Password Door
+            return; // @note we may be in another world now, `world` is stale
         }
         case type::CHECKPOINT:
         {

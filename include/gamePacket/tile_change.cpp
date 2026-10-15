@@ -23,6 +23,7 @@
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
 
+#include "tools/password_door.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -625,9 +626,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::PORTAL:
                 {
                     if (!builder) break;
-                    std::string label, dest, id{};
+                    std::string label, dest, id, password{};
                     for (::door& door : world->doors)
-                        if (door.pos == gamePacket.punch) { label = door.label, dest = door.dest, id = door.id; break; }
+                        if (door.pos == gamePacket.punch) { label = door.label, dest = door.dest, id = door.id, password = door.password; break; }
+                    const std::string password_input = (item.id == PASSWORD_DOOR) ? std::format( // @note only builders get this dialog, so only they see the password
+                        "add_text_input|door_password|Password|{}|23|\n"
+                        "add_smalltext|Anyone going through this door must type the `2Password`` first. Letters and numbers only, blank = no password.|left|\n", password) : "";
                         
                     send_varlist(event.peer, {
                         "OnDialogRequest",
@@ -641,11 +645,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                             "add_smalltext|Leave `2WORLDNAME`` blank (:ID) to go to the door with `2ID`` in the `2Current World``.|left|\n"
                             "add_text_input|door_id|ID|{}|11|\n"
                             "add_smalltext|Set a unique `2ID`` to target this door as a Destination from another!|left|\n"
+                            "{}"
                             "add_checkbox|checkbox_locked|Is open to public|1\n"
                             "embed_data|tilex|{}\n"
                             "embed_data|tiley|{}\n"
                             "end_dialog|door_edit|Cancel|OK|", 
-                            item.raw_name, item.id, label, dest, id, gamePacket.punch.x, gamePacket.punch.y
+                            item.raw_name, item.id, label, dest, id, password_input, gamePacket.punch.x, gamePacket.punch.y
                         )
                     });
                     break;
@@ -764,6 +769,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             {
                 case type::DOOR:
                 {
+                    std::erase_if(world->doors, [&](const ::door &door) { return door.pos == gamePacket.punch; }); // @note the broken door's label/destination/password stayed behind
                     world->doors.emplace_back("","","", gamePacket.punch);
                     tile_update = true;
                     break;

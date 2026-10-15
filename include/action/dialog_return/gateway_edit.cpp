@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/password_door.hpp"
 
 #include "gateway_edit.hpp"
 
@@ -29,24 +30,17 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
     }
     else if (hPipe["dialog_name"] == "door_edit") 
     {
+        const u_char fg_type = id_to_item(block.fg).type;
+        if (fg_type != type::DOOR && fg_type != type::PORTAL) return; // @note a faked dialog could put a door entry on any tile
+
         auto door = std::ranges::find(world->doors, ::pos{tilex, tiley}, &::door::pos);
-        if (door != world->doors.end())
-        {
-            door->label = hPipe["door_name"];
-            if (!hPipe["dialog_name"].empty())
-            {
-                door->dest = hPipe["door_target"];
-                door->id = hPipe["door_id"];
-            }
-        }
-        else {
-            world->doors.emplace_back(::door(
-                hPipe["door_name"],
-                hPipe["door_target"],
-                hPipe["door_id"],
-                { tilex, tiley }
-            ));
-        }
+        if (door == world->doors.end())
+            door = world->doors.emplace(world->doors.end(), "", "", "", ::pos{ tilex, tiley });
+
+        door->label = hPipe["door_name"];
+        door->dest = hPipe["door_target"];
+        door->id = hPipe["door_id"];
+        door->password = (block.fg == PASSWORD_DOOR) ? clean_door_password(hPipe["door_password"]) : "";
     }
     else if (hPipe["dialog_name"] == "gateway_edit") 
     {

@@ -184,6 +184,11 @@ public:
     /* @note stats, achievements, goals, grow pass, wardrobe, pet, ignore list... (tools/profile.cpp), saved */
     std::unordered_map<std::string, std::string> profile{};
 
+    /* @note Password Door (tools/password_door.cpp), not saved */
+    ::pos pass_door{ -1, -1 }; // @note the door that asked us for its password
+    int pass_door_fails{};
+    std::time_t pass_door_wait{}; // @note too many wrong passwords: no tries until then
+
     int rank_level{}; // @note CreativePS-style rank bought with gems (tools/rank.cpp), 0 = none. saved
 };
 

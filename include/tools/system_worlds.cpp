@@ -251,14 +251,14 @@ void rebuild_command(ENetEvent &event, const std::string_view text)
 
 void load_doors(::world &world)
 {
-    ::hStmt hStmt{ "SELECT x, y, dest, door_id FROM world_door WHERE world = ?" };
+    ::hStmt hStmt{ "SELECT x, y, dest, door_id, password FROM world_door WHERE world = ?" };
     MYSQL_BIND param = make_bind_in(world.name);
     hStmt.bind_param(&param);
 
     signed x{}, y{};
-    char dest[64]{}, door_id[64]{};
-    u_long dest_length{}, id_length{};
-    MYSQL_BIND result[4] = { make_bind_out(x), make_bind_out(y) };
+    char dest[64]{}, door_id[64]{}, password[24]{};
+    u_long dest_length{}, id_length{}, password_length{};
+    MYSQL_BIND result[5] = { make_bind_out(x), make_bind_out(y) };
     result[2].buffer_type = MYSQL_TYPE_STRING;
     result[2].buffer = dest;
     result[2].buffer_length = sizeof(dest);
@@ -267,6 +267,10 @@ void load_doors(::world &world)
     result[3].buffer = door_id;
     result[3].buffer_length = sizeof(door_id);
     result[3].length = &id_length;
+    result[4].buffer_type = MYSQL_TYPE_STRING;
+    result[4].buffer = password;
+    result[4].buffer_length = sizeof(password);
+    result[4].length = &password_length;
     mysql_stmt_bind_result(hStmt.pStmt, result);
     hStmt.execute();
     mysql_stmt_store_result(hStmt.pStmt);
@@ -277,6 +281,7 @@ void load_doors(::world &world)
         if (door == world.doors.end()) continue;
         door->dest.assign(dest, std::min<u_long>(dest_length, sizeof(dest)));
         door->id.assign(door_id, std::min<u_long>(id_length, sizeof(door_id)));
+        door->password.assign(password, std::min<u_long>(password_length, sizeof(password)));
     }
 }
 
@@ -290,14 +295,14 @@ void save_doors(::world &world)
     }
     for (const ::door &door : world.doors)
     {
-        if (door.dest.empty() && door.id.empty()) continue;
+        if (door.dest.empty() && door.id.empty() && door.password.empty()) continue;
         const signed x = door.pos.x_int(), y = door.pos.y_int();
         if (x < 0 || y < 0 || cord(x, y) >= static_cast<int>(world.blocks.size())) continue;
         if (id_to_item(world.blocks[cord(x, y)].fg).type != type::DOOR && id_to_item(world.blocks[cord(x, y)].fg).type != type::PORTAL) continue; // @note door was broken
 
-        const std::string dest = door.dest.substr(0, 63), door_id = door.id.substr(0, 63);
-        ::hStmt hStmt{ "INSERT INTO world_door (world, x, y, dest, door_id) VALUES (?, ?, ?, ?, ?)" };
-        MYSQL_BIND params[5] = { make_bind_in(world.name), make_bind_in(x), make_bind_in(y), make_bind_in(dest), make_bind_in(door_id) };
+        const std::string dest = door.dest.substr(0, 63), door_id = door.id.substr(0, 63), password = door.password.substr(0, 23);
+        ::hStmt hStmt{ "INSERT INTO world_door (world, x, y, dest, door_id, password) VALUES (?, ?, ?, ?, ?, ?)" };
+        MYSQL_BIND params[6] = { make_bind_in(world.name), make_bind_in(x), make_bind_in(y), make_bind_in(dest), make_bind_in(door_id), make_bind_in(password) };
         hStmt.bind_param(params);
         hStmt.execute();
     }
