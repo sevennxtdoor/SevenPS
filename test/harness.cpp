@@ -20,6 +20,9 @@
 #include "tools/tutorial.hpp"
 #include "tools/guild.hpp"
 #include "tools/sponsor.hpp"
+#include "tools/auth.hpp"
+#include "action/protocol.hpp"
+#include "action/tankIDName.hpp"
 #include "onVariant/CountryState.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
@@ -778,6 +781,67 @@ int main()
         owner->gems = 100000;
         outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_3132"));
         CHECK(held(*owner, 3132) == 1 && owner->gems == 100000 && said("already own"), "only one each");
+    }
+
+    /* ================= Login security ================= */
+    std::puts("\n[A1] password hashing");
+    {
+        const std::string h1 = hash_password("secret1"), h2 = hash_password("secret1");
+        CHECK(h1.starts_with("pbkdf2$100000$") && h1.find("secret1") == std::string::npos, "stored as PBKDF2, not plain text");
+        CHECK(h1 != h2, "random salt: same password, different hash");
+        CHECK(check_password(h1, "secret1") && !check_password(h1, "secret2") && !check_password(h1, ""), "right/wrong password");
+        CHECK(check_password("oldpass", "oldpass") && !check_password("oldpass", "oldpas") && !check_password("oldpass", "oldpassX"), "old plain text passwords");
+        CHECK(check_password("abcdefghijklmnopqr", "abcdefghijklmnopqrSTUV"), "old 18-char column cut long passwords: still accepted");
+
+        std::puts("\n[A2] authenticate");
+        { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTAUTH','MTAUTH2')" }; del.execute(); }
+        CHECK(authenticate("MTAUTH", "secret1", false) == "That account doesn't exist.", "unknown account on step 2");
+        CHECK(!authenticate("a!", "secret1", true).empty(), "bad GrowID refused");
+        CHECK(!authenticate("MTAUTH", "abc", true).empty(), "new accounts need 4+ characters");
+        CHECK(authenticate("MTAUTH", "secret1", true).empty(), "new account allowed");
+        { ::peer *np = new ::peer(); np->growid = "MTAUTH"; np->load("MTAUTH", "secret1"); } // @note never deleted (~peer writes)
+        auto stored = [](const std::string &growid) {
+            ::hStmt q{ "SELECT password FROM peer WHERE growid = ?" }; MYSQL_BIND pr = make_bind_in(growid); q.bind_param(&pr);
+            char b[160]{}; u_long len{}; MYSQL_BIND r{}; r.buffer_type = MYSQL_TYPE_STRING; r.buffer = b; r.buffer_length = sizeof(b); r.length = &len;
+            mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt); return std::string(b, len); };
+        CHECK(stored("MTAUTH").starts_with("pbkdf2$"), "new account saved with a hash");
+        CHECK(authenticate("MTAUTH", "secret1", false).empty(), "right password logs in");
+        CHECK(authenticate("MTAUTH", "Secret1", false) == "Wrong password.", "wrong password refused (was accepted before!)");
+        for (int k = 0; k < 4; ++k) authenticate("MTAUTH", "guess" + std::to_string(k), false);
+        CHECK(authenticate("MTAUTH", "secret1", false).starts_with("Too many"), "5 wrong tries lock it, even for the right password");
+
+        { ::peer *np = new ::peer(); np->growid = "MTAUTH2"; np->load("MTAUTH2", "x"); }
+        { ::hStmt up{ "UPDATE peer SET password = 'plainpw' WHERE growid = 'MTAUTH2'" }; up.execute(); }
+        CHECK(authenticate("MTAUTH2", "plainpw", false).empty() && stored("MTAUTH2").starts_with("pbkdf2$"), "old plain text works once and is upgraded");
+        CHECK(authenticate("MTAUTH2", "plainpw", false).empty(), "and keeps working after the upgrade");
+
+        std::puts("\n[A3] the real login packets");
+        static ENetPeer lp{}; ::peer *login = new ::peer();
+        lp.state = ENET_PEER_STATE_CONNECTED; lp.data = login;
+        ENetEvent le{}; le.peer = &lp;
+        auto b64 = [](const std::string &in) { static const char *t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; std::string out; int val = 0, bits = -6;
+            for (u_char c : in) { val = (val << 8) + c; bits += 8; while (bits >= 0) { out.push_back(t[(val >> bits) & 0x3F]); bits -= 6; } }
+            if (bits > -6) out.push_back(t[((val << 8) >> (bits + 8)) & 0x3F]); while (out.size() % 4) out.push_back('='); return out; };
+        outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + b64("growId=MTAUTH2&password=nope&"));
+        CHECK(said("logon_fail") && !said("OnSendToServer"), "step 1 with a wrong password: refused");
+        login->growid.clear(); login->password.clear();
+        outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + b64("growId=MTAUTH2&password=plainpw&"));
+        CHECK(said("SetHasGrowID") && said("OnSendToServer"), "step 1 right password: SetHasGrowID + OnSendToServer");
+
+        std::string pad; for (int k = 0; k < 40; ++k) pad += "k" + std::to_string(k) + "|v|";
+        ::peer *second = new ::peer(); lp.data = second;
+        outbox.clear(); action::tankIDName(le, "tankIDName|MTAUTH2|tankIDPass|hacked|protocol|225|country|id|" + pad);
+        CHECK(said("logon_fail") && second->growid.empty(), "step 2 with only a GrowID (no right password): refused");
+        ::peer *third = new ::peer(); lp.data = third;
+        outbox.clear(); action::tankIDName(le, "tankIDName|MTAUTH2|tankIDPass|plainpw|protocol|225|country|id|" + pad);
+        CHECK(!said("logon_fail") && said("OnSuperMainStartAcceptLogon"), "step 2 with the right password: logged in");
+
+        std::puts("\n[A4] forgotten password: reset_password.txt");
+        { std::ofstream r("reset_password.txt"); r << "MTAUTH2|newpass1\r\n"; }
+        apply_password_reset();
+        CHECK(!std::filesystem::exists("reset_password.txt"), "file deleted right away");
+        CHECK(authenticate("MTAUTH2", "newpass1", false).empty() && authenticate("MTAUTH2", "plainpw", false) == "Wrong password.", "new password works, old one doesn't");
+        { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTAUTH','MTAUTH2')" }; del.execute(); }
     }
 
     /* ================= News & rules ================= */

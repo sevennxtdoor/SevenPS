@@ -21,3 +21,4 @@ main_old.exe
 
 # database backups: password hashes & player data, never push
 backup/
+reset_password.txt

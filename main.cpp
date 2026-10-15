@@ -17,6 +17,7 @@
 #include "include/tools/item_hunt.hpp" // @note hunt_tick()
 #include "include/tools/backup.hpp" // @note backup_tick()
 #include "include/tools/guild.hpp" // @note load_guilds()
+#include "include/tools/auth.hpp" // @note apply_password_reset()
 #include <csignal>
 
 namespace
@@ -50,6 +51,7 @@ int main()
 
     gDb_config.init();
     mysql_connect();
+    apply_password_reset(); // @note reset_password.txt (forgotten password)
     decode_items();      // @note reads items.dat into legible class members (id, item name, ect)
     parse_store();       // @todo thread loop this so the store can update without restarting server (stored in .\resource\store.txt)
     load_guilds();       // @note `guild` table

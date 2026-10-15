@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/auth.hpp"
 #include "tools/profile.hpp"
 #include "tools/cps.hpp"
 #include "tools/rank.hpp"
@@ -193,7 +194,7 @@ void peer::load(const std::string &growid, const std::string &password)
     if (!this->exists(growid)) 
     {
         this->mysql_insert("growid", growid);
-        this->mysql_update("password", password);
+        this->mysql_update("password", hash_password(password)); // @note never plain text
 
         this->slots.resize(3ull); // @note since it's pre-determined we don't need do peer::emplace, and less iteration
         this->slots[0ull] = ::slot{18, 1};   // @note Fist

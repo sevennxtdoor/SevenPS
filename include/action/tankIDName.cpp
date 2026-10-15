@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/auth.hpp"
 #include "automate/holiday.hpp"
 
 #include "tankIDName.hpp"
@@ -17,12 +18,22 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     for (std::size_t i = 0; i < pipes.size(); ++i) 
     {
         if      (pipes[i] == "tankIDName") pPeer->growid = pipes[i+1];
+        else if (pipes[i] == "tankIDPass") pPeer->password = pipes[i+1];
         else if (pipes[i] == "protocol")   protocol = pipes[i+1];
         else if (pipes[i] == "country")    pPeer->country = pipes[i+1];
         else if (pipes[i] == "user")       pPeer->user_id = std::stoi(pipes[i+1]); // @todo validate user_id
     }
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
+    /* @note this second connection used to trust tankIDName: a modded client could log in as anyone (even the owner) */
+    if (const std::string why = authenticate(pPeer->growid, pPeer->password, false); !why.empty())
+    {
+        std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
+        send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
+        send_action(*event.peer, "logon_fail", "");
+        pPeer->growid.clear();
+        return;
+    }
     pPeer->load(pPeer->growid, pPeer->password); // @note the ACTUAL loading. the one in protocol.cpp must be removed for performance...
     if (pPeer->banned)
     {
