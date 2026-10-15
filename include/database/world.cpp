@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/item_hunt.hpp"
 #include "tools/profile.hpp"
 #include "tools/random.hpp"
 #include "tools/time.hpp"
@@ -404,6 +405,7 @@ world::~world()
         blob.i32(this->last_object_uid); // @todo add the other 4 bits like real growtopia
         for (::object &object : this->objects)
         {
+            if (is_hunt_drop(this->name, object.uid)) continue; // @note Item Hunt chests only live in memory
             blob.push_back(object.to_blob());
         }
         this->mysql_update("objects", blob.data());

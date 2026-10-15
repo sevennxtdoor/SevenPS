@@ -27,6 +27,7 @@
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
 #include "tools/fishing.hpp"
+#include "tools/casino.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -144,14 +145,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case 758: // @note Roulette Wheel
                 {
-                    const u_char number = RandomRange(0, 36);
-                    const char color = (number == 0) ? '2' : (RandomRange(0, 3) < 2) ? 'b' : '4';
-                    const std::string message = std::format("[{} spun the wheel and got `{}{}``!]", pPeer->display_growid, color, number);
-                    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, message](ENetPeer& peer)
-                    {
-                        send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, message }, -1, 2000);
-                        on::ConsoleMessage(event.peer, message, 2000);
-                    });
+                    roulette_spin(event); // @note tools/casino.cpp
                     break;
                 }
             }
@@ -299,8 +293,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::RANDOM:
                 {
                     apply_damage_value = 
-                        (item.id == 456/*Dice*/) ? RandomRange(0, 5) : 
-                        (item.id == 1300/*Roshambo*/) ? RandomRange(1, 3) : 0;
+                        (item.id == 456/*Dice*/) ? RandomRange(0, 6) : // @note RandomRange(a, b) never returns b: 6 faces
+                        (item.id == 1300/*Roshambo*/) ? RandomRange(1, 4) : 0;
 
                     auto random = std::ranges::find(world->random_blocks, gamePacket.punch, &::random_block::pos);
                     if (random == world->random_blocks.end())

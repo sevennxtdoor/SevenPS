@@ -94,11 +94,11 @@ static std::string roll(ENetEvent &event, ::world &world, std::span<const loot> 
 {
     int total = 0;
     for (const loot &l : table) total += l.weight;
-    int pick = RandomRange(0, total - 1);
+    int pick = RandomRange(0, total); // @note RandomRange(a, b) never returns b
     for (const loot &l : table)
     {
         if ((pick -= l.weight) >= 0) continue;
-        const int count = RandomRange(l.min, l.max);
+        const int count = RandomRange(l.min, l.max + 1);
         give(event, world, l.id, count);
         return name_of(l.id, count);
     }
@@ -155,7 +155,7 @@ static void fortune_cookie(ENetEvent &event, ::world &world, const ::item &item)
     };
     take(event, item.id);
     const std::string won = roll(event, world, (item.id == 9286) ? std::span<const loot>{ lucky } : std::span<const loot>{ cookie });
-    const std::string fortune = std::format("`5Fortune: {}``", fortunes[RandomRange(0, fortunes.size() - 1)]);
+    const std::string fortune = std::format("`5Fortune: {}``", fortunes[RandomRange(0, fortunes.size())]);
     bubble(event, fortune);
     on::ConsoleMessage(event.peer, fortune);
     on::ConsoleMessage(event.peer, std::format("You received {} from the {}.", won, item.raw_name));
@@ -198,10 +198,10 @@ static void seed_pack(ENetEvent &event, ::world &world, const ::item &item)
     std::string got{};
     for (int i = 0; i < 5; ++i)
     {
-        const int low = (i < 4) ? RandomRange(1, 9) : RandomRange(10, 14);
+        const int low = (i < 4) ? RandomRange(1, 10) : RandomRange(10, 15);
         for (int tries = 0; tries < 2000; ++tries)
         {
-            const ::item &seed = id_to_item(static_cast<u_short>(RandomRange(2, static_cast<int>(items.size()) - 1)));
+            const ::item &seed = id_to_item(static_cast<u_short>(RandomRange(2, static_cast<int>(items.size()))));
             if (seed.type != type::SEED || seed.raw_name.starts_with("null") || seed.rarity < low || seed.rarity > low + 1) continue;
             give(event, world, seed.id, 1);
             got += std::format("{}`w{}``", got.empty() ? "" : ", ", seed.raw_name);
@@ -231,7 +231,7 @@ static void gift_of_growganoth(ENetEvent &event, ::world &world, const ::item &i
         1202, 1238, 1168, 1172, 1230, 1194, 1192, 1226, 1196, 1236, 1182, 1184, 1186, 1188, 1170, 10198, 10196, 10202, 10204, 10326,
         10324, 10322 }; // @note GTOS' list, all Halloween items
     take(event, item.id);
-    const short prize = prizes[RandomRange(0, std::size(prizes) - 1)];
+    const short prize = prizes[RandomRange(0, std::size(prizes))];
     give(event, world, prize, 1);
     const std::string text = std::format("You received `21 {}`` from the Gift of Growganoth.", id_to_item(prize).raw_name);
     bubble(event, text);
@@ -249,7 +249,7 @@ static bool fragments(ENetEvent &event, ::world &world, const ::item &item)
         return true;
     }
     take(event, item.id, it->needed);
-    const short result = (it->rare_result && RandomRange(1, 100) <= it->rare_percent) ? it->rare_result : it->result;
+    const short result = (it->rare_result && RandomRange(1, 101) <= it->rare_percent) ? it->rare_result : it->result;
     give(event, world, result, 1);
     bubble(event, std::format("`5SQUISH! ``{}", (result == it->rare_result) ? std::format("Lucky! You made an `w{}``!", id_to_item(result).raw_name) : std::string{ it->text }));
     on::ConsoleMessage(event.peer, std::format("You made `w1 {}``.", id_to_item(result).raw_name));

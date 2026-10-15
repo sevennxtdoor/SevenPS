@@ -176,12 +176,12 @@ static void to_all_quiz(const std::string &question)
 
 static void start_quiz()
 {
-    quiz_reward = RandomRange(1, 3) * 100; // @note small on purpose: the economy is farming-based
+    quiz_reward = RandomRange(1, 4) * 100; // @note RandomRange(a, b) never returns b: 100-300 // @note small on purpose: the economy is farming-based
     quiz_ends = std::time(nullptr) + QUIZ_TIME;
-    if (RandomRange(0, 1) == 0) // @note math
+    if (RandomRange(0, 2) == 0) // @note math
     {
-        const int a = RandomRange(10, 99), b = RandomRange(10, 99), c = RandomRange(2, 9);
-        switch (RandomRange(0, 2))
+        const int a = RandomRange(10, 100), b = RandomRange(10, 100), c = RandomRange(2, 10);
+        switch (RandomRange(0, 3))
         {
             case 0:  quiz_answer = std::to_string(a + b); to_all_quiz(std::format("What is `w{} + {}``?", a, b)); break;
             case 1:  quiz_answer = std::to_string(a * c); to_all_quiz(std::format("What is `w{} x {}``?", a, c)); break;
@@ -192,10 +192,10 @@ static void start_quiz()
     {
         constexpr std::array<std::string_view, 16> words{ "growtopia", "diamond", "surgery", "vending", "weather", "dragon",
             "pinata", "rainbow", "lockdown", "magplant", "wrench", "farmable", "growtoken", "backpack", "caduceus", "megaphone" };
-        std::string word{ words[RandomRange(0, words.size() - 1)] };
+        std::string word{ words[RandomRange(0, words.size())] };
         std::string scrambled = word;
         for (int tries = 0; tries < 10 && scrambled == word; ++tries)
-            for (std::size_t i = scrambled.size() - 1; i > 0; --i) std::swap(scrambled[i], scrambled[RandomRange(0, i)]);
+            for (std::size_t i = scrambled.size() - 1; i > 0; --i) std::swap(scrambled[i], scrambled[RandomRange(0, i + 1)]);
         quiz_answer = word;
         to_all_quiz(std::format("Unscramble this word: `w{}``", scrambled));
     }
@@ -276,7 +276,7 @@ void cps_tick()
     }
     if (current != event_type::NONE && now >= event_ends) stop_event();
     else if (current == event_type::NONE && now >= next_event)
-        start_event(static_cast<event_type>(RandomRange(1, 4)), EVENT_LENGTH);
+        start_event(static_cast<event_type>(RandomRange(1, 5)), EVENT_LENGTH); // @note GEMS..SURGERY
 
     if (now >= next_broadcast)
     {

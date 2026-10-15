@@ -5,6 +5,7 @@
 #include "tools/social.hpp"
 #include "tools/cps.hpp"
 #include "commands/gtos.hpp"
+#include "tools/casino.hpp"
 #include "input.hpp"
 
 void action::input(ENetEvent& event, const std::string& header)
@@ -31,6 +32,10 @@ void action::input(ENetEvent& event, const std::string& header)
     else if (muted_left(*pPeer) > 0 && (!text.starts_with('/') || text.starts_with("/sb") || text.starts_with("/msg") || text.starts_with("/me ")))
     {
         on::ConsoleMessage(event.peer, std::format("`4You are muted for {} more minutes.``", (muted_left(*pPeer) + 59) / 60));
+    }
+    else if (pPeer->role < MODERATOR && fake_spin(text)) // @note chat, /me, /sb, /msg: no fake "spun the wheel" messages (casino scams)
+    {
+        on::ConsoleMessage(event.peer, "`4Fake Roulette Wheel results aren't allowed.`` Only a real spin shows that message.");
     }
     else if (text.starts_with('/')) 
     {

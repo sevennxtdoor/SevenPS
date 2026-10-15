@@ -196,6 +196,8 @@ public:
     std::time_t fish_bite{};     // @note the next bite
     std::time_t fish_bite_end{}; // @note 0 = no fish on the hook right now
 
+    std::chrono::steady_clock::time_point spin_ready{}; // @note Roulette Wheel cooldown (tools/casino.cpp)
+
     int rank_level{}; // @note CreativePS-style rank bought with gems (tools/rank.cpp), 0 = none. saved
 };
 

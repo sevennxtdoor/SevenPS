@@ -66,7 +66,7 @@ static bool fix_ready(const operation &op)
 static bool skill_fail(const ::peer &p, const operation &op)
 {
     const int chance = std::max(5, 25 - p.surgery_skill / 5) + (op.dirt >= 3 ? 20 : 0);
-    return RandomRange(0, 99) < chance;
+    return RandomRange(0, 100) < chance;
 }
 
 static void bleed(operation &op) { op.bleeding = std::min(op.bleeding + 1, 3); }
@@ -158,7 +158,7 @@ static void show(ENetEvent &event, const operation &op)
 static void start(operation &op)
 {
     op.started = true;
-    op.diag = static_cast<diagnosis>(RandomRange(0, 5));
+    op.diag = static_cast<diagnosis>(RandomRange(0, 6)); // @note RandomRange(a, b) never returns b: NOSE_JOB..HEART_ATTACK
     switch (op.diag)
     {
         case NOSE_JOB:         op.needed = 2; op.diagnosed = true; break; // @note a cosmetic job, the patient tells you
@@ -167,7 +167,7 @@ static void start(operation &op)
         case FLU:
         {
             constexpr std::array<std::string_view, 4> flus{ "Monkey Flu", "Bird Flu", "Turtle Flu", "Chicken Feet" };
-            op.flu = flus[RandomRange(0, flus.size() - 1)];
+            op.flu = flus[RandomRange(0, flus.size())];
             op.temp = 104.5f;
             break;
         }
@@ -243,7 +243,7 @@ static void use(::peer &p, operation &op, short tool)
             }
             ++op.incisions;
             if (!op.sterile) op.infected = true;
-            if (RandomRange(0, 99) < 35) bleed(op);
+            if (RandomRange(0, 100) < 35) bleed(op);
             if (op.incisions > op.needed)
             {
                 bleed(op);
@@ -358,21 +358,21 @@ static ::slot roll_reward()
     if (!RandomRange(0, 49)) // @note rare
     {
         constexpr short rare[]{ 1506/*Medical Scarf*/, 4324/*Biotronic Brain Enhancer*/, 4326/*Plague Doctor Mask*/, 4328/*Plague Doctor Hat*/, 4330/*Plague Doctor Robe*/ };
-        return { rare[RandomRange(0, std::size(rare) - 1)], 1 };
+        return { rare[RandomRange(0, std::size(rare))], 1 };
     }
     if (!RandomRange(0, 9)) // @note uncommon clothes
     {
         constexpr short uncommon[]{ 1242/*Scrub Cap*/, 1244/*Scrub Mask*/, 1246/*Scrub Top*/, 1248/*Scrub Pants*/, 1282/*Candy Striper Cap*/,
             1284/*Candy Striper Uniform*/, 1286/*Candy Striper Skirt*/, 3172/*Legal Briefs*/, 1252/*Magnifying Glass*/, 4334/*Spare Body Part*/ };
-        return { uncommon[RandomRange(0, std::size(uncommon) - 1)], 1 };
+        return { uncommon[RandomRange(0, std::size(uncommon))], 1 };
     }
     if (!RandomRange(0, 2)) // @note hospital blocks
     {
         static const ::slot blocks[]{ {1256/*Hospital Bed*/, 1}, {1288/*Hospital Curtain*/, 5}, {1290/*Hospital Wall*/, 10},
             {1292/*Hospital Window*/, 5}, {1294/*Hospital Door*/, 1}, {4322/*Autoclave*/, 1}, {SURG_E, 1} };
-        return blocks[RandomRange(0, std::size(blocks) - 1)];
+        return blocks[RandomRange(0, std::size(blocks))];
     }
-    return { TOOLS[RandomRange(0, std::size(TOOLS) - 1)], 5 }; // @note more supplies
+    return { TOOLS[RandomRange(0, std::size(TOOLS))], 5 }; // @note more supplies
 }
 
 /* @note destroy the Surg-E, reward or punish, and forget the surgery */

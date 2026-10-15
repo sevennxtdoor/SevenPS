@@ -38,6 +38,7 @@
 2|door_and_sign_hello_pack|`oDoor And Sign Hello Pack``|interface/large/store_buttons/store_buttons.rttex|`2You Get:`` 1 Door and 1 Sign.<CR><CR>`5Description:`` Own your very own door and sign! This pack comes with one of each. Leave cryptic messages and create a door that can open to, well, anywhere.|0|3|15|12:1,20:1
 2|clothes_pack|`oClothes Pack``|interface/large/store_buttons/store_buttons2.rttex|`2You Get:`` 3 Randomly Wearable Items.<CR><CR>`5Description:`` Why not look the part? Some may even have special powers...|0|0|50|
 2|rare_clothes_pack|`oRare Clothes Pack``|interface/large/store_buttons/store_buttons2.rttex|`2You Get:`` 3 Randomly Chosen Wearable Items.<CR><CR>`5Description:`` Enjoy the garb of kings! Some may even have special powers...|0|1|500|
+2|vegas_pack|`oVegas Pack``|interface/large/store_buttons/store_buttons4.rttex|`2You Get:`` 10 Neon Lights, 1 Card Block, 1 `#Rare Pink Cadillac``, 4 Flipping Coins, 1 Dice Block, 1 Gambler's Visor, 1 Slot Machine, 1 Roulette Wheel, 1 Showgirl Headdress, 1 Showgirl Top and 1 Showgirl Leggings.<CR><CR>`5Description:`` What happens in Growtopia stays in Growtopia! Punch the Roulette Wheel to spin it - everyone in the world sees the result.|0|5|20000|740:10,744:1,1582:1,752:4,456:1,754:1,756:1,758:1,794:1,796:1,798:1
 
 
 3|turtle_hat|`oTurtle Hat``|interface/large/store_buttons/store_buttons3.rttex|`2You Get:`` 1 Turtle Hat.<CR><CR>`5Description:`` It's the greatest hat ever. It bloops out bubbles as you run! `4Not available any other way!``|0|2|25000|574:1

@@ -11,7 +11,12 @@
 #include "action/dialog_return/gateway_edit.hpp"
 #include "tools/fishing.hpp"
 #include "tools/profile.hpp"
+#include "tools/casino.hpp"
+#include "tools/item_hunt.hpp"
+#include "gamePacket/item_activate_object.hpp"
+#include "action/input.hpp"
 #include <cstdio>
+#include <fstream>
 #include <windows.h>
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *e)
 {
@@ -434,6 +439,143 @@ int main()
     CHECK(w.blocks[cord(12, 22)].fg == before.fg && w.blocks[cord(12, 22)].state[3] == before.state[3], "tile untouched");
     fishing_reset(*visitor);
     CHECK(visitor->fish_tile.x < 0, "reset on world change");
+
+    /* ================= Casino ================= */
+    std::puts("\n[C1] Roulette Wheel: everyone in the world sees the spin");
+    CHECK(id_to_item(758).raw_name == "Roulette Wheel", "758 is the Roulette Wheel");
+    const ::pos wheel{ 70, 20 };
+    w.blocks[cord(70, 20)].fg = 758;
+    owner->pos = ::pos{ 69 * 32.0f, 20 * 32.0f };
+    owner->spin_ready = {};
+    use(ev, *owner, 18, wheel);
+    auto spins_to = [&](ENetPeer *who) { int n = 0; for (auto &pk : outbox) if (pk.peer == who) { std::string s(pk.data.begin(), pk.data.end()); if (s.find("spun the wheel") != std::string::npos) ++n; } return n; };
+    CHECK(spins_to(&enet_peers[0]) == 2 && spins_to(&enet_peers[1]) == 2, "bubble + console to the spinner AND the other player (once each)");
+    use(ev, *owner, 18, wheel);
+    CHECK(spins_to(&enet_peers[0]) == 0, "no second spin within 1.5 s");
+
+    std::puts("\n[C2] numbers 0-36, real red/black");
+    {
+        std::array<int, 37> seen{}; bool colors_ok = true;
+        constexpr int RED[] = { 1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36 };
+        for (int k = 0; k < 3000; ++k)
+        {
+            owner->spin_ready = {}; outbox.clear(); roulette_spin(ev);
+            const std::string s = all_text();
+            const std::size_t at = s.find("got `");
+            if (at == std::string::npos) { colors_ok = false; break; }
+            const char color = s[at + 5]; const int n = std::atoi(s.c_str() + at + 6);
+            if (n < 0 || n > 36) { colors_ok = false; break; }
+            ++seen[n];
+            const char want = (n == 0) ? '2' : (std::ranges::find(RED, n) != std::end(RED)) ? '4' : 'b';
+            if (color != want) colors_ok = false;
+        }
+        CHECK(colors_ok, "every color matches the roulette table");
+        CHECK(seen[0] > 0 && seen[36] > 0, "0 and 36 both come up");
+        CHECK(std::ranges::all_of(seen, [](int c) { return c > 0; }), "every number 0-36 comes up");
+        CHECK(said("(reme `w"), "reme shown");
+    }
+
+    std::puts("\n[C3] fake spin messages blocked");
+    CHECK(fake_spin("[Mike spun the wheel and got 0!]"), "plain fake");
+    CHECK(fake_spin("`w[Mike `wSpun the `2wheel and got `20`w!]"), "with colors / caps");
+    CHECK(fake_spin("s p u n  t h e  w h e e l"), "spaced out");
+    CHECK(!fake_spin("i spun around, nice wheel"), "normal chat passes");
+    visitor->role = 0;
+    outbox.clear(); action::input(ev2, "action|input|text|[Mike spun the wheel and got `20``!]");
+    CHECK(said("Fake Roulette") && !said("player_chat"), "visitor's fake not broadcast");
+    outbox.clear(); action::input(ev2, "action|input|text|/me spun the wheel and got 0");
+    CHECK(said("Fake Roulette") && !said("player_chat"), "/me fake blocked too");
+
+    std::puts("\n[C4] Vegas Pack in the store");
+    {
+        std::ifstream f("resources/store.txt"); std::string line, vegas;
+        while (std::getline(f, line)) if (line.find("|vegas_pack|") != std::string::npos) vegas = line;
+        CHECK(!vegas.empty(), "vegas_pack listed");
+        bool names_ok = true;
+        const std::vector<std::string> parts = readch(vegas, '|');
+        for (const std::string &kv : readch(parts.back(), ','))
+        {
+            const int id = std::atoi(kv.c_str());
+            std::printf("  %s = %s\n", kv.c_str(), id_to_item(id).raw_name.c_str());
+            if (id_to_item(id).raw_name.empty() || id_to_item(id).raw_name.starts_with("null")) names_ok = false;
+        }
+        CHECK(names_ok, "every item exists");
+        CHECK(vegas.find("|758:1") != std::string::npos || vegas.find(",758:1") != std::string::npos, "has the Roulette Wheel");
+    }
+
+    /* ================= Pickups & Item Hunt ================= */
+    std::puts("\n[P1] picking up drops");
+    owner->recent_worlds.back() = "MTTEST";
+    owner->pos = ::pos{ 20 * 32.0f, 10 * 32.0f };
+    outbox.clear(); item_activate_object(ev, ::gamePacket{ .type = 11, .id = 999999 });
+    CHECK(true, "made-up drop uid: no crash");
+    w.objects.emplace_back(::object(2, 7, ::pos{ 90 * 32.0f, 10 * 32.0f }, ++w.last_object_uid));
+    const u_int far_uid = w.last_object_uid;
+    const int dirt_before = held(*owner, 2);
+    outbox.clear(); item_activate_object(ev, ::gamePacket{ .type = 11, .id = static_cast<int>(far_uid) });
+    CHECK(held(*owner, 2) == dirt_before && std::ranges::find(w.objects, far_uid, &::object::uid) != w.objects.end(), "drop 70 tiles away not vacuumed");
+    owner->pos = ::pos{ 89 * 32.0f, 10 * 32.0f };
+    outbox.clear(); item_activate_object(ev, ::gamePacket{ .type = 11, .id = static_cast<int>(far_uid) });
+    CHECK(held(*owner, 2) == dirt_before + 7, "close drop collected");
+
+    std::puts("\n[H1] Item Hunt in a stand-in START");
+    CHECK(id_to_item(596).raw_name.find("Treasure") != std::string::npos, "596 is a Treasure Chest");
+    {
+        ::hStmt del{ "DELETE FROM world WHERE name = 'MTHUNT'" }; del.execute();
+    }
+    ::world &hw = worlds.emplace_back("MTHUNT");
+    hw.name = "START"; // @note in memory only (~world is faked): the real START is never touched
+    auto chests_on_ground = [&]() { return std::ranges::count(hw.objects, 596, &::object::id); };
+    owner->role = OWNER;
+    owner->growid = "MTOWNER"; visitor->growid = "MTVISIT"; // @note broadcasts only go to logged-in players
+    outbox.clear(); hunt_command(ev, "hunt start");
+    std::printf("  chests: %d\n", (int)chests_on_ground());
+    CHECK(chests_on_ground() == 5, "5 chests hidden");
+    CHECK(said("ITEM HUNT"), "announced");
+    bool on_ground_spots = true;
+    for (const ::object &o : hw.objects) if (o.id == 596)
+    {
+        const int x = static_cast<int>(o.pos.x) / 32, y = static_cast<int>(o.pos.y) / 32;
+        if (hw.blocks[cord(x, y)].fg != 0 || hw.blocks[cord(x, y + 1)].fg == 0) on_ground_spots = false;
+        if (!is_hunt_drop("START", o.uid)) on_ground_spots = false;
+    }
+    CHECK(on_ground_spots, "each chest on an empty tile with ground below, marked as hunt drop");
+    outbox.clear(); hunt_command(ev2, "hunt");
+    CHECK(said("somewhere in"), "/hunt gives hints");
+    outbox.clear(); hunt_command(ev2, "hunt stop");
+    CHECK(chests_on_ground() == 5, "players can't stop it");
+
+    std::puts("\n[H2] finding chests");
+    std::vector<::object> chest_list; for (const ::object &o : hw.objects) if (o.id == 596) chest_list.push_back(o);
+    owner->recent_worlds.back() = "START"; visitor->recent_worlds.back() = "START";
+    owner->pos = chest_list[0].pos;
+    const int g0 = owner->gems;
+    outbox.clear(); item_activate_object(ev, ::gamePacket{ .type = 11, .id = static_cast<int>(chest_list[0].uid) });
+    std::printf("  prize: %d gems\n", owner->gems - g0);
+    CHECK(owner->gems - g0 >= 750 && held(*owner, 596) == 0, "gems instead of the chest");
+    CHECK(chests_on_ground() == 4 && said("found a treasure"), "chest gone, announced");
+    owner->pos = chest_list[1].pos;
+    outbox.clear(); item_activate_object(ev, ::gamePacket{ .type = 11, .id = static_cast<int>(chest_list[1].uid) });
+    CHECK(chests_on_ground() == 4 && said("already found"), "one chest per player");
+    visitor->pos = chest_list[1].pos;
+    const int vg = visitor->gems;
+    outbox.clear(); item_activate_object(ev2, ::gamePacket{ .type = 11, .id = static_cast<int>(chest_list[1].uid) });
+    CHECK(visitor->gems > vg && chests_on_ground() == 3, "another player finds the next");
+
+    std::puts("\n[H3] START unloaded and loaded again: chests come back");
+    std::erase_if(hw.objects, [](const ::object &o) { return o.id == 596; });
+    Sleep(1100); outbox.clear(); hunt_tick();
+    CHECK(chests_on_ground() == 3, "3 left chests put back");
+
+    std::puts("\n[H4] staff stops it: chests removed");
+    outbox.clear(); hunt_command(ev, "hunt stop");
+    CHECK(chests_on_ground() == 0, "all chests gone");
+    bool any_hunt = false; for (const ::object &o : hw.objects) if (is_hunt_drop("START", o.uid)) any_hunt = true;
+    CHECK(!any_hunt && said("stopped"), "no hunt drops left");
+    owner->role = 0;
+    {
+        ::hStmt del{ "DELETE FROM world WHERE name = 'MTHUNT'" }; del.execute();
+    }
 
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTTEST'" }; del.execute();

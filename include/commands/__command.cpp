@@ -15,6 +15,7 @@
 #include "tools/system_worlds.hpp"
 #include "gtos.hpp"
 #include "tools/economy.hpp"
+#include "tools/item_hunt.hpp"
 #include "ghost.hpp"
 #include "give.hpp"
 #include "setrole.hpp"
@@ -35,7 +36,7 @@ static constexpr std::string_view emotes[24]{
 /* named commands with their usage hint, shown in /help */
 static constexpr std::string_view named_help =
     "/time /sb {msg} /warp {world} /punch {id} /skin {id} /who /me {msg} "
-    "/news /weather {id} /ghost /wban {growid} /uba /title /start /event /top {level|gems|surgeon|rich} /rank /msg {growid} {msg} /online /parkour /pay {growid} {gems} /go /rules /mods /radio /info {item} /status";
+    "/news /weather {id} /ghost /wban {growid} /uba /title /start /event /top {level|gems|surgeon|rich} /rank /msg {growid} {msg} /online /hunt /parkour /pay {growid} {gems} /go /rules /mods /radio /info {item} /status";
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
@@ -109,6 +110,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"giverank", &giverank},
         {"msg", &msg_command},
         {"online", &online_command},
+        {"hunt", &hunt_command},
         {"rebuild", &rebuild_command},
         {"economy", &economy_command},
         {"stafflog", &stafflog_command},

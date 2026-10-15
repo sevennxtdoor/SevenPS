@@ -14,6 +14,7 @@
 #include "include/tools/cps.hpp" // @note cps_tick()
 #include "include/tools/rank.hpp" // @note load_ranks()
 #include "include/tools/fishing.hpp" // @note fishing_tick()
+#include "include/tools/item_hunt.hpp" // @note hunt_tick()
 #include <csignal>
 
 namespace
@@ -62,6 +63,7 @@ int main()
         restarting = restart_tick(); // @note /restart countdown
         cps_tick(); // @note automatic events & broadcasts
         fishing_tick(); // @note fish bites
+        hunt_tick(); // @note Item Hunt event
     }
 
     safe_disconnect_peers(gSignal);
