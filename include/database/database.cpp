@@ -85,8 +85,9 @@ void create_table_if_not_exist()
     std::string query_weather = "CREATE TABLE IF NOT EXISTS world_weather (world VARCHAR(24) NOT NULL PRIMARY KEY, weather INT DEFAULT 0)"; // @note /weather
     std::string query_area_lock = "CREATE TABLE IF NOT EXISTS world_area_lock (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, item INT, owner INT, owner_name VARCHAR(18), access VARCHAR(1000), flags INT DEFAULT 0, tiles TEXT, PRIMARY KEY (world, x, y))"; // @note Small/Big/Huge/Builder's Lock
     std::string query_box = "CREATE TABLE IF NOT EXISTS world_box (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, password VARCHAR(24), items TEXT, notes TEXT, PRIMARY KEY (world, x, y))"; // @note storage, vault, donation, mail, bulletin
+    std::string query_mannequin = "CREATE TABLE IF NOT EXISTS world_mannequin (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, text VARCHAR(128), clothes VARCHAR(100), PRIMARY KEY (world, x, y))"; // @note Mannequin
     if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()) || mysql_query(db, query_weather.c_str()) ||
-        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_door_password.c_str()) || mysql_query(db, query_staff_log.c_str()) || mysql_query(db, query_area_lock.c_str()) || mysql_query(db, query_box.c_str()) || mysql_query(db, query_magplant.c_str()))
+        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_door_password.c_str()) || mysql_query(db, query_staff_log.c_str()) || mysql_query(db, query_area_lock.c_str()) || mysql_query(db, query_box.c_str()) || mysql_query(db, query_magplant.c_str()) || mysql_query(db, query_mannequin.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }

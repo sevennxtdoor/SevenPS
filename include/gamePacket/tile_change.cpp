@@ -25,6 +25,7 @@
 
 #include "tools/password_door.hpp"
 #include "tools/magplant.hpp"
+#include "tools/mannequin.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -169,6 +170,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::VENDING_MACHINE:
                 {
                     if (vending_in_use(*world, gamePacket.punch)) throw std::runtime_error("Empty the machine first!");
+                    break;
+                }
+                case type::MANNEQUIN:
+                {
+                    if (mannequin_punched(event, *world, gamePacket.punch)) return; // @note takes a piece of clothing back instead of damage
                     break;
                 }
                 case type::MAGPLANT:
@@ -316,6 +322,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             add_stat(event, "broken");
             if (box_type(item) != box_kind::NONE) box_removed(*world, gamePacket.punch); // @note letters on a broken mailbox are gone
             if (item.type == type::MAGPLANT) magplant_removed(event, *world, gamePacket.punch);
+            if (item.type == type::MANNEQUIN) mannequin_removed(*world, gamePacket.punch);
             block.state[3] &= ~S_VANISH; // @note remove paint
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
@@ -730,6 +737,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     magplant_dialog(event, *world, gamePacket.punch); // @note checks owner/access itself
                     break;
                 }
+                case type::MANNEQUIN:
+                {
+                    mannequin_dialog(event, *world, gamePacket.punch); // @note checks owner/access itself
+                    break;
+                }
             }
             return; // @note leave early else wrench will act as a block unlike fist which breaks. this is cause of state_visuals()
         }
@@ -740,6 +752,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 bool update_tile{};
                 switch (items[world->blocks[cord(gamePacket.punch.x, gamePacket.punch.y)].fg].type)
                 {
+                    case type::MANNEQUIN: // @note dressing it: the dialog asks first, the item leaves the backpack on "Yes"
+                    {
+                        if (from_remote) return;
+                        mannequin_use_item(event, *world, gamePacket.punch, gamePacket.id);
+                        return;
+                    }
                     case type::DISPLAY_BLOCK:
                     {
                         world->displays.emplace_back(::display(item.id, gamePacket.punch));
@@ -809,6 +827,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::MAGPLANT:
                 {
                     magplant_placed(*world, gamePacket.punch);
+                    tile_update = true;
+                    break;
+                }
+                case type::MANNEQUIN:
+                {
+                    mannequin_placed(*world, gamePacket.punch);
                     tile_update = true;
                     break;
                 }
