@@ -3,23 +3,26 @@
 # Colors: `2 green, `4 red, `9 gold, `5 pink, `$ yellow, `w white, end a color with ``
 # Filled in automatically: {online} players online, {players} registered players, {worlds} open worlds,
 # {event} the running event, {next_event} minutes until the next event.
-Item tidak gratis di MikeTopia: farming, beli di `2Store``, atau trade dengan pemain lain!
-Cek `$/event`` untuk melihat event yang sedang berjalan atau berikutnya.
-Siapa pemain terbaik? Ketik `$/top level`` atau `$/top gems``!
-Wrench dirimu sendiri lalu klik `2Grow Pass`` untuk hadiah harian.
-Selesaikan `2Goals & Quests`` setiap hari untuk gems dan World Lock!
-Simpan World Lock kamu di `2World Lock Bank`` (wrench dirimu) supaya aman.
-Coba operasi `2Surg-E`` dan naikkan Surgeon Level kamu!
-Ketik `$/start`` untuk pergi ke world START.
-Beli rank `2VIP`` sampai `4GOD`` pakai gems: ketik `$/rank``!
-Main aktif 30 menit = 300 gems (maksimal 6x sehari). AFK tidak dapat!
-Jawab `9QUIZ`` di chat paling cepat untuk menang gems!
-Ada `w{online}`` pemain online sekarang. Ajak temanmu main di MikeTopia!
-Coba `2PARKOUR``: ketik `$/parkour`` dan sampai di FINISH untuk 1000 gems setiap hari!
-Event sekarang: {event}``. Event berikutnya sekitar `w{next_event}`` menit lagi.
-Sudah `w{players}`` pemain bergabung di MikeTopia. Terima kasih!
-Kena scam? Wrench pemainnya lalu klik `4Report``. Staff akan cek.
-Jangan kasih password kamu ke siapa pun, termasuk yang mengaku staff!
-Harga patokan: 1 `wWorld Lock`` = 2000 gems di Store. Jangan mau dibohongi saat trade!
-Pemain baru dapat starter pack: My First World Lock + seed Pepper Tree & Laser Grid. Tanam, panen, jadi kaya!
-Jual barangmu pakai `wVending Machine`` dengan harga World Lock.
+Items aren't free in MikeTopia: farm them, buy them in the `2Store`` or trade with other players!
+Check `$/event`` to see the running or next event.
+Who's the best player? Type `$/top level`` or `$/top gems``!
+Wrench yourself and open the `2Grow Pass`` for daily rewards.
+Finish your `2Goals & Quests`` every day for gems and World Locks!
+Keep your World Locks safe in the `2World Lock Bank`` (wrench yourself).
+Try surgery at a `2Surg-E`` and raise your Surgeon Level!
+Type `$/start`` to go to the START world.
+Buy a rank from `2VIP`` up to `4GOD`` with gems: type `$/rank``!
+Play actively for 30 minutes = 300 gems (up to 6 times a day). Going AFK doesn't count!
+Answer the chat `9QUIZ`` first to win gems!
+There are `w{online}`` players online right now. Invite your friends to MikeTopia!
+Try the `2PARKOUR``: type `$/parkour`` and reach the FINISH for 1000 gems every day!
+Current event: {event}``. The next event starts in about `w{next_event}`` minutes.
+`w{players}`` players have joined MikeTopia so far. Thank you!
+Got scammed? Wrench the player and press `4Report``. Staff will look into it.
+Never give your password to anyone, not even someone who says they're staff!
+Price guide: 1 `wWorld Lock`` = 2000 gems in the Store. Don't get fooled in trades!
+New players get a starter pack: My First World Lock + Pepper Tree & Laser Grid seeds. Plant, harvest, get rich!
+Sell your stuff with a `wVending Machine`` for World Locks.
+Every 3 hours an `9Item Hunt`` hides Treasure Chests in START. Type `$/hunt`` for hints!
+Go fishing! Get the `2Fishin' Pack`` in the Store, then use bait on water and punch when it splashes.
+Read the `$/rules`` - breaking them can get you muted, cursed or banned.

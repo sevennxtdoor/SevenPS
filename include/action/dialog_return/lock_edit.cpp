@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "tools/area_lock.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/economy.hpp"
 
 #include "lock_edit.hpp"
 
@@ -18,6 +19,11 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     if (!in_world(*world, pos.x_int(), pos.y_int())) return;
     
     world->is_public = atoi(hPipe["checkbox_public"].c_str());
+    if (world->is_public && staff_locked(*pPeer)) // @note players would break the blocks a MOD/DEV spawned
+    {
+        world->is_public = false;
+        on::ConsoleMessage(event.peer, "`4Staff accounts can't make their world public`` - spawned blocks would leak to players.");
+    }
     if (atoi(hPipe["checkbox_disable_music"].c_str()) != 0)
         world->lock_state |= DISABLE_MUSIC;
     else world->lock_state &= ~DISABLE_MUSIC;

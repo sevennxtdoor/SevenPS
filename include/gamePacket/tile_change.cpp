@@ -28,6 +28,7 @@
 #include "tools/mannequin.hpp"
 #include "tools/fishing.hpp"
 #include "tools/casino.hpp"
+#include "tools/economy.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -73,6 +74,16 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end())) return;
         if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC)) && gamePacket.id != 32) // @note Small/Big/Huge/Builder's Lock: owner & access list only
             if (!area_lock_allows(event, *world, gamePacket.punch, gamePacket.id)) return;
+
+        /* @note MOD/DEV can spawn items, so they only build in their own private world (or START/PARKOUR): blocks or seeds
+         * left in a public world would be broken/harvested by players and the spawned items would leak into the economy */
+        if (staff_locked(*pPeer) && gamePacket.id != 18 && gamePacket.id != 32 && !is_system_world(world->name) &&
+            (world->owner != pPeer->user_id || world->is_public) &&
+            !(world->owner == 0 && item.type == type::LOCK && !is_tile_lock(item.id))) // @note but they may World Lock a fresh world
+        {
+            send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`4Staff accounts can only build in their own private (World Locked) world.``", 0u, 1u });
+            return;
+        }
 
         bool tile_update{};
         bool lock_visuals{}; // @todo this looks sloppy
@@ -473,8 +484,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     std::string message = "`7[```4MWAHAHAHA!! FIRE FIRE FIRE```7]``";
                     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer& p) 
                     {
-                        send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, message, 0u });
-                        on::ConsoleMessage(event.peer, message);
+                        send_varlist(&p, { "OnTalkBubble", pPeer->netid, message, 0u }); // @note to everyone (was sent to the lighter's owner once per player)
+                        on::ConsoleMessage(&p, message);
                     });
                     particle = 0x96;
 

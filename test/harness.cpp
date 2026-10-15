@@ -605,6 +605,31 @@ int main()
         owner->role = 0;
     }
 
+    /* ================= Staff building ================= */
+    std::puts("\n[S1] MOD/DEV build only in their own private world");
+    {
+        owner->recent_worlds.back() = "MTTEST"; visitor->recent_worlds.back() = "MTTEST";
+        owner->pos = ::pos{ 80 * 32.0f, 20 * 32.0f }; visitor->pos = owner->pos;
+        owner->slots.push_back(::slot(2, 5)); visitor->slots = { ::slot(2, 5) };
+        w.is_public = false;
+        owner->role = MODERATOR;
+        use(ev, *owner, 2, ::pos{ 81, 20 });
+        CHECK(w.blocks[cord(81, 20)].fg == 2, "MOD builds in own private world");
+        w.is_public = true;
+        use(ev, *owner, 2, ::pos{ 82, 20 });
+        CHECK(w.blocks[cord(82, 20)].fg == 0 && said("Staff accounts can only build"), "not when the world is public");
+        visitor->role = MODERATOR;
+        use(ev2, *visitor, 2, ::pos{ 83, 20 });
+        CHECK(w.blocks[cord(83, 20)].fg == 0, "MOD can't build in someone else's public world");
+        visitor->role = 0;
+        use(ev2, *visitor, 2, ::pos{ 84, 20 });
+        CHECK(w.blocks[cord(84, 20)].fg == 2, "a normal player still builds in a public world");
+        owner->role = OWNER;
+        use(ev, *owner, 2, ::pos{ 85, 20 });
+        CHECK(w.blocks[cord(85, 20)].fg == 2, "OWNER isn't limited");
+        owner->role = 0; w.is_public = false;
+    }
+
     /* ================= News & rules ================= */
     std::puts("\n[N1] gazette in English with a rules button");
     outbox.clear(); on::RequestGazette(ev);
