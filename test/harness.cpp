@@ -16,6 +16,8 @@
 #include "gamePacket/item_activate_object.hpp"
 #include "action/input.hpp"
 #include "onVariant/RequestGazette.hpp"
+#include "tools/backup.hpp"
+#include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
 #include <fstream>
@@ -577,6 +579,30 @@ int main()
     owner->role = 0;
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTHUNT'" }; del.execute();
+    }
+
+    /* ================= Backup ================= */
+    std::puts("\n[B1] /backup: owner only, real dump into backup/");
+    {
+        namespace fs = std::filesystem;
+        auto newest = []() { fs::path best; std::error_code ec; for (auto &f : fs::directory_iterator("backup", ec)) if (f.path().extension() == ".sql" && f.path() > best) best = f.path(); return best; };
+        const fs::path before = newest();
+        visitor->role = 0;
+        outbox.clear(); backup_command(ev2, "backup now");
+        CHECK(said("Only the owner"), "players can't back up");
+        owner->role = OWNER;
+        outbox.clear(); backup_command(ev, "backup now");
+        CHECK(said("Backup started"), "owner starts it");
+        fs::path made;
+        for (int k = 0; k < 120; ++k) { Sleep(500); outbox.clear(); backup_command(ev, "backup"); if (said("Last backup: `wok") || said("Last backup: `wfailed")) break; }
+        std::printf("  %s\n", all_text().c_str() + std::min<std::size_t>(all_text().find("Last backup"), all_text().size()));
+        made = newest();
+        CHECK(said("Last backup: `wok"), "backup finished ok");
+        std::ifstream f(made); std::string sql((std::istreambuf_iterator<char>(f)), {});
+        CHECK(sql.find("CREATE TABLE") != std::string::npos && sql.find("`world`") != std::string::npos, "dump has the tables");
+        CHECK(!said("MYSQL_PWD") && !said("--password"), "no password in chat output");
+        (void)before;
+        owner->role = 0;
     }
 
     /* ================= News & rules ================= */

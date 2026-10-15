@@ -15,6 +15,7 @@
 #include "include/tools/rank.hpp" // @note load_ranks()
 #include "include/tools/fishing.hpp" // @note fishing_tick()
 #include "include/tools/item_hunt.hpp" // @note hunt_tick()
+#include "include/tools/backup.hpp" // @note backup_tick()
 #include <csignal>
 
 namespace
@@ -64,6 +65,7 @@ int main()
         cps_tick(); // @note automatic events & broadcasts
         fishing_tick(); // @note fish bites
         hunt_tick(); // @note Item Hunt event
+        backup_tick(); // @note daily database backup
     }
 
     safe_disconnect_peers(gSignal);

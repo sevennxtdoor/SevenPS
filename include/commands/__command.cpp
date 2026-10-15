@@ -16,6 +16,7 @@
 #include "gtos.hpp"
 #include "tools/economy.hpp"
 #include "tools/item_hunt.hpp"
+#include "tools/backup.hpp"
 #include "ghost.hpp"
 #include "give.hpp"
 #include "setrole.hpp"
@@ -111,6 +112,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"msg", &msg_command},
         {"online", &online_command},
         {"hunt", &hunt_command},
+        {"backup", &backup_command},
         {"rebuild", &rebuild_command},
         {"economy", &economy_command},
         {"stafflog", &stafflog_command},
