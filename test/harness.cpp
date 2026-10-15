@@ -591,7 +591,7 @@ int main()
     CHECK(said("add_button|mt_rules|`wServer Rules"), "Server Rules button");
     CHECK(!said("/find"), "no more 'free /find' (it's staff only now)");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|mt_rules"));
-    CHECK(said("Peraturan MikeTopia") && said("Saya Mengerti"), "button opens the Indonesian rules");
+    CHECK(said("MikeTopia Rules") && said("I Understand"), "button opens the rules");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|"));
     CHECK(outbox.empty(), "OK button does nothing");
 

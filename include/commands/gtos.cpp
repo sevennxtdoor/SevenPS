@@ -96,19 +96,19 @@ void rules(ENetEvent &event, const std::string_view text)
 {
     send_varlist(event.peer, { "OnDialogRequest",
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`wPeraturan MikeTopia``|left|242|\n"
+        "add_label_with_icon|big|`wMikeTopia Rules``|left|242|\n"
         "add_spacer|small|\n"
-        "add_textbox|`w1. Dilarang scam.`` Selalu trade lewat `2trade window``, jangan pernah mau \"drop duluan\". Hasil Roulette Wheel yang asli hanya muncul dari putaran sungguhan, bukan dari chat.|left|\n"
-        "add_textbox|`w2. Jaga password kamu.`` Jangan bagikan ke siapa pun. Staff `4tidak pernah`` meminta password.|left|\n"
-        "add_textbox|`w3. Dilarang cheat.`` Tidak boleh pakai hack, client mod, bot, macro atau auto clicker.|left|\n"
-        "add_textbox|`w4. Dilarang memakai bug.`` Kalau menemukan bug, laporkan ke staff. Jangan dimanfaatkan.|left|\n"
-        "add_textbox|`w5. Jaga sopan santun.`` Dilarang spam, kata kasar, SARA, menghina, dan mengemis.|left|\n"
-        "add_textbox|`w6. Nama yang pantas.`` Nama world, sign dan GrowID tidak boleh kasar atau menyinggung.|left|\n"
-        "add_textbox|`w7. Taruhan risiko sendiri.`` Staff tidak mengganti item atau World Lock yang hilang karena casino/taruhan antar pemain.|left|\n"
-        "add_textbox|`w8. Hormati semua orang.`` Keputusan staff bersifat final.|left|\n"
+        "add_textbox|`w1. No scamming.`` Always trade with the `2trade window``, never \"drop first\". Real Roulette Wheel results only come from a real spin, never from chat.|left|\n"
+        "add_textbox|`w2. Keep your password safe.`` Never share it with anyone. Staff will `4never`` ask for it.|left|\n"
+        "add_textbox|`w3. No cheating.`` No hacks, modded clients, bots, macros or auto clickers.|left|\n"
+        "add_textbox|`w4. No bug abuse.`` Found a bug? Report it to staff instead of using it.|left|\n"
+        "add_textbox|`w5. Be polite.`` No spamming, swearing, racism, insults or begging.|left|\n"
+        "add_textbox|`w6. Keep names clean.`` World names, signs and GrowIDs must not be rude or offensive.|left|\n"
+        "add_textbox|`w7. Bet at your own risk.`` Staff won't refund items or World Locks lost in casinos or bets between players.|left|\n"
+        "add_textbox|`w8. Respect everyone.`` Staff decisions are final.|left|\n"
         "add_spacer|small|\n"
-        "add_smalltext|Pelanggaran bisa kena `4mute``, `4curse`` (dikirim ke HELL), `4world ban`` atau `4ban``. Laporkan pemain lewat wrench > Report, dan ketik /mods untuk melihat staff yang online.|left|\n"
-        "end_dialog|rules||Saya Mengerti|\n" });
+        "add_smalltext|Breaking the rules can get you `4muted``, `4cursed`` (sent to HELL), `4world banned`` or `4banned``. Report players with wrench > Report, and type /mods to see which staff are online.|left|\n"
+        "end_dialog|rules||I Understand|\n" });
 }
 
 void mods(ENetEvent &event, const std::string_view text)
