@@ -70,7 +70,8 @@ namespace
     {
         ::peer &p = me(event);
         fishing_reset(p);
-        on::SetClothing(*event.peer);
+        on::SetClothing(*event.peer); // @note also sends the character state (0x14), like GTOS send_state()
+        send_varlist(event.peer, { "OnSetPos", CL_Vec2f{ p.pos.x, p.pos.y } }, p.netid); // @note GTOS follows it with OnSetPos to snap out of the pose
         if (!why.empty()) talk(event, why);
     }
 
