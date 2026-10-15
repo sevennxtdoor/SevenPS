@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/tutorial.hpp"
 #include <unordered_map>
 #include "onVariant/ConsoleMessage.hpp"
 #include "onVariant/SetBux.hpp"
@@ -180,6 +181,7 @@ void add_stat(ENetEvent &event, const std::string &key, int amount)
     if (event.peer == nullptr || event.peer->data == nullptr) return;
     pset(me(event), key, pget(me(event), key) + amount);
     check_achievements(event);
+    tutorial_check(event); // @note new player tutorial steps
 }
 
 static void send_achievements(ENetEvent &event)

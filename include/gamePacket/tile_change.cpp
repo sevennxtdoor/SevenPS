@@ -877,6 +877,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                             send_varlist(&peer, { "OnTalkBubble", pPeer->netid, placed_message });
                             on::ConsoleMessage(&peer, placed_message);
                         });
+                        add_stat(event, "worlds_locked"); // @note tutorial step 1
                     }
                     else throw std::runtime_error("Only one `$World Lock`` can be placed in a world, you'd have to remove the other one first.");
                     break;
@@ -886,6 +887,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     world->trees.emplace_back(ticks(), RandomRange(1, 3), gamePacket.punch);
                     block.state[2] = 0x11; // @todo
                     tile_update = true;
+                    add_stat(event, "planted"); // @note tutorial
                     break;
                 }
                 case type::ENTRANCE:

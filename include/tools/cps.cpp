@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/tutorial.hpp"
 #include <fstream>
 #include <unordered_set>
 #include "onVariant/ConsoleMessage.hpp"
@@ -312,6 +313,7 @@ void announce_join(ENetEvent &event)
     peers("", PEER_ALL, [&](ENetPeer &p) { if (::peer *pp = static_cast<::peer*>(p.data); pp && !pp->growid.empty()) ++online; });
 
     on::ConsoleMessage(event.peer, "`o>> Type `$/start`` to visit the START world, `$/rules`` for the rules and `$/top`` to see the best players!``");
+    tutorial_on_join(event); // @note the next tutorial step, until it's finished
     if (current != event_type::NONE)
         on::ConsoleMessage(event.peer, std::format("`9** Event running: {} `9({} minutes left) ``{}", event_name(current),
             (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));

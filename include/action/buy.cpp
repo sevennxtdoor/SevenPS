@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/profile.hpp"
 #include "store.hpp"
 #include "onVariant/SetBux.hpp"
 #include "database/shouhin.hpp"
@@ -146,6 +147,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
             });
             if (_tab < 5/*growtoken tab*/) on::SetBux(event), econ("store", -shouhin.cost);
             else modify_item_inventory(event, ::slot(growtoken->id, -growtoken_cost));
+            add_stat(event, "store_buys"); // @note tutorial
             break;
         }
     }

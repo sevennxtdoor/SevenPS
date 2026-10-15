@@ -34,6 +34,18 @@ bool is_system_world(std::string_view name)
     return name == "START" || name == "PARKOUR";
 }
 
+namespace
+{
+    constexpr std::string_view GET_STARTED = "`2Get started:`` type `$/tutorial``! Lock your own world, break and place blocks, plant and harvest, then shop. Every step gives gems.";
+}
+
+void refresh_system_signs(::world &world)
+{
+    if (world.name != "START") return;
+    for (::sign &s : world.signs)
+        if (s.label.starts_with("`2Get started:``")) s.label = GET_STARTED; // @note only our own sign, anything staff wrote stays
+}
+
 /* ---------- drawing helpers ---------- */
 
 static void fg(::world &w, int x, int y, short item) { if (x >= 0 && x < W && y >= 0 && y < H) w.blocks[cord(x, y)].fg = item; }
@@ -122,7 +134,7 @@ static void build_start(::world &w)
     main_door(w, 50);
 
     put_sign(w, 48, GROUND - 1, "`9Welcome to MikeTopia!`` Type `$/help`` for all commands. Have fun and be nice!");
-    put_sign(w, 52, GROUND - 1, "`2Get started:`` lock a world, plant your starter seeds and break the blocks for gems. A `wWorld Lock`` costs 2000 gems in the store!");
+    put_sign(w, 52, GROUND - 1, std::string{ GET_STARTED });
     put_sign(w, 43, GROUND - 1, "`4Rules:`` no scamming, no spamming, no bad words. Staff decisions are final. Scammed? Report with wrench > Report.");
     put_sign(w, 57, GROUND - 1, "`5Daily:`` wrench yourself for Grow Pass, Goals & Quests and Achievements. Online 30 minutes = free gems!");
     put_door(w, 39, GROUND - 1, "`2PARKOUR``", "PARKOUR");

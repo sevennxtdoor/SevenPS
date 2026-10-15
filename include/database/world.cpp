@@ -346,6 +346,7 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_select_all();
         if (this->blocks.empty()) { if (!build_system_world(*this)) generate_world(*this); } // @note broken/empty save
         else if (is_system_world(this->name) && this->signs.empty()) build_system_world(*this); // @note an old plain START gets its design (it has no signs yet)
+        refresh_system_signs(*this); // @note START's "Get started" sign points to /tutorial
     }
     else 
     {

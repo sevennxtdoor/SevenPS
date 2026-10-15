@@ -17,6 +17,7 @@
 #include "action/input.hpp"
 #include "onVariant/RequestGazette.hpp"
 #include "tools/backup.hpp"
+#include "tools/tutorial.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -628,6 +629,41 @@ int main()
         use(ev, *owner, 2, ::pos{ 85, 20 });
         CHECK(w.blocks[cord(85, 20)].fg == 2, "OWNER isn't limited");
         owner->role = 0; w.is_public = false;
+    }
+
+    /* ================= Tutorial ================= */
+    std::puts("\n[T1] new player tutorial");
+    {
+        static ENetPeer np{}; ::peer *fresh = new ::peer();
+        fresh->user_id = 9; fresh->netid = 9; fresh->recent_worlds.back() = "MTTEST"; fresh->growid = "MTNEW";
+        np.state = ENET_PEER_STATE_CONNECTED; np.data = fresh;
+        ENetEvent e3{}; e3.peer = &np;
+        outbox.clear(); tutorial_command(e3, "tutorial");
+        CHECK(said(">> 1. Lock your own world"), "step 1 shown first");
+        const int g = fresh->gems;
+        add_stat(e3, "broken", 20);
+        CHECK(pget(*fresh, "tut_step") == 0 && fresh->gems == g, "breaking first doesn't skip the world lock step");
+        outbox.clear(); add_stat(e3, "worlds_locked");
+        CHECK(pget(*fresh, "tut_step") == 2 && fresh->gems == g + 200, "lock + already broken 20 = two steps, 200 gems");
+        CHECK(said("Break 10 blocks") && said("Place 10 blocks"), "says what's done and what's next");
+        add_stat(e3, "placed", 9);
+        CHECK(pget(*fresh, "tut_step") == 2, "9/10 placed: not yet");
+        add_stat(e3, "placed"); add_stat(e3, "planted"); add_stat(e3, "harvested");
+        outbox.clear(); add_stat(e3, "store_buys");
+        CHECK(pget(*fresh, "tut_step") == 6 && fresh->gems == g + 1000, "all 6 steps: 600 + 400 bonus");
+        CHECK(said("Tutorial complete"), "finished message");
+        add_stat(e3, "store_buys"); add_stat(e3, "broken");
+        CHECK(fresh->gems == g + 1000, "no more gems after finishing");
+        outbox.clear(); tutorial_command(e3, "tutorial");
+        CHECK(said("You finished the tutorial"), "/tutorial shows it's finished");
+
+        std::puts("\n[T2] the real actions count");
+        owner->recent_worlds.back() = "MTTEST"; owner->pos = ::pos{ 86 * 32.0f, 20 * 32.0f };
+        const int planted = pget(*owner, "planted");
+        owner->slots.push_back(::slot(3, 2)); // @note Dirt Seed
+        w.blocks[cord(87, 21)].fg = 2;
+        use(ev, *owner, 3, ::pos{ 87, 20 });
+        CHECK(pget(*owner, "planted") == planted + 1, "planting a seed counts");
     }
 
     /* ================= News & rules ================= */

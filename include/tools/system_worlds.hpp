@@ -11,6 +11,9 @@ extern bool build_system_world(::world &world);
 /* @note a checkpoint was touched: the PARKOUR finish gives a daily reward */
 extern void system_checkpoint(ENetEvent &event, ::world &world, const ::pos &tile);
 
+/* @note an already built START keeps its blocks, but the signs that teach the basics get today's text */
+extern void refresh_system_signs(::world &world);
+
 extern void rebuild_command(ENetEvent &event, const std::string_view text); // @note /rebuild {START|PARKOUR}, owner only
 
 /* @note door destinations are not part of the blocks blob, they're kept in the `world_door` table */
