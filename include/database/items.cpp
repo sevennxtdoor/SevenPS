@@ -9,7 +9,7 @@ std::vector<::item> items;
 const ::item &id_to_item(u_short id) noexcept // @note std::out_of_range is handled
 {
     if (id >= items.size()) return items[0]; // @note we can't return a contructor so this is gonna be our dummy value
-    
+
     return items[id];
 }
 
@@ -42,17 +42,99 @@ void data_modify(std::vector<u_char> &data, const u_int &pos, const T &value) no
     }
 }
 
+u_int items_hash{};
+
+/* @note the packet header in front of the items.dat bytes */
+static std::vector<u_char> items_header(u_int size)
+{
+    return compress_state(::gamePacket{ .type = 0x10,/*PACKET_SEND_ITEM_DATABASE_DATA*/ .state = state::S_EXTENDED, .size = size }).data();
+}
+
+static void parse_items();
+
 void decode_items()
 {
     const u_int size = std::filesystem::file_size("items.dat");
-    im_data = compress_state(::gamePacket{ .type = 0x10,/*PACKET_SEND_ITEM_DATABASE_DATA*/ .state = state::S_EXTENDED, .size = size }).data();
-    
+    im_data = items_header(size);
+
     u_int pos = im_data.size(); // @note sizeof(::gamePacket)
     im_data.resize(pos + size); // @note resize to fit binary data
-    
+
     std::ifstream("items.dat", std::ios::binary)
         .read((char*)&im_data[pos], size); // @note the binary data···
 
+    parse_items();
+    if (apply_sponsor_items()) // @note resources/sponsor.txt renamed some items: read the new bytes again
+    {
+        items.clear();
+        parse_items();
+    }
+    /* @note same hash as Proton's HashString (GrowServer RTTEX.hash), over the items.dat bytes only */
+    const u_int header = static_cast<u_int>(items_header(0).size());
+    u_int acc = 0x55555555;
+    for (std::size_t i = header; i < im_data.size(); ++i) acc = (acc >> 27) + (acc << 5) + im_data[i];
+    items_hash = acc;
+    printf("items.dat parsed successfully! (hash %u)\n", items_hash);
+}
+
+/* @note sponsor items: "id|name|description" lines. the name is stored XOR'd with the token like the client expects
+ * (GTopia ItemInfo: XorCipherString(name, "PBG892FXX982ABC*", id)), the description is plain. both are u16-length strings,
+ * so the file is rebuilt with the new strings spliced in. @return true if anything changed */
+bool apply_sponsor_items()
+{
+    std::ifstream file("resources/sponsor.txt");
+    if (!file) return false;
+
+    struct patch { u_short id; std::string name, info; };
+    std::vector<patch> patches{};
+    for (std::string line; std::getline(file, line); )
+    {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty() || line.front() == '#') continue;
+        const std::vector<std::string> f = readch(line, '|');
+        if (f.size() < 3) continue;
+        const int id = atoi(f[0].c_str());
+        if (id <= 0 || id >= static_cast<int>(items.size()) || f[1].empty() || f[1].size() > 60 || f[2].size() > 500) continue;
+        patches.push_back(patch{ static_cast<u_short>(id), f[1], f[2] });
+    }
+    if (patches.empty()) return false;
+    std::ranges::sort(patches, {}, &patch::id); // @note items are stored in id order
+
+    const std::string_view token{"PBG892FXX982ABC*"};
+    const u_int header = static_cast<u_int>(items_header(0).size());
+    std::vector<u_char> out(im_data.begin() + header, im_data.begin() + header); // @note empty, items.dat bytes only
+    out.reserve(im_data.size());
+    u_int cursor = header;
+    auto copy_to = [&](u_int pos) { out.insert(out.end(), im_data.begin() + cursor, im_data.begin() + pos); cursor = pos; };
+    auto put_string = [&](u_int at, const std::string &text, auto encode) {
+        copy_to(at);
+        const short old_len = *reinterpret_cast<const short*>(&im_data[at]);
+        const short len = static_cast<short>(text.size());
+        out.push_back(static_cast<u_char>(len & 0xff)); out.push_back(static_cast<u_char>((len >> 8) & 0xff));
+        for (short i = 0; i < len; ++i) out.push_back(encode(i, text[i]));
+        cursor = at + sizeof(short) + old_len; // @note skip the old string
+    };
+    int changed = 0;
+    for (const patch &p : patches)
+    {
+        const ::item &it = items[p.id];
+        if (it.id != p.id || it.name_at == 0) continue;
+        put_string(it.name_at, p.name, [&](short i, char c) { return static_cast<u_char>(c ^ token[(i + p.id) % token.length()]); });
+        if (it.info_at != 0) put_string(it.info_at, p.info, [](short, char c) { return static_cast<u_char>(c); });
+        ++changed;
+    }
+    copy_to(static_cast<u_int>(im_data.size()));
+
+    std::vector<u_char> data = items_header(static_cast<u_int>(out.size()));
+    data.insert(data.end(), out.begin(), out.end());
+    im_data = std::move(data);
+    printf("sponsor items: %d item(s) renamed\n", changed);
+    return changed > 0;
+}
+
+static void parse_items()
+{
+    u_int pos = static_cast<u_int>(items_header(0).size());
     u_short version{};
     shift_pos(im_data, pos, version);
     u_int count{};
@@ -62,7 +144,7 @@ void decode_items()
     for (u_int i = 0; i < count; ++i)
     {
         ::item item;
-        
+
         shift_pos(im_data, pos, item.id); pos += 2; // @note downside im.id to 2 bit (short)
         shift_pos(im_data, pos, item.property);
 
@@ -71,6 +153,7 @@ void decode_items()
         shift_pos(im_data, pos, item.type);
         pos += sizeof(u_char);
 
+        item.name_at = pos;
         short len = *(reinterpret_cast<short*>(&im_data[pos]));
         pos += sizeof(short);
         item.raw_name.resize(len);
@@ -179,6 +262,7 @@ void decode_items()
         if (version >= 0x15) pos += sizeof(short); // @date September 2025
         if (version >= 0x16)
         {
+            item.info_at = pos;
             len = *reinterpret_cast<short*>(&im_data[pos]);
             pos += sizeof(short);
             item.info.assign(reinterpret_cast<char*>(&im_data[pos]), len);
@@ -202,8 +286,7 @@ void decode_items()
             pos += sizeof(int); // @note default: 0x00 0x00 0x00 0x00
         }
         if (version == 0x1a) pos += sizeof(std::byte); // May 2026
-        
+
         items.emplace_back(item);
     }
-    printf("items.dat parsed successfully!\n");
 }

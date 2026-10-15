@@ -19,6 +19,7 @@
 #include "tools/backup.hpp"
 #include "tools/tutorial.hpp"
 #include "tools/guild.hpp"
+#include "tools/sponsor.hpp"
 #include "onVariant/CountryState.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
@@ -717,6 +718,66 @@ int main()
         CHECK(!in_guild("MTVISIT"), "gone from the database too");
         CHECK(on::country_state(*visitor).find("|showGuild") == std::string::npos, "no |showGuild without a guild");
         { ::hStmt del{ "DELETE FROM guild WHERE name = 'MTTESTG'" }; del.execute(); }
+    }
+
+    /* ================= Sponsor items (items.dat rewrite) ================= */
+    std::puts("\n[I1] sponsor items renamed in items.dat");
+    {
+        std::ifstream f("items.dat", std::ios::binary);
+        const std::vector<u_char> file((std::istreambuf_iterator<char>(f)), {});
+        u_int count{}; memcpy(&count, &file[2], 4);
+        u_int file_hash = 0x55555555; for (u_char b : file) file_hash = (file_hash >> 27) + (file_hash << 5) + b;
+
+        for (short id : { 3132, 2168, 5020, 604 })
+            std::printf("  %d = %s (type %d, cloth %d) info='%s'\n", id, id_to_item(id).raw_name.c_str(), id_to_item(id).type, id_to_item(id).cloth_type, id_to_item(id).info.c_str());
+        CHECK(id_to_item(3132).raw_name == "MikeTopia Crown" && id_to_item(604).raw_name == "Mike's Blade", "names changed");
+        CHECK(id_to_item(2168).info.find("sponsor item") != std::string::npos, "description changed");
+        CHECK(items.size() == count, "every item still parses after the rewrite");
+        CHECK(items_hash != file_hash, "new hash, so games download the new data");
+        const std::vector<::item> patched = items;
+
+        std::filesystem::rename("resources/sponsor.txt", "resources/sponsor.txt.off");
+        items.clear(); decode_items();
+        std::filesystem::rename("resources/sponsor.txt.off", "resources/sponsor.txt");
+        const std::size_t header = im_data.size() - file.size();
+        {
+            /* @note decode_items() already zeroes the .mp3 audio fields (old Gurotopia code), so only zeroed bytes may differ */
+            bool only_mp3 = im_data.size() == header + file.size();
+            int changed = 0;
+            for (std::size_t i = 0; only_mp3 && i < file.size(); ++i)
+                if (im_data[header + i] != file[i]) { ++changed; if (im_data[header + i] != 0) only_mp3 = false; }
+            std::printf("  bytes zeroed by the mp3 fix: %d\n", changed);
+            CHECK(only_mp3, "without sponsors: the original file (except the mp3 fix zeroes)");
+            u_int sent_hash = 0x55555555; for (std::size_t i = header; i < im_data.size(); ++i) sent_hash = (sent_hash >> 27) + (sent_hash << 5) + im_data[i];
+            CHECK(items_hash == sent_hash, "hash = Proton hash of the bytes we send (GrowServer formula)");
+        }
+        std::printf("  items.dat hash %u (old fixed value 1086086596)\n", items_hash);
+
+        bool same = patched.size() == items.size();
+        int differ = 0;
+        for (std::size_t i = 0; same && i < items.size(); ++i)
+        {
+            const ::item &a = patched[i], &b = items[i];
+            if (a.raw_name != b.raw_name || a.info != b.info) ++differ;
+            if (a.id != b.id || a.type != b.type || a.rarity != b.rarity || a.cloth_type != b.cloth_type || a.splice != b.splice || a.tick != b.tick || a.hits != b.hits) same = false;
+        }
+        CHECK(same && differ == 4, "only the 4 sponsor items differ, all other fields identical");
+        items.clear(); decode_items(); // @note back to the sponsored data
+        CHECK(id_to_item(3132).raw_name == "MikeTopia Crown", "sponsored again");
+
+        std::puts("\n[I2] /sponsor shop");
+        owner->role = 0; owner->gems = 100000; owner->slot_size = 60;
+        outbox.clear(); sponsor_command(ev, "sponsor");
+        CHECK(said("add_button|buy_3132|") && said("MikeTopia Crown"), "shop lists the items with buy buttons");
+        outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_2"));
+        CHECK(held(*owner, 2) >= 0 && owner->gems == 100000, "fake button for a non-sponsor item ignored");
+        outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_5020"));
+        CHECK(owner->gems == 100000 && said("You need 200000"), "too expensive refused");
+        outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_3132"));
+        CHECK(held(*owner, 3132) == 1 && owner->gems == 0, "bought the crown for 100000");
+        owner->gems = 100000;
+        outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_3132"));
+        CHECK(held(*owner, 3132) == 1 && owner->gems == 100000 && said("already own"), "only one each");
     }
 
     /* ================= News & rules ================= */

@@ -189,6 +189,8 @@ public:
     std::string info{}; // @note version 22 | item's info
 
     std::array<u_short, 2> splice{}; // @note version 23 | {seed1, seed2}
+
+    u_int name_at{}, info_at{}; // @note where the name / info length sits in im_data (sponsor items rewrite them)
 };
 extern std::vector<::item> items;
 
@@ -198,3 +200,7 @@ extern const ::item &id_to_item(u_short id) noexcept; // @note std::out_of_range
 extern std::vector<u_char> im_data;
 
 extern void decode_items();
+
+extern bool apply_sponsor_items(); // @note resources/sponsor.txt, called by decode_items()
+
+extern u_int items_hash; // @note Proton hash of the items.dat we send, the client re-downloads when it changes

@@ -65,3 +65,9 @@
 898|130|0|Slow (Dear John Tractor)
 1830|130|0|Slow (Harvester)
 1966|130|0|Slow (Harvester Of Sorrows)
+
+# MikeTopia sponsor items (resources/sponsor.txt)
+3132|0|0|Double Jump (MikeTopia Crown)|dj
+2168|320|0|Speedy (Cape of Mike)
+5020|0|750|High Jump (MikeTopia Aura)
+604|0|0|Enhanced Digging (Mike's Blade)|dig

@@ -1,0 +1,10 @@
+# MikeTopia sponsor items: existing items that get a new name and description in items.dat, sold in /sponsor.
+#   item id|new name|description|price in gems
+# The picture stays the same as the original item, so pick items whose look you like.
+# Name: max 60 characters, description: max 500. No | in the text. Restart the server after editing:
+# players' games download the new item data automatically.
+# Perks (speed, double jump, ...) go in playmods.txt.
+3132|MikeTopia Crown|Worn by the true rulers of MikeTopia. Gives Double Jump. A MikeTopia sponsor item.|100000
+2168|Cape of Mike|The golden cape of @Mike himself. Makes you run faster. A MikeTopia sponsor item.|150000
+5020|MikeTopia Aura|A shimmering aura only the richest Growtopians own. Lets you jump higher. A MikeTopia sponsor item.|200000
+604|Mike's Blade|A legendary golden blade. Breaks blocks with one hit less. A MikeTopia sponsor item.|120000
