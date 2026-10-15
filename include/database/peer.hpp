@@ -189,6 +189,13 @@ public:
     int pass_door_fails{};
     std::time_t pass_door_wait{}; // @note too many wrong passwords: no tries until then
 
+    /* @note fishing (tools/fishing.cpp): the water tile the line is in, where we stood, the bait, when a fish bites */
+    ::pos fish_tile{ -1, -1 };
+    ::pos fish_stand{ -1, -1 };
+    short fish_bait{};
+    std::time_t fish_bite{};     // @note the next bite
+    std::time_t fish_bite_end{}; // @note 0 = no fish on the hook right now
+
     int rank_level{}; // @note CreativePS-style rank bought with gems (tools/rank.cpp), 0 = none. saved
 };
 

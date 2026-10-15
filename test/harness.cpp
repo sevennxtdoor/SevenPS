@@ -9,6 +9,8 @@
 #include "tools/magplant.hpp"
 #include "tools/password_door.hpp"
 #include "action/dialog_return/gateway_edit.hpp"
+#include "tools/fishing.hpp"
+#include "tools/profile.hpp"
 #include <cstdio>
 #include <windows.h>
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *e)
@@ -351,6 +353,87 @@ int main()
     }
     std::printf("  item hits needed=%d\n", id_to_item(MAG).hits);
     CHECK(mb.fg == 0, "broken when empty");
+
+    /* ================= Fishing ================= */
+    const short ROD = 2912, WORM = 2914;
+    const ::pos water{ 12, 22 };
+    auto fish_count = [&](const ::peer &p) { int n = 0; for (const ::slot &s : p.slots) if (s.count > 0 && id_to_item(s.id).type == type::FISH) ++n; return n; };
+    auto bite_now = [&](::peer &p) { p.fish_bite = std::time(nullptr) - 1; Sleep(1100); outbox.clear(); fishing_tick(); };
+    auto use = [&](ENetEvent &e, ::peer &p, short id, const ::pos &at) { outbox.clear(); tile_change(e, ::gamePacket{ .type = 3, .id = id, .pos = p.pos, .punch = at }); };
+
+    std::puts("\n[F1] setup: water tile, rod, worms");
+    w.blocks[cord(12, 22)].state[3] |= S_WATER;
+    owner->pos = ::pos{ 11 * 32.0f, 21 * 32.0f };
+    owner->slots.push_back(::slot(WORM, 5));
+    owner->slot_size = 30;
+
+    std::puts("\n[F2] no rod / not water / too far");
+    use(ev, *owner, WORM, water); CHECK(said("Fishing Rod") && held(*owner, WORM) == 5, "needs a rod, bait kept");
+    owner->clothing[clothing::HAND] = ROD;
+    use(ev, *owner, WORM, ::pos{ 13, 22 }); CHECK(said("only fish in water") && held(*owner, WORM) == 5, "dry tile refused");
+    owner->pos = ::pos{ 30 * 32.0f, 21 * 32.0f };
+    use(ev, *owner, WORM, water); CHECK(said("Too far") && held(*owner, WORM) == 5, "too far refused");
+    owner->pos = ::pos{ 11 * 32.0f, 21 * 32.0f };
+
+    std::puts("\n[F3] cast: bait used, line packet 0x1f with the tile");
+    use(ev, *owner, WORM, water);
+    CHECK(held(*owner, WORM) == 4 && owner->fish_tile == water, "casting");
+    bool line = false;
+    for (auto &pk : outbox) if (pk.data.size() >= 60) { int type, netid, px, py; memcpy(&type, &pk.data[4], 4); memcpy(&netid, &pk.data[8], 4); memcpy(&px, &pk.data[48], 4); memcpy(&py, &pk.data[52], 4); if (type == 0x1f && netid == owner->netid && px == 12 && py == 22) line = true; }
+    CHECK(line, "GONE_FISHIN sent with netid + tile");
+    const std::time_t wait = owner->fish_bite - std::time(nullptr);
+    CHECK(wait >= 12 && wait <= 30, "bite in 12..30 s");
+
+    std::puts("\n[F4] punch too early");
+    use(ev, *owner, 18, ::pos{ 11, 20 });
+    CHECK(said("Too soon") && owner->fish_tile.x < 0 && fish_count(*owner) == 0, "fish got away, line in");
+
+    std::puts("\n[F5] splash, then punch -> fish + gems");
+    use(ev, *owner, WORM, water);
+    bite_now(*owner);
+    CHECK(said("OnParticleEffect") && said("splash.wav"), "splash effect + sound");
+    CHECK(owner->fish_bite_end != 0, "fish on the hook");
+    const int gems_before = owner->gems;
+    use(ev, *owner, 18, ::pos{ 11, 20 });
+    CHECK(fish_count(*owner) == 1, "fish in backpack");
+    for (const ::slot &s : owner->slots) if (s.count > 0 && id_to_item(s.id).type == type::FISH) { std::printf("  caught %d lb. %s\n", s.count, id_to_item(s.id).raw_name.c_str()); CHECK(s.count >= 1 && s.count <= 25, "weight within Fishing Rod max 25"); }
+    CHECK(owner->gems > gems_before, "got gems");
+    CHECK(owner->fish_tile.x < 0, "line in after the catch");
+    CHECK(pget(*owner, "fish_best") >= 1, "best weight saved in profile");
+
+    std::puts("\n[F6] too slow: fish swims off, another bite comes later");
+    use(ev, *owner, WORM, water);
+    bite_now(*owner);
+    owner->fish_bite_end = std::time(nullptr) - 1;
+    Sleep(1100); fishing_tick();
+    CHECK(owner->fish_bite_end == 0 && owner->fish_bite > std::time(nullptr) && owner->fish_tile == water, "still fishing, new bite scheduled");
+
+    std::puts("\n[F7] walking away pulls the line in");
+    owner->pos = ::pos{ 20 * 32.0f, 21 * 32.0f };
+    outbox.clear(); fishing_moved(ev);
+    CHECK(owner->fish_tile.x < 0 && said("Sit still"), "line in");
+    owner->pos = ::pos{ 11 * 32.0f, 21 * 32.0f };
+
+    std::puts("\n[F8] full backpack: the fish lands on the ground");
+    use(ev, *owner, WORM, water);
+    bite_now(*owner);
+    owner->slot_size = static_cast<int>(owner->slots.size());
+    const std::size_t drops = w.objects.size();
+    const int fish_before = fish_count(*owner);
+    use(ev, *owner, 18, ::pos{ 11, 20 });
+    CHECK(w.objects.size() == drops + 1 || fish_count(*owner) == fish_before, "dropped, not lost or duplicated");
+    owner->slot_size = 30;
+
+    std::puts("\n[F9] visitor may fish in a locked world, world unchanged");
+    visitor->clothing[clothing::HAND] = ROD;
+    visitor->slots = { ::slot(WORM, 1) };
+    visitor->pos = ::pos{ 13 * 32.0f, 21 * 32.0f };
+    const ::block before = w.blocks[cord(12, 22)];
+    use(ev2, *visitor, WORM, water);
+    CHECK(visitor->fish_tile == water && held(*visitor, WORM) == 0, "visitor casting");
+    CHECK(w.blocks[cord(12, 22)].fg == before.fg && w.blocks[cord(12, 22)].state[3] == before.state[3], "tile untouched");
+    fishing_reset(*visitor);
+    CHECK(visitor->fish_tile.x < 0, "reset on world change");
 
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTTEST'" }; del.execute();

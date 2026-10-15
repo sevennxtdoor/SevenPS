@@ -26,6 +26,7 @@
 #include "tools/password_door.hpp"
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
+#include "tools/fishing.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -49,6 +50,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             auto slot = std::ranges::find(pPeer->slots, static_cast<short>(gamePacket.id), &::slot::id);
             if (slot == pPeer->slots.end() || slot->count < 1) return;
         }
+        if (fishing_tile_change(event, *world, gamePacket)) return; // @note casting bait / reeling in, before the lock checks: fishing doesn't change the world
 
         const ::item &item = id_to_item((gamePacket.id != 32 && gamePacket.id != 18) ? gamePacket.id : (block.fg != 0) ? block.fg : block.bg);
         if (item.id == 0) return;

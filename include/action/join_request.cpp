@@ -13,6 +13,7 @@
 #include "commands/gtos.hpp"
 #include "tools/area_lock.hpp"
 #include "tools/magplant.hpp"
+#include "tools/fishing.hpp"
 
 #include "join_request.hpp"
 
@@ -115,6 +116,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         on::CountryState(event);
         send_area_locks(*event.peer, world); // @note Small/Big/Huge/Builder's Lock areas
         magplant_on_join(event, world); // @note drops the remote from the last world, shows the building machine
+        fishing_reset(*static_cast<::peer*>(event.peer->data)); // @note a line left in the last world is gone
     }
     catch (const std::exception& exc)
     {

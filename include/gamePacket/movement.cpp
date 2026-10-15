@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "action/respawn.hpp"
+#include "tools/fishing.hpp"
 
 #include "movement.hpp"
 
@@ -9,6 +10,7 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     
     pPeer->pos = gamePacket.pos;
     pPeer->facing_left = gamePacket.state & state::S_MOVE_LEFT;
+    fishing_moved(event); // @note walking away pulls the line in
 
     /* add fireproof only take away 1 hp instead of 2 */
     if (gamePacket.state & state::S_LAVA_HIT) pPeer->pain_hp -= 2;
