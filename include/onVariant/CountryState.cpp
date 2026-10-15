@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/guild.hpp"
 
 #include "CountryState.hpp"
 
@@ -7,7 +8,7 @@ std::string on::country_state(const ::peer &peer)
     /* @todo add |showGuild when we add guild system; also add peer's real country */
     /* @note |maxLevel is what makes the client draw the blue name (level 125), the Blue Name title reuses it */
     const bool blue_name = peer.level[0] == 125 || (peer.titles_on & peer.owned_titles() & T_BLUENAME);
-    return std::format("{}{}", peer.country, blue_name ? "|maxLevel" : "");
+    return std::format("{}{}{}", peer.country, in_guild(peer.growid) ? "|showGuild" : "", blue_name ? "|maxLevel" : ""); // @note order as GTOS
 }
 
 void on::CountryState(ENetEvent& event)

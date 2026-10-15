@@ -29,7 +29,7 @@ void action::input(ENetEvent& event, const std::string& header)
             "`6>>`4Spam detected! ``Please wait a bit before typing anything else.  "  
             "Please note, any form of bot/macro/auto-paste will get all your accounts banned, so don't do it!");
     }
-    else if (muted_left(*pPeer) > 0 && (!text.starts_with('/') || text.starts_with("/sb") || text.starts_with("/msg") || text.starts_with("/me ")))
+    else if (muted_left(*pPeer) > 0 && (!text.starts_with('/') || text.starts_with("/sb") || text.starts_with("/msg") || text.starts_with("/gc") || text.starts_with("/me ")))
     {
         on::ConsoleMessage(event.peer, std::format("`4You are muted for {} more minutes.``", (muted_left(*pPeer) + 59) / 60));
     }

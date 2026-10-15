@@ -18,6 +18,8 @@
 #include "onVariant/RequestGazette.hpp"
 #include "tools/backup.hpp"
 #include "tools/tutorial.hpp"
+#include "tools/guild.hpp"
+#include "onVariant/CountryState.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -664,6 +666,57 @@ int main()
         w.blocks[cord(87, 21)].fg = 2;
         use(ev, *owner, 3, ::pos{ 87, 20 });
         CHECK(pget(*owner, "planted") == planted + 1, "planting a seed counts");
+    }
+
+    /* ================= Guild ================= */
+    std::puts("\n[G1] create a guild");
+    {
+        { ::hStmt del{ "DELETE FROM guild WHERE name = 'MTTESTG'" }; del.execute(); }
+        load_guilds();
+        owner->growid = "MTOWNER"; visitor->growid = "MTVISIT";
+        owner->role = 0; visitor->role = 0;
+        owner->level[0] = 1; owner->gems = 60000;
+        auto g = [&](ENetEvent &e, const std::string &t) { outbox.clear(); guild_command(e, t); };
+        auto said_to = [&](ENetPeer *who, const std::string &needle) { for (auto &pk : outbox) if (pk.peer == who && std::string(pk.data.begin(), pk.data.end()).find(needle) != std::string::npos) return true; return false; };
+        g(ev, "guild create MTTESTG");
+        CHECK(said("level 5") && !in_guild("MTOWNER"), "level 5 needed");
+        owner->level[0] = 10;
+        g(ev, "guild create a!"); CHECK(said("3-15 letters"), "bad name refused");
+        g(ev, "guild create MTTESTG");
+        CHECK(in_guild("MTOWNER") && owner->gems == 10000, "created, 50000 gems paid");
+        CHECK(on::country_state(*owner).find("|showGuild") != std::string::npos, "|showGuild in country state");
+        CHECK(said("OnGuildDataChanged"), "flag data sent");
+        visitor->gems = 60000; visitor->level[0] = 10;
+        g(ev2, "guild create mttestg"); CHECK(said("taken"), "name taken (any case)");
+
+        std::puts("\n[G2] invite, accept, guild chat");
+        g(ev2, "guild accept"); CHECK(said("no guild invite"), "can't join uninvited");
+        g(ev, "guild invite MTVISIT"); CHECK(said_to(&enet_peers[1], "invited you"), "invite reaches the player");
+        g(ev2, "guild accept"); CHECK(in_guild("MTVISIT"), "joined");
+        outbox.clear(); gc_command(ev2, "gc hello guild");
+        CHECK(said_to(&enet_peers[0], "[GUILD]") && said_to(&enet_peers[0], "hello guild"), "/gc reaches the leader");
+
+        std::puts("\n[G3] ranks");
+        g(ev2, "guild kick MTOWNER"); CHECK(in_guild("MTOWNER") && said("below your rank"), "member can't kick the leader");
+        g(ev2, "guild invite MTOWNER"); CHECK(said("Only the leader and co-leaders"), "member can't invite");
+        g(ev, "guild promote MTVISIT"); CHECK(said("Elder"), "promoted to Elder");
+        g(ev, "guild promote MTVISIT"); CHECK(said("Co-Leader"), "promoted to Co-Leader");
+        g(ev, "guild promote MTVISIT"); CHECK(said("can't go higher"), "no second leader by promote");
+        g(ev2, "guild statement We farm together!"); CHECK(said_to(&enet_peers[0], "We farm together!"), "co-leader sets the statement");
+        g(ev, "guild leave"); CHECK(in_guild("MTOWNER") && said("Give the guild"), "leader can't just leave");
+        g(ev, "guild leader MTVISIT"); CHECK(said("new leader"), "leadership handed over");
+        g(ev, "guild disband confirm"); CHECK(in_guild("MTOWNER") && said("Only the leader"), "ex-leader can't disband");
+
+        std::puts("\n[G4] saved, then disbanded");
+        load_guilds();
+        CHECK(in_guild("MTOWNER") && in_guild("MTVISIT"), "still there after reload from the database");
+        g(ev2, "guild kick MTOWNER"); CHECK(!in_guild("MTOWNER"), "new leader kicks the old one");
+        g(ev2, "guild disband"); CHECK(in_guild("MTVISIT") && said("confirm"), "disband asks to confirm");
+        g(ev2, "guild disband confirm"); CHECK(!in_guild("MTVISIT"), "disbanded");
+        load_guilds();
+        CHECK(!in_guild("MTVISIT"), "gone from the database too");
+        CHECK(on::country_state(*visitor).find("|showGuild") == std::string::npos, "no |showGuild without a guild");
+        { ::hStmt del{ "DELETE FROM guild WHERE name = 'MTTESTG'" }; del.execute(); }
     }
 
     /* ================= News & rules ================= */

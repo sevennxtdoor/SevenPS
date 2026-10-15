@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/guild.hpp"
 #include "onVariant/EmoticonDataChanged.hpp"
 #include "onVariant/Spawn.hpp"
 #include "onVariant/BillboardChange.hpp"
@@ -79,6 +80,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             {
                 on::Spawn(*event.peer, pOthers->netid, pOthers->user_id, pOthers->pos, pOthers->display_growid, pOthers->country, pOthers->role, pOthers->role >= DEVELOPER, false);
                 send_varlist(event.peer, { "OnCountryState", on::country_state(*pOthers) }, pOthers->netid); // @note their blue name
+                guild_show(*event.peer, *pOthers); // @note their guild flag
                 on::Spawn(peer, pPeer->netid, pPeer->user_id, pPeer->rest_pos, pPeer->display_growid, pPeer->country, pPeer->role, pPeer->role >= DEVELOPER, false);
                 on::SetClothing(peer);
                 on::ConsoleMessage(&peer, std::format("`5<{} entered, `w{}`` others here>``", pPeer->display_growid, world.visitors));
@@ -114,6 +116,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);
         on::CountryState(event);
+        guild_broadcast(*event.peer); // @note our guild flag for everyone here
         send_area_locks(*event.peer, world); // @note Small/Big/Huge/Builder's Lock areas
         magplant_on_join(event, world); // @note drops the remote from the last world, shows the building machine
         fishing_reset(*static_cast<::peer*>(event.peer->data)); // @note a line left in the last world is gone
