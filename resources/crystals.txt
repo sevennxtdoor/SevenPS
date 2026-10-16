@@ -1,0 +1,53 @@
+# MikeTopia Harmonic Crystals (Red 2242, Green 2244, Blue 2246, White 2248, Black 2250)
+# stack 5 crystals on one tile, surround it with the right Chi (resources/chi.txt), then punch it once.
+# recipes from GTopia (MIT, keichira) HarmonicCrystal.cpp, checked against the Growtopia wiki crystal pages.
+#
+# chi|min|max                    every cluster wants a random amount of Earth, Fire, Air and Water between these
+# accuracy|normal|harmonizer|lock how far off the Chi may be: normally, on a Chi Harmonizer background, in a Harmonic Lock world
+# rainbow|percent                 chance a Rainbow Crystal Block under the cluster gives one of the crystals back
+# recipe|crystals|item|count|name[|valentine]   crystals sorted: 1 red, 2 green, 3 blue, 4 white, 5 black
+chi|20|120
+accuracy|6|30|15
+rainbow|17
+recipe|11122|3526|20|Gilded Frame
+recipe|11124|5266|1|Static Hair
+recipe|11125|5274|1|Demon Crystal
+recipe|11133|2940|1|Purple Crystal Skirt
+recipe|11134|2274|1|Crystal Gate
+recipe|11144|5268|1|Amethyst Choker
+recipe|11145|392|1|Heartstone|valentine
+recipe|11222|2942|1|Golden Crystal Skirt
+recipe|11223|3770|3|Steam Lamp
+recipe|11224|3424|1|Yellow Diamond
+recipe|11225|3582|1|Golden Cave Crystal
+recipe|11233|2268|1|Crystal Skull
+recipe|11234|2590|5|Shifty Block
+recipe|11244|5204|1|Plasma Globe
+recipe|11333|2276|5|Crystal Spikes
+recipe|11334|2972|1|Spikey Anime Hair
+recipe|11335|4762|1|Amethyst Block
+recipe|11444|2254|1|Red Crystal Wings
+recipe|11555|2754|1|Demonic Arm
+recipe|12223|5280|10|Celestial Frame
+recipe|12233|2270|10|Stained Glass
+recipe|12234|5272|10|Kaleidoscopic Wallpaper
+recipe|12333|5270|1|Opal Block
+recipe|12344|5104|1|Celestial Kaleidoscope
+recipe|12355|3180|1|Crystal Smithing Tools
+recipe|12444|2262|1|Golden Crystal Wings
+recipe|13344|5106|1|Harmonic Chimes
+recipe|13444|2260|1|Purple Crystal Wings
+recipe|14445|2756|1|The Gungnir
+recipe|22233|2944|1|Aqua Crystal Skirt
+recipe|22244|2706|1|Emerald Choker
+recipe|22333|2272|3|Crystal Tree
+recipe|22344|2252|1|Crystal Clock
+recipe|22444|2256|1|Blue Crystal Wings
+recipe|22455|2266|1|Crystal Glaive
+recipe|23444|2264|1|Aqua Crystal Wings
+recipe|33333|2812|1|Sapphire Block
+recipe|33344|6820|1|Crystal Shard Necklace
+recipe|33444|2258|1|Green Crystal Wings
+recipe|44555|4124|1|DNA Extractor
+recipe|45555|6848|1|Luminous Eyes
+recipe|55555|2212|1|Black Crystal Dragon

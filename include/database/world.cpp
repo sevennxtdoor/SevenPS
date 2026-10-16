@@ -13,6 +13,7 @@
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
 #include "tools/special_blocks.hpp"
+#include "tools/special_tiles.hpp"
 
 char get_type(const ::item &item)
 {
@@ -29,7 +30,7 @@ char get_type(const ::item &item)
         case type::MAGPLANT: return '\x3e'; // @note Magplant 5000, Gaia's Beacon, Unstable Tesseract
         case type::MANNEQUIN: return '\x0e';
     }
-    return '\x00';
+    return static_cast<char>(special_extra_type(item)); // @note crystals, bunny egg, mailbox... (tools/special_tiles.cpp)
 }
 
 void block::reset()
@@ -177,6 +178,7 @@ void block::reset()
             {
                 mannequin_extra(blob, *this, block_pos);
             }
+            else special_extra(blob, *this, block_pos, static_cast<u_char>(type)); // @note dice, providers, crystals, bunny egg...
         }
         ++i;
     }
@@ -354,12 +356,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this), load_fossil_preps(*this), fossil_spawn(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this), load_fossil_preps(*this), load_special_tiles(*this), fossil_spawn(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
-    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this), save_special_tiles(*this);
     {
         ::blob blob;
 
@@ -617,6 +619,7 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
             mannequin_extra(blob, world, gamePacket.punch);
             break;
         }
+        default: special_extra(blob, world, gamePacket.punch, static_cast<u_char>(get_type(item))); break;
     }
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer& p) 

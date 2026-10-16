@@ -31,6 +31,7 @@
 #include "tools/casino.hpp"
 #include "tools/economy.hpp"
 #include "tools/special_blocks.hpp"
+#include "tools/special_tiles.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -151,6 +152,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
             }
             if (special_punch(event, *world, block, gamePacket.punch, item)) return; // @note fossils & prep station (tools/special_blocks.cpp)
+            if (special_tile_punch(event, *world, block, gamePacket.punch, item)) return; // @note a harmonized crystal cluster (tools/special_tiles.cpp)
 
             switch (item.id)
             {
@@ -336,7 +338,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             if (item.type == type::MAGPLANT) magplant_removed(event, *world, gamePacket.punch);
             if (item.type == type::MANNEQUIN) mannequin_removed(*world, gamePacket.punch);
             block.state[3] &= ~S_VANISH; // @note remove paint
-            const bool own_drops = special_break(event, *world, block, gamePacket.punch, item, tile_update); // @note loot blocks, fossils, Mystery Pinata
+            const bool own_drops = special_break(event, *world, block, gamePacket.punch, item, tile_update) || // @note loot blocks, fossils, Mystery Pinata
+                                   special_tile_break(event, *world, gamePacket.punch, item); // @note Bunny Egg prize, crystal cluster gone
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
             {
@@ -630,6 +633,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 return;
             }
             if (item.id == 6016) return growscan_dialog(event, *world); // @note GrowScan 9000
+            if (special_tile_wrench(event, *world, gamePacket.punch, item)) return; // @note crystal cluster, Bunny Egg
             switch (item.type)
             {
                 case type::LOCK:
@@ -767,6 +771,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         else // @note placing a block
         {
+            if (special_place(event, *world, block, gamePacket.punch, item, from_remote)) return; // @note crystals on a cluster, Magic Egg (tools/special_tiles.cpp)
             if (block.fg != 0) // @note placing something ontop of exisitng block
             {
                 bool update_tile{};
@@ -912,6 +917,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             block.state[2] |= (pPeer->facing_left) ? S_LEFT : S_RIGHT;
             (item.type == type::BACKGROUND) ? block.bg = gamePacket.id : block.fg = gamePacket.id;
+            if (item.type == type::CRYSTAL) special_placed(*world, gamePacket.punch, item), tile_update = true; // @note the client needs the cluster data
             if (from_remote) magplant_remote_used(event, *world);
             else pPeer->emplace(::slot(item.id, -1));
             add_stat(event, "placed");

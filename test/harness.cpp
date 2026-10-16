@@ -33,6 +33,7 @@
 #include "commands/punch.hpp"
 #include "tools/buffs.hpp"
 #include "tools/special_blocks.hpp"
+#include "tools/special_tiles.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1263,6 +1264,139 @@ int main()
         owner->clothing[clothing::HAND] = saved_hand;
         owner->role = owner_role;
         ::hStmt del{ "DELETE FROM world_fossil_prep WHERE world = 'MTTEST'" }; del.execute();
+    }
+
+    /* ================= Special tiles: Harmonic Crystals, Bunny Egg, tile data ================= */
+    {
+        namespace fs = std::filesystem;
+        const auto owner_role = owner->role;
+        owner->role = PLAYER;
+        owner->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        owner->slot_size = 60;
+        const bool was_public = w.is_public;
+        w.is_public = false;
+        auto use = [&](short id, const ::pos &at) { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = id, .pos = owner->pos, .punch = at }); };
+        auto punch = [&](const ::pos &at) { use(18, at); };
+        auto on_tile = [&](const ::pos &at, short id) {
+            int n = 0;
+            for (const ::object &o : w.objects) if (o.id == id && o.pos.by_32(true) == at) n += o.count;
+            return n;
+        };
+        auto extra_text = [&](const ::pos &at) {
+            ::blob b; special_extra(b, w, at, 0x14);
+            const auto &d = b.data();
+            short len{}; memcpy(&len, d.data(), 2);
+            return std::string(reinterpret_cast<const char*>(d.data() + 2), len);
+        };
+        const fs::path home = fs::current_path(), sandbox = home / "build/test/crystal_sandbox";
+        fs::create_directories(sandbox / "resources");
+        for (const char *f : { "chi.txt", "bunny_egg.txt", "loot.txt", "fossils.txt" })
+            fs::copy_file(home / "resources" / f, sandbox / "resources" / f, fs::copy_options::overwrite_existing);
+        int bump = 0;
+        auto crystals_txt = [&](int accuracy) { // @note every cluster wants 1000 of each Chi: only a huge accuracy matches
+            const fs::path p = sandbox / "resources/crystals.txt";
+            std::ifstream in(home / "resources/crystals.txt");
+            std::ofstream out(p);
+            for (std::string line; std::getline(in, line); )
+                out << (line.starts_with("chi|") ? "chi|1000|1000" : line.starts_with("accuracy|") ? std::format("accuracy|{0}|{0}|{0}", accuracy) : line) << '\n';
+            out.close();
+            fs::last_write_time(p, fs::file_time_type::clock::now() + std::chrono::seconds(++bump)); // @note always seen as changed
+        };
+        crystals_txt(6);
+        fs::current_path(sandbox);
+
+        std::puts("\n[Y1] a crystal on an empty tile starts a cluster");
+        const ::pos ct{ 24, 20 };
+        w.blocks[cord(24, 20)] = ::block{};
+        owner->slots.push_back(::slot(2242, 3)); owner->slots.push_back(::slot(2244, 2)); owner->slots.push_back(::slot(2248, 1));
+        owner->slots.push_back(::slot(2246, 2)); owner->slots.push_back(::slot(2250, 4));
+        use(2242, ct);
+        CHECK(w.blocks[cord(24, 20)].fg == 2242 && held(*owner, 2242) == 2, "Red Crystal placed");
+        CHECK(extra_text(ct) == "1", "tile data: \"1\"");
+        CHECK(get_type(id_to_item(2242)) == 0x14, "crystals have extra type 0x14");
+
+        std::puts("\n[Y2] not in a public world");
+        w.is_public = true;
+        use(2242, ct);
+        CHECK(said("World Locked world you own") && held(*owner, 2242) == 2, "refused, crystal kept");
+        w.is_public = false;
+
+        std::puts("\n[Y3] five crystals: Red Red Green Green White = Yellow Diamond recipe");
+        for (short id : { 2242, 2244, 2244 }) use(id, ct);
+        CHECK(extra_text(ct) == "1122", "4 crystals in it");
+        use(2248, ct);
+        CHECK(said("highest vibration") && extra_text(ct) == "11224", "full and sorted");
+        use(2246, ct);
+        CHECK(said("already at its highest") && held(*owner, 2246) == 2, "a 6th is refused");
+        CHECK(w.blocks[cord(24, 20)].fg == 2242, "still one tile");
+
+        std::puts("\n[Y4] out of tune: the wrench tells what's missing, a punch only damages");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = ct });
+        CHECK(said("Crystal Cluster") && said("several red") && said("out of alignment") && said("more Earth"), "dialog");
+        punch(ct);
+        CHECK(!said("true essence") && on_tile(ct, 3424) == 0, "no prize");
+        w.blocks[cord(24, 20)].hits[0] = 0;
+
+        std::puts("\n[Y5] in harmony: one punch reveals the prize");
+        crystals_txt(100000);
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = ct });
+        CHECK(said("perfect harmonic resonance"), "wrench says it's ready");
+        punch(ct);
+        CHECK(said("true essence") && on_tile(ct, 3424) == 1, "Yellow Diamond dropped");
+        CHECK(w.blocks[cord(24, 20)].fg == 0, "cluster gone");
+
+        std::puts("\n[Y6] a combination without a recipe shatters");
+        use(2246, ct);
+        for (int k = 0; k < 4; ++k) use(2250, ct);
+        CHECK(said("shattered") && w.blocks[cord(24, 20)].fg == 0, "Blue + 4 Black shatter");
+        CHECK(held(*owner, 2250) == 0, "the crystals are used up");
+        fs::current_path(home);
+
+        std::puts("\n[Y7] Magic Egg on an empty tile -> Bunny Egg, more eggs grow it");
+        const ::pos et{ 26, 20 };
+        w.blocks[cord(26, 20)] = ::block{};
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == et; });
+        owner->slots.push_back(::slot(611, 200));
+        use(611, et);
+        CHECK(w.blocks[cord(26, 20)].fg == 610 && held(*owner, 611) == 199, "Bunny Egg");
+        for (int k = 0; k < 150; ++k) use(611, et);
+        CHECK(said("15.1%") && held(*owner, 611) == 49, "151 eggs = 15.1%");
+        {
+            ::blob b; special_extra(b, w, et, 0x0f);
+            u_int eggs{}; memcpy(&eggs, b.data().data(), 4);
+            CHECK(b.data().size() == 4 && eggs == 151, "tile data: u32 151");
+        }
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = et });
+        CHECK(said("Bunny Egg") && said("151"), "wrench shows the size");
+        save_special_tiles(w);
+        {
+            ::hStmt q{ "SELECT COUNT(*) FROM world_special_tile WHERE world = 'MTTEST' AND data = 'e|151'" };
+            long long n{}; MYSQL_BIND r = make_bind_out(n);
+            mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt);
+            CHECK(n == 1, "saved in world_special_tile");
+        }
+
+        std::puts("\n[Y8] break it: a prize for 101-200 eggs (5 pastel blocks)");
+        for (int k = 0; k < 40 && w.blocks[cord(26, 20)].fg == 610; ++k) punch(et);
+        int pastel = 0;
+        for (short id = 510; id <= 522; id += 2) pastel += on_tile(et, id);
+        CHECK(w.blocks[cord(26, 20)].fg == 0 && pastel == 5, "5 pastel blocks");
+        CHECK(on_tile(et, 610) == 0 && on_tile(et, 611) == 0 && on_tile(et, 112) == 0, "no egg, seed or gems");
+        use(611, et);
+        for (int k = 0; k < 40 && w.blocks[cord(26, 20)].fg == 610; ++k) punch(et);
+        CHECK(said("SPLAT"), "a tiny egg only splats");
+
+        std::puts("\n[Y9] tile data the client expects");
+        auto size_of = [&](u_char type) { ::blob b; special_extra(b, w, et, type); return b.data().size(); };
+        CHECK(get_type(id_to_item(656)) == 0x06 && size_of(0x06) == 7, "Mailbox: 3 empty strings + flags");
+        CHECK(get_type(id_to_item(982)) == 0x0a && size_of(0x0a) == 5, "Achievement Block: owner + id");
+        CHECK(get_type(id_to_item(456)) == 0x08 && size_of(0x08) == 1, "Dice: the face");
+        CHECK(get_type(id_to_item(872)) == 0x09 && size_of(0x09) == 4, "Chicken: provider timer");
+        CHECK(get_type(id_to_item(2)) == 0x00, "Dirt: none");
+
+        w.is_public = was_public;
+        owner->role = owner_role;
+        ::hStmt del{ "DELETE FROM world_special_tile WHERE world = 'MTTEST'" }; del.execute();
     }
 
     /* ================= News & rules ================= */

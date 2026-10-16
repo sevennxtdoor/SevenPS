@@ -1,0 +1,39 @@
+# MikeTopia Bunny Egg (610): plant a Magic Egg (611) on an empty tile, add more Magic Eggs to grow it (0.1% each),
+# break it for a prize that depends on how many eggs went in. table from the Growtopia wiki "Magic Egg" page.
+# when several lines fit the egg count, one is picked by weight. above 1000 eggs every new egg may burst it.
+#
+# max|eggs                       the egg can't grow past this
+# prize|from|to|item|count|weight|name
+max|2001
+prize|101|200|510|5|1|Pastel Pink Block
+prize|101|200|512|5|1|Pastel Orange Block
+prize|101|200|514|5|1|Pastel Yellow Block
+prize|101|200|516|5|1|Pastel Green Block
+prize|101|200|518|5|1|Pastel Aqua Block
+prize|101|200|520|5|1|Pastel Blue Block
+prize|101|200|522|5|1|Pastel Purple Block
+prize|201|250|10760|1|1|Easter Egg - Wooly
+prize|251|300|4624|7|1|Marshmallow
+prize|301|350|13388|5|50|Bouncy Boxed Boiled Egg
+prize|301|400|616|1|46|Cuddly Bunny
+prize|301|400|618|1|4|Psychotic Bunny
+prize|401|500|1548|1|1|Easter Bonnet
+prize|401|500|8044|1|1|Bowler Bunny Hat
+prize|501|600|502|1|1|Pastel Suit
+prize|501|600|500|1|1|Pastel Pants
+prize|501|600|498|1|1|Hippie Sandals
+prize|501|600|508|1|1|Wicker Basket
+prize|601|700|504|1|1|Bunny Mask
+prize|601|700|506|1|1|Bunny Ears
+prize|601|700|524|1|1|Bunny Tail
+prize|701|800|8038|1|1|Pet Egg
+prize|801|900|2558|1|1|Egg-Hunting Basket
+prize|901|1000|1550|1|1|Bubble Wings
+prize|1001|1200|13374|1|1|Rabbit in a Tutu
+prize|1001|1200|1552|1|1|Pet Bunny
+prize|1201|1400|9452|1|1|Loafers
+prize|1401|1600|9468|1|1|Cooking Recipe - Chocolate Easter Bilby
+prize|1601|1700|11784|1|1|Hip Hops
+prize|1701|1800|9454|1|1|Carrot on a Stick
+prize|1801|2000|9442|1|1|Chick Tricycle
+prize|2001|2001|9446|1|1|Egg Champion Cape
