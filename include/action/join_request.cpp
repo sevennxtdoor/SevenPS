@@ -17,6 +17,8 @@
 #include "tools/fishing.hpp"
 #include "commands/titles.hpp"
 #include "action/quit_to_exit.hpp"
+#include "tools/auth.hpp"
+#include "tools/system_worlds.hpp"
 
 #include "join_request.hpp"
 
@@ -118,6 +120,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
                 world.name, jammer_tags(world), world.visitors, peers().size()
             )
         );
+        if (world.owner && !is_system_world(world.name)) on::ConsoleMessage(event.peer, world_locked_text(world.name, world.owner)); // @note like the real game, on entering
         ++world.visitors;
         send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);

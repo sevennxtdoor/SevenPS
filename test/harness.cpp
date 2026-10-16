@@ -1817,6 +1817,14 @@ int main()
             std::erase_if(owner->slots, [](const ::slot &s) { return s.id == 4; });
             std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 242; });
         }
+
+        std::puts("\n[BUG9] punching or building in someone else's world says who locked it");
+        {
+            owner->growid = "MTOWNER"; const auto role = visitor->role; visitor->role = 0; w.is_public = false;
+            outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = ::pos{ 10, 20 } });
+            CHECK(said("World Locked") && said("MTOWNER"), "the visitor is told the world is locked by MTOWNER");
+            visitor->role = role;
+        }
     }
 
     /* ================= Every item: place, wrench, punch until it breaks ================= */

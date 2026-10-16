@@ -96,6 +96,43 @@ std::optional<std::string> account_name(const std::string &growid)
     return std::string(buffer, std::min<u_long>(length, sizeof(buffer)));
 }
 
+std::string growid_of(int user_id)
+{
+    static std::unordered_map<int, std::string> cache{};
+    if (auto it = cache.find(user_id); it != cache.end()) return it->second;
+
+    std::string name{};
+    peers("", PEER_ALL, [&name, user_id](ENetPeer &p)
+    {
+        if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr && pPeer->user_id == user_id && !pPeer->growid.empty())
+            name = pPeer->growid;
+    });
+    if (name.empty())
+    {
+        ::hStmt hStmt{ "SELECT growid FROM peer WHERE uid = ? LIMIT 1" };
+        MYSQL_BIND param = make_bind_in(user_id);
+        hStmt.bind_param(&param);
+        char buffer[32]{};
+        u_long length{};
+        MYSQL_BIND result{};
+        result.buffer_type = MYSQL_TYPE_STRING;
+        result.buffer = buffer;
+        result.buffer_length = sizeof(buffer);
+        result.length = &length;
+        mysql_stmt_bind_result(hStmt.pStmt, &result);
+        hStmt.execute();
+        mysql_stmt_store_result(hStmt.pStmt);
+        if (mysql_stmt_fetch(hStmt.pStmt) != 0) return "(unknown)";
+        name.assign(buffer, std::min<u_long>(length, sizeof(buffer)));
+    }
+    return cache[user_id] = name;
+}
+
+std::string world_locked_text(const std::string &world_name, int owner)
+{
+    return std::format("`5[```w{}`` `$World Locked`` by {}`5]``", world_name, growid_of(owner));
+}
+
 std::string hash_password(const std::string &password)
 {
     std::vector<u_char> salt(SALT_BYTES);

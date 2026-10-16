@@ -33,6 +33,7 @@
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
 #include "tools/combiner.hpp"
+#include "tools/auth.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -76,7 +77,17 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         if (!(item.cat & CAT_PUBLIC) && gamePacket.id != 32) // @note if block is public skip validating if peer is owner or access. wrenching is checked by each dialog
             if ((world->owner && !world->is_public && !pPeer->role) &&
-                (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end())) return;
+                (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end()))
+            {
+                /* @note was a silent return: punching or building in someone else's world showed nothing. once a second, a held punch sends many */
+                static std::unordered_map<int, std::time_t> last_shown{};
+                if (std::time_t now = std::time(nullptr); last_shown[pPeer->user_id] != now)
+                {
+                    last_shown[pPeer->user_id] = now;
+                    send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, world_locked_text(world->name, world->owner), 0u, 1u });
+                }
+                return;
+            }
         if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC)) && gamePacket.id != 32) // @note Small/Big/Huge/Builder's Lock: owner & access list only
             if (!area_lock_allows(event, *world, gamePacket.punch, gamePacket.id)) return;
 
@@ -204,7 +215,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (is_tile_lock(item.id)) break; // @todo seperate area for 'range_lock'
 
                     if (world->owner != pPeer->user_id)
-                        throw std::runtime_error(std::format("`5[```w{}`` `$World Locked`` by (null)`5]``", world->name)); // @todo add owner name
+                        throw std::runtime_error(world_locked_text(world->name, world->owner));
                     break;
                 }
                 /* @note providers: a ready one is harvested by special_tile_punch() (resources/providers.txt), otherwise it takes damage. the old code here dropped prizes on every punch (ATM: up to 100 gems a punch) and providers could never be broken */

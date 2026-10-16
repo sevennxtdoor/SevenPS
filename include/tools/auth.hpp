@@ -18,3 +18,9 @@ extern std::string authenticate(const std::string &growid, const std::string &pa
 
 /* @return the GrowID as stored (its real upper/lower case), empty if there is no such account */
 extern std::optional<std::string> account_name(const std::string &growid);
+
+/* @return the GrowID of a user id (online players first, then the database, remembered after), "(unknown)" if none */
+extern std::string growid_of(int user_id);
+
+/* @return "[WORLD World Locked by Mike]", what the game shows on entering, punching or building in someone else's world */
+extern std::string world_locked_text(const std::string &world_name, int owner);
