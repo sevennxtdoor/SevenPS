@@ -292,6 +292,13 @@ bool in_world(const ::world &world, int x, int y)
     return x >= 0 && y >= 0 && x < 100 && cord(x, y) < static_cast<int>(world.blocks.size());
 }
 
+bool in_world(const ::world &world, const ::pos &tile)
+{
+    /* @note checked as floats first: a made-up NaN or 1e30 from a packet can't be turned into an int safely */
+    if (!(tile.x >= 0.0f && tile.y >= 0.0f && tile.x < 100.0f && tile.y < 10000.0f)) return false;
+    return in_world(world, static_cast<int>(tile.x), static_cast<int>(tile.y));
+}
+
 int tile_owner(::world &world, const ::pos &tile)
 {
     if (world.owner != 0) return world.owner;

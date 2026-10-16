@@ -127,10 +127,19 @@ void https::listener()
         /* https://learn.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-accept */
         SOCKET fd = accept(socket, reinterpret_cast<sockaddr*>(&addr), &addrlen);
         if (fd == INVALID_SOCKET) continue;
+
+        /* @note one request at a time: a client that connects and sends nothing used to block every login forever */
+#ifdef _WIN32
+        const DWORD timeout = 5000; // @note ms
+#else
+        const timeval timeout{ .tv_sec = 5, .tv_usec = 0 };
+#endif
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
         
         /* https://docs.openssl.org/3.0/man3/SSL_new/#return-values */
         SSL *ssl = SSL_new(ctx);
-        if (!ssl || !SSL_up_ref(ssl)) continue;
+        if (!ssl) { cross_close(fd); continue; } // @note SSL_up_ref() here added a second reference that was never freed (leaked every request)
         /* https://docs.openssl.org/3.0/man3/SSL_set_fd/#return-values */
         /* https://docs.openssl.org/3.0/man3/SSL_accept/#return-values */
         else if (SSL_set_fd(ssl, fd) != 1 || SSL_accept(ssl) <= 0) {

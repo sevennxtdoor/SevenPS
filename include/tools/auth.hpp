@@ -13,4 +13,5 @@ extern bool check_password(const std::string &stored, const std::string &passwor
  * only someone with access to the server's files can do this; the file is deleted right after */
 extern void apply_password_reset();
 
-extern std::string authenticate(const std::string &growid, const std::string &password, bool may_register);
+/* `ip`: the player's IP, for the per-IP limits in tools/guard.hpp */
+extern std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip);

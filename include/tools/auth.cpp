@@ -5,6 +5,7 @@
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
+#include "guard.hpp"
 #include "auth.hpp"
 
 namespace
@@ -119,8 +120,9 @@ void apply_password_reset()
     std::printf("[login] password of %s was reset\n", growid.c_str());
 }
 
-std::string authenticate(const std::string &growid, const std::string &password, bool may_register)
+std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip)
 {
+    if (const std::string why = guard_login_blocked(ip); !why.empty()) return why; // @note before hashing: a bot can't burn our CPU either
     if (!valid_growid(growid)) return "GrowIDs are 3-18 letters or numbers.";
     if (password.empty() || password.size() > 64) return "Wrong password.";
 
@@ -133,11 +135,14 @@ std::string authenticate(const std::string &growid, const std::string &password,
     {
         if (!may_register) return "That account doesn't exist.";
         if (password.size() < 4) return "Pick a password with at least 4 characters.";
+        if (!guard_may_register(ip)) return "Too many new accounts from your connection today. Try again tomorrow.";
+        guard_registered(ip);
         return {}; // @note peer::load() creates it with hash_password()
     }
     if (!check_password(*stored, password))
     {
         if (++f.count >= MAX_FAILS) { f.count = 0; f.locked_until = now + LOCK_SECONDS; } // @note slows down password guessing
+        guard_login_failed(ip); // @note ...and a bot trying many accounts from one IP
         return "Wrong password.";
     }
     f = {};

@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "tools/auth.hpp"
+#include "tools/guard.hpp"
 #include "https/server_data.hpp"
 #include "proton/Variant.hpp"
 
@@ -36,7 +37,7 @@ void action::protocol(ENetEvent& event, const std::string& header)
         return; // @note stop processing invalid protocol data
     }
     /* @note the password was never checked: any password opened any account */
-    if (const std::string why = authenticate(pPeer->growid, pPeer->password, true); !why.empty())
+    if (const std::string why = authenticate(pPeer->growid, pPeer->password, true, peer_ip(*event.peer)); !why.empty())
     {
         std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
         send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
@@ -46,6 +47,7 @@ void action::protocol(ENetEvent& event, const std::string& header)
     }
     const std::string password = pPeer->password;
     pPeer->load(pPeer->growid, pPeer->password); // @todo i want remove this tbh. since we only are fetching user_id which seems a waste.
+    pPeer->loaded = false; // @note this first connection only hands over to the game connection: it must never save (stale data over the real session)
 
     /* @note the client keeps these and sends them back as tankIDName/tankIDPass on the next connection (GrowServer) */
     send_varlist(event.peer, { "SetHasGrowID", 1, pPeer->growid.c_str(), password.c_str() });

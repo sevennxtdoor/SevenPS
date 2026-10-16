@@ -24,6 +24,9 @@
 #include "action/protocol.hpp"
 #include "action/tankIDName.hpp"
 #include "onVariant/CountryState.hpp"
+#include "eventType/receive.hpp"
+#include "gamePacket/movement.hpp"
+#include "tools/guard.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -795,25 +798,25 @@ int main()
 
         std::puts("\n[A2] authenticate");
         { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTAUTH','MTAUTH2')" }; del.execute(); }
-        CHECK(authenticate("MTAUTH", "secret1", false) == "That account doesn't exist.", "unknown account on step 2");
-        CHECK(!authenticate("a!", "secret1", true).empty(), "bad GrowID refused");
-        CHECK(!authenticate("MTAUTH", "abc", true).empty(), "new accounts need 4+ characters");
-        CHECK(authenticate("MTAUTH", "secret1", true).empty(), "new account allowed");
+        CHECK(authenticate("MTAUTH", "secret1", false, "127.0.0.1") == "That account doesn't exist.", "unknown account on step 2");
+        CHECK(!authenticate("a!", "secret1", true, "127.0.0.1").empty(), "bad GrowID refused");
+        CHECK(!authenticate("MTAUTH", "abc", true, "127.0.0.1").empty(), "new accounts need 4+ characters");
+        CHECK(authenticate("MTAUTH", "secret1", true, "127.0.0.1").empty(), "new account allowed");
         { ::peer *np = new ::peer(); np->growid = "MTAUTH"; np->load("MTAUTH", "secret1"); } // @note never deleted (~peer writes)
         auto stored = [](const std::string &growid) {
             ::hStmt q{ "SELECT password FROM peer WHERE growid = ?" }; MYSQL_BIND pr = make_bind_in(growid); q.bind_param(&pr);
             char b[160]{}; u_long len{}; MYSQL_BIND r{}; r.buffer_type = MYSQL_TYPE_STRING; r.buffer = b; r.buffer_length = sizeof(b); r.length = &len;
             mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt); return std::string(b, len); };
         CHECK(stored("MTAUTH").starts_with("pbkdf2$"), "new account saved with a hash");
-        CHECK(authenticate("MTAUTH", "secret1", false).empty(), "right password logs in");
-        CHECK(authenticate("MTAUTH", "Secret1", false) == "Wrong password.", "wrong password refused (was accepted before!)");
-        for (int k = 0; k < 4; ++k) authenticate("MTAUTH", "guess" + std::to_string(k), false);
-        CHECK(authenticate("MTAUTH", "secret1", false).starts_with("Too many"), "5 wrong tries lock it, even for the right password");
+        CHECK(authenticate("MTAUTH", "secret1", false, "127.0.0.1").empty(), "right password logs in");
+        CHECK(authenticate("MTAUTH", "Secret1", false, "127.0.0.1") == "Wrong password.", "wrong password refused (was accepted before!)");
+        for (int k = 0; k < 4; ++k) authenticate("MTAUTH", "guess" + std::to_string(k), false, "127.0.0.1");
+        CHECK(authenticate("MTAUTH", "secret1", false, "127.0.0.1").starts_with("Too many"), "5 wrong tries lock it, even for the right password");
 
         { ::peer *np = new ::peer(); np->growid = "MTAUTH2"; np->load("MTAUTH2", "x"); }
         { ::hStmt up{ "UPDATE peer SET password = 'plainpw' WHERE growid = 'MTAUTH2'" }; up.execute(); }
-        CHECK(authenticate("MTAUTH2", "plainpw", false).empty() && stored("MTAUTH2").starts_with("pbkdf2$"), "old plain text works once and is upgraded");
-        CHECK(authenticate("MTAUTH2", "plainpw", false).empty(), "and keeps working after the upgrade");
+        CHECK(authenticate("MTAUTH2", "plainpw", false, "127.0.0.1").empty() && stored("MTAUTH2").starts_with("pbkdf2$"), "old plain text works once and is upgraded");
+        CHECK(authenticate("MTAUTH2", "plainpw", false, "127.0.0.1").empty(), "and keeps working after the upgrade");
 
         std::puts("\n[A3] the real login packets");
         static ENetPeer lp{}; ::peer *login = new ::peer();
@@ -840,8 +843,130 @@ int main()
         { std::ofstream r("reset_password.txt"); r << "MTAUTH2|newpass1\r\n"; }
         apply_password_reset();
         CHECK(!std::filesystem::exists("reset_password.txt"), "file deleted right away");
-        CHECK(authenticate("MTAUTH2", "newpass1", false).empty() && authenticate("MTAUTH2", "plainpw", false) == "Wrong password.", "new password works, old one doesn't");
+        CHECK(authenticate("MTAUTH2", "newpass1", false, "127.0.0.1").empty() && authenticate("MTAUTH2", "plainpw", false, "127.0.0.1") == "Wrong password.", "new password works, old one doesn't");
         { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTAUTH','MTAUTH2')" }; del.execute(); }
+    }
+
+    /* ================= Security: bots, floods, made-up packets ================= */
+    std::puts("\n[S1] made-up packets don't crash the server");
+    {
+        ::peer *owner_p = static_cast<::peer*>(ev.peer->data);
+        owner_p->recent_worlds.back() = "MTTEST";
+        auto raw = [&](ENetEvent &e, std::vector<u_char> bytes) {
+            ENetEvent r = e; r.packet = enet_packet_create(bytes.data(), bytes.size(), 0); outbox.clear(); receive(r); };
+        raw(ev, {}); raw(ev, { 2 }); raw(ev, { 3, 0, 0 }); raw(ev, { 2, 0, 0, 0 }); raw(ev, { 4, 1 });
+        CHECK(true, "empty / 1-4 byte packets: still running");
+
+        auto punch_at = [&](float x, float y) { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner_p->pos, .punch = ::pos{ x, y } }); };
+        punch_at(1e30f, 5); punch_at(std::nanf(""), 5); punch_at(150, 5); punch_at(-1, 5); punch_at(5, 99999); punch_at(99.5f, -0.5f);
+        CHECK(outbox.empty(), "punch/place outside the world (NaN, 1e30, 150, -1, 99999): ignored");
+        outbox.clear(); tile_activate(ev, ::gamePacket{ .type = 7, .punch = ::pos{ -5, 3 } });
+        CHECK(outbox.empty(), "tile_activate outside the world: ignored");
+
+        owner_p->pos = ::pos{ 320.0f, 320.0f };
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ std::nanf(""), 1e30f } });
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ -500.0f, 64.0f } });
+        CHECK(owner_p->pos.x == 320.0f && owner_p->pos.y == 320.0f, "made-up position (NaN / outside): not taken");
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 64.0f, 96.0f } });
+        CHECK(owner_p->pos.x == 64.0f, "a real position still moves you");
+    }
+
+    std::puts("\n[S2] guard: floods, IP blocks, account spam, hidden passwords");
+    {
+        static ENetPeer fp{}; fp.address.host.v4[0] = 10; fp.address.host.v4[3] = 5;
+        CHECK(peer_ip(fp) == "10.0.0.5", "peer_ip");
+        CHECK(guard_connect(fp), "new connection allowed");
+        bool ok = true; for (int k = 0; k < 40; ++k) ok = ok && guard_packet(fp, true);
+        CHECK(ok, "40 actions in a second: fine");
+        CHECK(!guard_packet(fp, true), "41st in the same second: flooding, kicked");
+        CHECK(!guard_connect(fp), "...and that IP can't connect for 5 minutes");
+
+        static ENetPeer cp{}; cp.address.host.v4[0] = 10; cp.address.host.v4[3] = 6;
+        bool all = true; for (int k = 0; k < 20; ++k) all = all && guard_connect(cp);
+        CHECK(all && !guard_connect(cp), "21 new connections in a minute from one IP: blocked");
+        static ENetPeer lo{}; lo.address.host.v4[0] = 127; lo.address.host.v4[3] = 1;
+        all = true; for (int k = 0; k < 50; ++k) all = all && guard_connect(lo);
+        CHECK(all, "this computer (127.0.0.1) is never blocked");
+
+        for (int k = 0; k < 9; ++k) guard_login_failed("10.0.0.9");
+        CHECK(guard_login_blocked("10.0.0.9").empty(), "9 wrong passwords from one IP: still allowed");
+        guard_login_failed("10.0.0.9");
+        CHECK(!guard_login_blocked("10.0.0.9").empty(), "10th: that IP can't log in for 15 minutes");
+        CHECK(authenticate("Mike", "anything", false, "10.0.0.9").starts_with("Too many wrong passwords from your connection"), "authenticate refuses it before even hashing");
+        for (int k = 0; k < 20; ++k) guard_login_failed("127.0.0.1");
+        CHECK(guard_login_blocked("127.0.0.1").empty(), "this computer never gets an IP login block");
+
+        int made = 0; for (int k = 0; k < 4; ++k) if (authenticate(std::format("MTBOT{}", k), "botpass", true, "10.0.0.7").empty()) ++made;
+        CHECK(made == 3, "a 4th new account from one IP on the same day: refused");
+
+        const std::string shown = guard_redact("protocol|225\nltoken|Z3Jvd0lkPU1pa2UmcGFzc3dvcmQ9eA==\ntankIDPass|hunter2\ncountry|id");
+        CHECK(shown.find("hunter2") == std::string::npos && shown.find("Z3Jvd0lk") == std::string::npos && shown.find("country|id") != std::string::npos,
+            "console: passwords and ltoken hidden, the rest still shown");
+    }
+
+    std::puts("\n[S3] login connections: no saving over accounts, no double sessions");
+    {
+        enet_initialize();
+        ENetHost *real = enet_host_create(ENET_ADDRESS_TYPE_IPV4, nullptr, 4, 2, 0, 0);
+        ENetHost *saved_host = host; host = real;
+        for (std::size_t k = 0; k < real->peerCount; ++k) real->peers[k].address.host.v4[0] = 127;
+        auto gems_in_db = [](const std::string &growid) {
+            ::hStmt q{ "SELECT gems FROM peer WHERE growid = ?" }; MYSQL_BIND pr = make_bind_in(growid); q.bind_param(&pr);
+            int g{}; MYSQL_BIND r{}; r.buffer_type = MYSQL_TYPE_LONG; r.buffer = &g;
+            mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt); return g; };
+        { ::hStmt del{ "DELETE FROM peer WHERE growid = 'MTSAFE'" }; del.execute(); }
+        { ::peer *np = new ::peer(); np->growid = "MTSAFE"; np->load("MTSAFE", "safepass1"); np->loaded = false; }
+        { ::hStmt up{ "UPDATE peer SET gems = 5000 WHERE growid = 'MTSAFE'" }; up.execute(); }
+        auto b64 = [](const std::string &in) { static const char *t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; std::string out; int val = 0, bits = -6;
+            for (u_char c : in) { val = (val << 8) + c; bits += 8; while (bits >= 0) { out.push_back(t[(val >> bits) & 0x3F]); bits -= 6; } }
+            if (bits > -6) out.push_back(t[((val << 8) >> (bits + 8)) & 0x3F]); while (out.size() % 4) out.push_back('='); return out; };
+
+        ENetPeer &a = real->peers[0]; a.state = ENET_PEER_STATE_CONNECTED; a.data = new ::peer();
+        ENetEvent ea{}; ea.peer = &a;
+        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + b64("growId=MTSAFE&password=wrong1&"));
+        CHECK(said("logon_fail"), "wrong password refused");
+        delete static_cast<::peer*>(a.data); a.data = nullptr;
+        CHECK(gems_in_db("MTSAFE") == 5000, "closing a refused login saves nothing (it wiped Mike's account!)");
+
+        a.data = new ::peer();
+        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + b64("growId=MTSAFE&password=safepass1&"));
+        CHECK(said("OnSendToServer"), "right password: handed to the game connection");
+        static_cast<::peer*>(a.data)->gems = 1;
+        delete static_cast<::peer*>(a.data); a.data = nullptr;
+        CHECK(gems_in_db("MTSAFE") == 5000, "the first (hand-over) connection never saves");
+
+        a.data = new ::peer();
+        std::string pad; for (int k = 0; k < 40; ++k) pad += "k" + std::to_string(k) + "|v|";
+        outbox.clear(); action::tankIDName(ea, "tankIDName|MTSAFE|tankIDPass|safepass1|protocol|225|country|id|" + pad);
+        ::peer *first = static_cast<::peer*>(a.data);
+        CHECK(first->loaded && first->gems == 5000, "logged in, 5000 gems loaded");
+        first->gems = 7777; // @note earned in game, not saved yet
+
+        ENetPeer &b = real->peers[1]; b.state = ENET_PEER_STATE_CONNECTED; b.data = new ::peer();
+        ENetEvent eb{}; eb.peer = &b;
+        outbox.clear(); action::tankIDName(eb, "tankIDName|mtsafe|tankIDPass|safepass1|protocol|225|country|id|" + pad);
+        CHECK(a.data == nullptr && a.state != ENET_PEER_STATE_CONNECTED, "logging in again closes the old session (no duplicate inventories)");
+        CHECK(said("logged in from another place"), "old session is told why");
+        CHECK(static_cast<::peer*>(b.data)->gems == 7777, "new session gets what the old one had (saved first, then loaded)");
+
+        static_cast<::peer*>(b.data)->loaded = false; // @note never deleted (~peer writes)
+        b.data = nullptr; b.state = ENET_PEER_STATE_DISCONNECTED;
+        host = saved_host; enet_host_destroy(real);
+        { ::hStmt del{ "DELETE FROM peer WHERE growid = 'MTSAFE' OR growid LIKE 'MTBOT%'" }; del.execute(); }
+    }
+
+    std::puts("\n[S4] actions before logging in are ignored");
+    {
+        static ENetPeer up{}; up.state = ENET_PEER_STATE_CONNECTED; up.address.host.v4[0] = 127; up.data = new ::peer();
+        ENetEvent ue{}; ue.peer = &up;
+        auto text = [&](const std::string &t) { std::vector<u_char> v{ 2, 0, 0, 0 }; v.insert(v.end(), t.begin(), t.end()); v.push_back(0);
+            ENetEvent r = ue; r.packet = enet_packet_create(v.data(), v.size(), 0); outbox.clear(); receive(r); };
+        text("action|input\n|text|/sb hi"); CHECK(outbox.empty(), "chat/commands before login: ignored");
+        text("action|dialog_return\ndialog_name|mt_sponsor\nbuttonClicked|buy_3132"); CHECK(outbox.empty(), "dialogs before login: ignored");
+        text("action|join_request\nname|START"); CHECK(outbox.empty(), "joining a world before login: ignored");
+        std::vector<u_char> gp(4 + sizeof(::gamePacket), 0); gp[0] = 4; gp[4] = 3;
+        ENetEvent r = ue; r.packet = enet_packet_create(gp.data(), gp.size(), 0); outbox.clear(); receive(r);
+        CHECK(outbox.empty(), "punching/placing before login: ignored");
     }
 
     /* ================= News & rules ================= */

@@ -45,6 +45,9 @@ int main()
         host = enet_host_create (ENET_ADDRESS_TYPE_IPV4, &address, 50ull/* max peer count */, 2ull, 0u, 0u);
         std::thread(&https::listener).detach();
     } // @note delete address
+    host->duplicatePeers = 4;             // @note at most 4 connections at once from one IP (ENet's default allows all 50)
+    host->maximumPacketSize = 64 * 1024;  // @note was 32 MB: one fake packet could make us allocate that much
+    host->maximumWaitingData = 1024 * 1024;
     host->usingNewPacketForServer = true;
     host->checksum = enet_crc32;
     enet_host_compress_with_range_coder(host);

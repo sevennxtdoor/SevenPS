@@ -45,6 +45,7 @@ extern void area_lock_return(ENetEvent &event, const ::hPipe &hPipe); // @note d
 
 /* @note x, y inside the world's blocks. dialogs send tilex/tiley back and they can be faked */
 extern bool in_world(const ::world &world, int x, int y);
+extern bool in_world(const ::world &world, const ::pos &tile); // @note for tiles straight from a packet (floats)
 
 /* @note same rules as building: system worlds staff only, World Lock owner/access (or public), area lock owner/access, else anyone */
 extern bool can_build(const ::peer &p, ::world &world, const ::pos &tile);

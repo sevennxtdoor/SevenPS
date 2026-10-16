@@ -203,7 +203,7 @@ void vending_return(ENetEvent &event, const ::hPipe &hPipe)
     if (pPeer->netid == 0 || world == worlds.end()) return;
 
     const ::pos pos{ atoi(hPipe["tilex"].c_str()), atoi(hPipe["tiley"].c_str()) };
-    if (pos.x < 0 || pos.y < 0 || pos.x >= 100 || pos.y >= 60) return;
+    if (!in_world(*world, pos)) return;
     if (id_to_item(world->blocks[cord(pos.x_int(), pos.y_int())].fg).type != type::VENDING_MACHINE) return;
 
     ::vending &v = get_or_add(*world, pos);

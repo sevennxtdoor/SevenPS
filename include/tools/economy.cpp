@@ -28,7 +28,7 @@ static long long gems_in_game()
 {
     /* @note offline players from the database + online players from memory (saved only on logout) */
     for (ENetPeer *p : peers())
-        if (::peer *pp = static_cast<::peer*>(p->data); pp && !pp->growid.empty()) pp->mysql_update<signed>("gems", pp->gems);
+        if (::peer *pp = static_cast<::peer*>(p->data); pp && pp->loaded) pp->mysql_update<signed>("gems", pp->gems);
     ::hStmt hStmt{ "SELECT SUM(gems) FROM peer" };
     long long sum{};
     MYSQL_BIND result = make_bind_out(sum);

@@ -393,7 +393,7 @@ void top(ENetEvent &event, const std::string_view text)
     peers("", PEER_ALL, [](ENetPeer &p)
     {
         ::peer *pp = static_cast<::peer*>(p.data);
-        if (pp == nullptr || pp->growid.empty()) return;
+        if (pp == nullptr || !pp->loaded) return; // @note only real logged in players (never one still logging in)
         pp->mysql_update<signed>("level", pp->level.front());
         pp->mysql_update<signed>("xp", pp->level.back());
         pp->mysql_update<signed>("gems", pp->gems);

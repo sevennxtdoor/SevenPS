@@ -1,5 +1,7 @@
 #include "pch.hpp"
 #include "tools/auth.hpp"
+#include "tools/guard.hpp"
+#include "action/quit.hpp"
 #include "automate/holiday.hpp"
 
 #include "tankIDName.hpp"
@@ -26,7 +28,7 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
     /* @note this second connection used to trust tankIDName: a modded client could log in as anyone (even the owner) */
-    if (const std::string why = authenticate(pPeer->growid, pPeer->password, false); !why.empty())
+    if (const std::string why = authenticate(pPeer->growid, pPeer->password, false, peer_ip(*event.peer)); !why.empty())
     {
         std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
         send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
@@ -34,6 +36,21 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
         pPeer->growid.clear();
         return;
     }
+    /* @note same account already online: two copies of one inventory could trade/drop the same items (duplication).
+     * the old session is saved and closed first, then this one loads what it saved */
+    peers("", PEER_ALL, [&event, pPeer](ENetPeer &p)
+    {
+        const ::peer *pOld = static_cast<::peer*>(p.data);
+        if (&p == event.peer || pOld == nullptr || !pOld->loaded) return;
+        if (std::ranges::equal(pOld->growid, pPeer->growid, [](char a, char b) { return std::tolower(static_cast<u_char>(a)) == std::tolower(static_cast<u_char>(b)); }))
+        {
+            std::printf("[login] %s logged in again, closing the old session\n", pPeer->growid.c_str());
+            send_action(p, "log", "msg|`4Your account was logged in from another place.``");
+            enet_host_flush(host);
+            ENetEvent old{ .peer = &p };
+            action::quit(old, ""); // @note leaves the world, deletes (= saves) the player, resets the connection
+        }
+    });
     pPeer->load(pPeer->growid, pPeer->password); // @note the ACTUAL loading. the one in protocol.cpp must be removed for performance...
     if (pPeer->banned)
     {

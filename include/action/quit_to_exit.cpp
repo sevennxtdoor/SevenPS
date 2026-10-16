@@ -8,6 +8,7 @@
 void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip_selection = false) 
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    if (pPeer == nullptr) return; // @note connection that never got a player (refused by tools/guard)
     if (pPeer->trade_netid != 0) end_trade(*event.peer); // @note leaving the world cancels a trade
     abandon_surgery(event); // @note ...and fails a surgery
 

@@ -38,6 +38,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
     {
         auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
         if (world == worlds.end()) return;
+        if (!in_world(*world, gamePacket.punch)) return; // @note a tile outside the world read/wrote memory past the blocks
 
         ::block &block = world->blocks[cord(gamePacket.punch.x, gamePacket.punch.y)];
 
