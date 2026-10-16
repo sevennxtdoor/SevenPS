@@ -345,6 +345,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 on::NameChanged(event);
                 
                 world->owner = 0; // @todo have a seperate thing for 'range_lock'
+                if (auto mine = std::ranges::find(pPeer->my_worlds, world->name); mine != pPeer->my_worlds.end()) mine->clear(); // @note unlocked: not in "My Worlds" anymore
             }
 
             if (own_drops) { } // @note special_break() dropped its own prizes

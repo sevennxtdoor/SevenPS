@@ -1830,6 +1830,16 @@ int main()
             owner->role = owner_role;
             visitor->role = role;
         }
+
+        std::puts("\n[BUG10] \"My Worlds\" comes back after logging in again (it was never saved)");
+        {
+            owner->my_worlds.fill("");
+            owner->load_my_worlds();
+            CHECK(std::ranges::find(owner->my_worlds, std::string{ "MTTEST" }) != owner->my_worlds.end(), "the owner's locked world is in My Worlds");
+            visitor->my_worlds.fill("");
+            visitor->load_my_worlds();
+            CHECK(std::ranges::find(visitor->my_worlds, std::string{ "MTTEST" }) == visitor->my_worlds.end(), "not in someone else's");
+        }
     }
 
     /* ================= Every item: place, wrench, punch until it breaks ================= */

@@ -213,7 +213,43 @@ void peer::load(const std::string &growid, const std::string &password)
         this->mysql_update<std::vector<u_char>>("inventory", this->serialize_inventory().data());
     }
     this->mysql_select_all();
+    this->load_my_worlds();
     this->loaded = true;
+}
+
+void peer::load_my_worlds()
+{
+    /* @note my_worlds was never saved, so every login emptied "My Worlds" (world menu & profile). it is rebuilt from who owns
+     * each world instead: the database, corrected by worlds in memory (locked or unlocked since their last save) */
+    std::vector<std::string> names{};
+    {
+        ::hStmt hStmt{ "SELECT name FROM world WHERE owner = ? LIMIT 200" };
+        MYSQL_BIND param = make_bind_in(this->user_id);
+        hStmt.bind_param(&param);
+        char buffer[32]{};
+        u_long length{};
+        MYSQL_BIND result{};
+        result.buffer_type = MYSQL_TYPE_STRING;
+        result.buffer = buffer;
+        result.buffer_length = sizeof(buffer);
+        result.length = &length;
+        mysql_stmt_bind_result(hStmt.pStmt, &result);
+        hStmt.execute();
+        mysql_stmt_store_result(hStmt.pStmt);
+        while (mysql_stmt_fetch(hStmt.pStmt) == 0)
+            names.emplace_back(buffer, std::min<u_long>(length, sizeof(buffer)));
+    }
+    std::erase_if(names, [this](const std::string &name) {
+        auto world = std::ranges::find(worlds, name, &::world::name);
+        return world != worlds.end() && world->owner != this->user_id;
+    });
+    for (const ::world &world : worlds)
+        if (world.owner == this->user_id && !world.name.empty() && std::ranges::find(names, world.name) == names.end())
+            names.emplace_back(world.name);
+
+    this->my_worlds.fill("");
+    const std::size_t count = std::min(names.size(), this->my_worlds.size());
+    std::ranges::copy(names.begin(), names.begin() + count, this->my_worlds.end() - count); // @note newest at the back, like locking adds them
 }
 
 peer::~peer()

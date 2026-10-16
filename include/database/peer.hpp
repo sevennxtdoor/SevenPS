@@ -100,6 +100,7 @@ public:
     template<typename T>
     T    mysql_select(const std::string &column, const std::string &arg = "");
     void mysql_select_all();
+    void load_my_worlds(); // @note "My Worlds": every world this peer owns
 
     std::string name_as(std::string_view color) const; // @note "`w" -> "`wName``", but role tag (@) overrides color
     int owned_titles() const; // @note staff own every title (super supporter perk)
