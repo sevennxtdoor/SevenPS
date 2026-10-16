@@ -1,8 +1,8 @@
 # MikeTopia ranks (like CreativePS): bought with gems using /rank. Restart the server after editing.
-# level|name|color|price in gems|% extra gems|% extra XP|extra backpack slots|perks (sbfree, titles, nick - comma separated)
+# level|name|color|price in gems|% extra gems|% extra XP|extra backpack slots|perks (sbfree, titles, nick, spinN = N Daily Spins a day, gachaN = N% off the Lucky Box - comma separated)
 # colors: `2 green, `! bright cyan, `5 pink, `3 cyan, `4 red, `9 gold, `6 orange, `$ yellow
 1|VIP|`2|50000|10|10|10|sbfree
-2|Super VIP|`!|150000|20|20|20|sbfree,titles
-3|Legend|`5|400000|35|35|30|sbfree,titles
-4|Mythic|`3|1000000|50|50|40|sbfree,titles,nick
-5|GOD|`4|3000000|100|100|60|sbfree,titles,nick
+2|Super VIP|`!|150000|20|20|20|sbfree,titles,spin2
+3|Legend|`5|400000|35|35|30|sbfree,titles,spin2,gacha10
+4|Mythic|`3|1000000|50|50|40|sbfree,titles,nick,spin3,gacha15
+5|GOD|`4|3000000|100|100|60|sbfree,titles,nick,spin3,gacha25

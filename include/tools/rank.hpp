@@ -13,6 +13,8 @@ struct rank
     int xp_bonus{};       // @note % extra XP
     int slots{};          // @note extra backpack slots (total for this rank, not on top of the previous one)
     bool sb_free{}, titles{}, nick{};
+    int spins{ 1 };         // @note Daily Spins a day (perk spinN)
+    int gacha_discount{};   // @note % off the Lucky Box (perk gachaN)
 };
 
 extern void load_ranks();

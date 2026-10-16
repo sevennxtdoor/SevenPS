@@ -21,7 +21,8 @@ extern void announce_join(ENetEvent &event); // @note welcome + "X joined" + cur
 extern std::string find_blocked(const ::peer &p, short id);
 
 extern void event_command(ENetEvent &event, const std::string_view text); // @note /event, /event start {type} {minutes}, /event stop
-extern void top(ENetEvent &event, const std::string_view text);           // @note /top {level|gems|surgeon|rich}
+extern void top(ENetEvent &event, const std::string_view text);           // @note /top (menu), /top {level|gems|rich|surgeon|played}
+extern void top_return(ENetEvent &event, const ::hPipe &hPipe);           // @note dialog_return "mt_top"
 extern void start_command(ENetEvent &event, const std::string_view text); // @note /start
 extern void msg_command(ENetEvent &event, const std::string_view text);   // @note /msg {growid} {message}
 extern void online_command(ENetEvent &event, const std::string_view text); // @note /online

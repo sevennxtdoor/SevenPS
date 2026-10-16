@@ -3,7 +3,8 @@
 /* @note in-game rewards like the hosted GTPS servers have:
  * - redeem codes: the owner makes them in the /code window (no typing of options), players use /redeem CODE or the store's Redeem Code button.
  *   each account can use a code once; codes have a use limit and an end date. tables `redeem_code` & `redeem_used`
- * - Daily Spin: /spin once a day (resources/daily_spin.txt), rare prizes are announced */
+ * - Daily Spin: /spin once a day, more for higher ranks (resources/daily_spin.txt), rare prizes are announced
+ * - Lucky Box: a gacha bought with gems (resources/lucky_box.txt), a gem sink; ranks get a discount */
 
 extern void redeem_command(ENetEvent &event, const std::string_view text); // @note /redeem CODE (no code: opens the dialog)
 extern void code_command(ENetEvent &event, const std::string_view text);   // @note /code (owner): a window to make & delete codes
@@ -12,3 +13,6 @@ extern void redeem_dialog(ENetEvent &event);                               // @n
 extern void redeem_return(ENetEvent &event, const ::hPipe &hPipe);         // @note dialog_return "mt_redeem"
 
 extern void spin_command(ENetEvent &event, const std::string_view text);   // @note /spin
+
+extern void lucky_box_command(ENetEvent &event, const std::string_view text); // @note /luckybox, /gacha: buy boxes with gems (resources/lucky_box.txt)
+extern void lucky_box_return(ENetEvent &event, const ::hPipe &hPipe);         // @note dialog_return "mt_lucky_box"

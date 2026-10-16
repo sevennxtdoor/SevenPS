@@ -376,21 +376,55 @@ void event_command(ENetEvent &event, const std::string_view text)
     if (pPeer->role >= DEVELOPER) on::ConsoleMessage(event.peer, "`6Staff:`` /event start {gems|xp|lucky|surgery} {minutes}, /event stop");
 }
 
+namespace
+{
+    /* @note the leaderboards: button name, column, title, how a value reads. the columns are fixed here, never from the
+     * player (no SQL injection) */
+    struct board { std::string_view name, column, title, unit; };
+    constexpr std::array<board, 5> boards{ {
+        { "level",   "level",         "Highest Level",           "level " },
+        { "gems",    "gems",          "Richest in Gems",         "" },
+        { "rich",    "wl_bank",       "Biggest World Lock Bank", "" },
+        { "surgeon", "surgery_skill", "Best Surgeons",           "" },
+        { "played",  "playtime",      "Most Played",             "" },
+    } };
+
+    std::string board_buttons()
+    {
+        std::string out{};
+        for (const board &b : boards) out += std::format("add_button|top_{}|`w{}``|noflags|0|0|\n", b.name, b.title);
+        return out;
+    }
+
+    void top_menu(ENetEvent &event)
+    {
+        send_varlist(event.peer, { "OnDialogRequest",
+            "set_default_color|`o\n"
+            "add_label_with_icon|big|`wMikeTopia Leaderboards``|left|1458|\n"
+            "add_textbox|Who's the best on MikeTopia? Pick a list.|left|\n"
+            "add_spacer|small|\n" + board_buttons() +
+            "end_dialog|mt_top|Close||\n" });
+    }
+
+    std::string show(const board &b, signed value)
+    {
+        if (b.name == "played") return std::format("{} h", value / 3600);
+        return std::format("{}{}", b.unit, value);
+    }
+}
+
 void top(ENetEvent &event, const std::string_view text)
 {
     std::vector<std::string> args = readch(std::string{ text }, ' ');
     const std::string what = (args.size() >= 2) ? args[1] : "";
-
-    /* @note column & title. the column names are fixed here, never from the player (no SQL injection) */
-    std::string column{}, title{};
-    if (what == "level")        column = "level",         title = "Highest Level";
-    else if (what == "gems")    column = "gems",          title = "Richest in Gems";
-    else if (what == "surgeon") column = "surgery_skill", title = "Best Surgeons";
-    else if (what == "rich")    column = "wl_bank",       title = "Biggest World Lock Bank";
-    else return on::ConsoleMessage(event.peer, "`oUsage: `w/top level``, `w/top gems``, `w/top surgeon``, `w/top rich``");
+    auto it = std::ranges::find(boards, std::string_view{ what }, &board::name);
+    if (it == boards.end()) return top_menu(event); // @note plain /top: the menu
+    const board &b = *it;
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
     /* @note online players are only saved on logout, write their current numbers first */
-    peers("", PEER_ALL, [](ENetPeer &p)
+    const long long now = std::time(nullptr);
+    peers("", PEER_ALL, [now](ENetPeer &p)
     {
         ::peer *pp = static_cast<::peer*>(p.data);
         if (pp == nullptr || !pp->loaded) return; // @note only real logged in players (never one still logging in)
@@ -399,9 +433,11 @@ void top(ENetEvent &event, const std::string_view text)
         pp->mysql_update<signed>("gems", pp->gems);
         pp->mysql_update<signed>("surgery_skill", pp->surgery_skill);
         pp->mysql_update<signed>("wl_bank", pp->wl_bank);
+        pp->mysql_update<signed>("playtime", static_cast<signed>(pp->playtime + (now - pp->login_time)));
     });
 
-    ::hStmt hStmt{ std::format("SELECT growid, {} FROM peer WHERE banned = 0 ORDER BY {} DESC LIMIT 10", column, column) };
+    /* @note staff accounts can spawn gems/items, they'd top every list */
+    ::hStmt hStmt{ std::format("SELECT growid, {0} FROM peer WHERE banned = 0 AND role < {1} ORDER BY {0} DESC LIMIT 10", b.column, static_cast<int>(MODERATOR)) };
     char name[32]{};
     u_long length{};
     signed value{};
@@ -419,16 +455,40 @@ void top(ENetEvent &event, const std::string_view text)
     for (int rank = 1; mysql_stmt_fetch(hStmt.pStmt) == 0; ++rank)
     {
         const std::string_view medal = (rank == 1) ? "`9" : (rank == 2) ? "`w" : (rank == 3) ? "`6" : "`o";
-        rows += std::format("add_smalltext|{}#{}`` `w{}`` - `2{}``|left|\n", medal, rank, std::string(name, std::min<u_long>(length, sizeof(name))), value);
+        rows += std::format("add_smalltext|{}#{}`` `w{}`` - `2{}``|left|\n", medal, rank, std::string(name, std::min<u_long>(length, sizeof(name))), show(b, value));
     }
+
+    /* @note where you are */
+    std::string mine{};
+    if (pPeer->role < MODERATOR)
+    {
+        ::hStmt hMine{ std::format("SELECT COUNT(*) + 1 FROM peer WHERE banned = 0 AND role < {1} AND {0} > (SELECT {0} FROM peer WHERE growid = ?)", b.column, static_cast<int>(MODERATOR)) };
+        MYSQL_BIND param = make_bind_in(pPeer->growid);
+        hMine.bind_param(&param);
+        long long place{};
+        MYSQL_BIND out = make_bind_out(place);
+        mysql_stmt_bind_result(hMine.pStmt, &out);
+        hMine.execute();
+        mysql_stmt_store_result(hMine.pStmt);
+        if (mysql_stmt_fetch(hMine.pStmt) == 0) mine = std::format("add_textbox|You are `w#{}`` on this list.|left|\n", place);
+    }
+
     send_varlist(event.peer, { "OnDialogRequest", std::format(
         "set_default_color|`o\n"
         "add_label|big|`wTop 10: {}``|left|\n"
         "add_spacer|small|\n"
         "{}"
         "add_spacer|small|\n"
-        "add_smalltext|Other lists: /top level, /top gems, /top surgeon, /top rich|left|\n"
-        "end_dialog|popup||OK|\n", title, rows.empty() ? "add_textbox|Nobody yet!|left|\n" : rows) });
+        "{}"
+        "add_button|top_menu|Other lists|noflags|0|0|\n"
+        "end_dialog|mt_top|OK||\n", b.title, rows.empty() ? "add_textbox|Nobody yet!|left|\n" : rows, mine) });
+}
+
+void top_return(ENetEvent &event, const ::hPipe &hPipe)
+{
+    const std::string button = hPipe["buttonClicked"];
+    if (button == "top_menu") return top_menu(event);
+    if (button.starts_with("top_")) return top(event, "top " + button.substr(4));
 }
 
 void start_command(ENetEvent &event, const std::string_view text)

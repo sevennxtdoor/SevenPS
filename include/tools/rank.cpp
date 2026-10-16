@@ -35,6 +35,8 @@ void load_ranks()
                 if (perk == "sbfree") r.sb_free = true;
                 if (perk == "titles") r.titles = true;
                 if (perk == "nick")   r.nick = true;
+                if (perk.starts_with("spin"))  r.spins = std::clamp(atoi(perk.c_str() + 4), 1, 10);
+                if (perk.starts_with("gacha")) r.gacha_discount = std::clamp(atoi(perk.c_str() + 5), 0, 90);
             }
         if (r.level > 0 && !r.name.empty()) ranks.push_back(r);
     }
@@ -67,6 +69,8 @@ static std::string perks_text(const ::rank &r)
     if (r.sb_free) text += ", free /sb";
     if (r.titles)  text += ", all titles";
     if (r.nick)    text += ", /nick";
+    if (r.spins > 1) text += std::format(", {} Daily Spins", r.spins);
+    if (r.gacha_discount > 0) text += std::format(", {}% off Lucky Box", r.gacha_discount);
     return text;
 }
 

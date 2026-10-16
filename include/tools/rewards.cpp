@@ -8,6 +8,8 @@
 #include "onVariant/ConsoleMessage.hpp"
 #include "onVariant/SetBux.hpp"
 #include "automate/holiday.hpp"
+#include "tools/rank.hpp"
+#include <map>
 
 #include "rewards.hpp"
 
@@ -171,29 +173,48 @@ namespace
         send_action(*event.peer, "play_sfx", "file|audio/success.wav\ndelayMS|0\n");
     }
 
-    /* ---------- daily spin ---------- */
+    /* ---------- prize tables: resources/daily_spin.txt & resources/lucky_box.txt ---------- */
 
     struct spin_prize { short id; int min, max, weight; bool rare; };
-    std::vector<spin_prize> spin_prizes{};
-    std::filesystem::file_time_type spin_at{};
+    struct prize_table { const char *path; std::vector<spin_prize> prizes{}; int price{}; std::filesystem::file_time_type at{}; };
+    prize_table daily_spin{ "resources/daily_spin.txt" }, lucky_box{ "resources/lucky_box.txt" };
 
-    void load_spin()
+    /* @note read again whenever the file changes */
+    void load(prize_table &table)
     {
         std::error_code ec;
-        const auto at = std::filesystem::last_write_time("resources/daily_spin.txt", ec);
-        if (ec || at == spin_at) return;
-        spin_at = at;
-        spin_prizes.clear();
-        std::ifstream file("resources/daily_spin.txt");
+        const auto at = std::filesystem::last_write_time(table.path, ec);
+        if (ec || at == table.at) return;
+        table.at = at;
+        table.prizes.clear();
+        std::ifstream file(table.path);
         for (std::string line; std::getline(file, line); )
         {
             if (!line.empty() && line.back() == '\r') line.pop_back();
             if (line.empty() || line.starts_with('#')) continue;
             const std::vector<std::string> v = readch(line, '|');
+            if (v.size() >= 2 && v[0] == "price") table.price = std::max(0, atoi(v[1].c_str()));
             if (v.size() < 5 || v[0] != "prize") continue;
             spin_prize sp{ static_cast<short>(atoi(v[1].c_str())), atoi(v[2].c_str()), atoi(v[3].c_str()), atoi(v[4].c_str()), v.size() > 6 && v[6] == "rare" };
-            if (sp.id > 0 && sp.min > 0 && sp.max >= sp.min && sp.weight > 0) spin_prizes.emplace_back(sp);
+            if (sp.id > 0 && sp.min > 0 && sp.max >= sp.min && sp.weight > 0) table.prizes.emplace_back(sp);
         }
+    }
+
+    /* @return a random prize (nullptr if the table is empty) */
+    const spin_prize *roll(prize_table &table)
+    {
+        load(table);
+        int total = 0;
+        for (const spin_prize &sp : table.prizes) total += sp.weight;
+        if (total == 0) return nullptr;
+        int pick = RandomRange(0, total);
+        for (const spin_prize &sp : table.prizes) if ((pick -= sp.weight) < 0) return &sp;
+        return nullptr;
+    }
+
+    std::string prize_name(short id, int count)
+    {
+        return (id == GEMS) ? std::format("{} gems", count) : std::format("{} {}", count, id_to_item(id).raw_name);
     }
 
     /* @note the day number in server time (the spin resets at local midnight) */
@@ -437,30 +458,122 @@ void spin_command(ENetEvent &event, const std::string_view)
 {
     ::peer &p = me(event);
     if (staff_locked(p)) return on::ConsoleMessage(event.peer, "`4Staff accounts can't use the Daily Spin.``");
-    if (pget(p, "spin_day") == today())
+    const ::rank *r = get_rank(p);
+    const int spins = r ? r->spins : 1; // @note Super VIP and up spin more than once a day (resources/ranks.txt spinN)
+    if (pget(p, "spin_day") != today()) pset(p, "spin_day", today()), pset(p, "spin_count", 0);
+    if (pget(p, "spin_count") >= spins)
     {
         std::tm t = localtime();
         const int left = (23 - t.tm_hour) * 60 + (59 - t.tm_min);
         return on::ConsoleMessage(event.peer, std::format("`oYou already spun today. Next spin in `w{}h {}m``.``", left / 60, left % 60));
     }
-    load_spin();
-    int total = 0;
-    for (const spin_prize &sp : spin_prizes) total += sp.weight;
-    if (total == 0) return on::ConsoleMessage(event.peer, "`4The Daily Spin has no prizes set up.``");
-
-    int pick = RandomRange(0, total);
-    const spin_prize *won = nullptr;
-    for (const spin_prize &sp : spin_prizes) if ((pick -= sp.weight) < 0) { won = &sp; break; }
+    const spin_prize *won = roll(daily_spin);
+    if (won == nullptr) return on::ConsoleMessage(event.peer, "`4The Daily Spin has no prizes set up.``");
     const int count = RandomRange(won->min, won->max + 1);
     std::vector<gift> list{};
     if (won->id != GEMS) list.emplace_back(gift{ won->id, count });
     if (!fits(p, list)) return on::ConsoleMessage(event.peer, "`4Make room in your backpack before spinning.``");
 
-    pset(p, "spin_day", today());
+    pset(p, "spin_count", pget(p, "spin_count") + 1);
     give(event, list, won->id == GEMS ? count : 0, "daily spin");
-    const std::string prize = (won->id == GEMS) ? std::format("{} gems", count) : std::format("{} {}", count, id_to_item(won->id).raw_name);
+    const std::string prize = prize_name(won->id, count);
+    const int left = spins - pget(p, "spin_count");
     bubble(event, std::format("`w[{} `wspun the `9Lucky Wheel`` and won `2{}``!]``", p.display_growid, prize));
-    on::ConsoleMessage(event.peer, std::format("`9Daily Spin:`` you won `2{}``! Come back tomorrow for another spin.", prize));
+    on::ConsoleMessage(event.peer, std::format("`9Daily Spin:`` you won `2{}``! {}", prize,
+        left > 0 ? std::format("You have `w{}`` more spin{} today.", left, left == 1 ? "" : "s") : "Come back tomorrow for another spin."));
     send_action(*event.peer, "play_sfx", "file|audio/success.wav\ndelayMS|0\n");
     if (won->rare) announce(std::format("`9LUCKY! `w{}`` won `2{}`` on the Daily Spin!", p.display_growid, prize));
+}
+
+namespace
+{
+    int box_price(const ::peer &p)
+    {
+        load(lucky_box);
+        const ::rank *r = get_rank(p);
+        return lucky_box.price * (100 - (r ? r->gacha_discount : 0)) / 100;
+    }
+
+    void box_dialog(ENetEvent &event, const std::string &result = "")
+    {
+        ::peer &p = me(event);
+        load(lucky_box);
+        const int price = box_price(p);
+        std::string pool{};
+        int total = 0;
+        for (const spin_prize &sp : lucky_box.prizes) total += sp.weight;
+        for (const spin_prize &sp : lucky_box.prizes)
+        {
+            const double chance = 100.0 * sp.weight / std::max(1, total);
+            pool += std::format("add_label_with_icon|small|{}{}`` `o({:.1f}%)``|left|{}|\n", sp.rare ? "`9" : "`w",
+                sp.min == sp.max ? prize_name(sp.id, sp.min) : std::format("{}-{} {}", sp.min, sp.max, sp.id == GEMS ? "gems" : id_to_item(sp.id).raw_name),
+                chance, sp.id);
+        }
+        const ::rank *r = get_rank(p);
+        send_varlist(event.peer, {
+            "OnDialogRequest",
+            std::format(
+                "set_default_color|`o\n"
+                "add_label_with_icon|big|`9Lucky Box``|left|9350|\n"
+                "{}"
+                "add_textbox|Open a box for `${}`` gems{} and get one of these prizes. You have `${}`` gems.|left|\n"
+                "add_button|open1|`2Open 1 box`` (`${}`` gems)|noflags|0|0|\n"
+                "add_button|open10|`2Open 10 boxes`` (`${}`` gems)|noflags|0|0|\n"
+                "add_spacer|small|\n"
+                "add_textbox|`wPrizes:``|left|\n"
+                "{}"
+                "end_dialog|mt_lucky_box|Close||\n",
+                result.empty() ? "" : std::format("add_textbox|{}|left|\nadd_spacer|small|\n", result),
+                price, (r && r->gacha_discount > 0) ? std::format(" (`2{}% off`` for {})", r->gacha_discount, r->name) : "", p.gems,
+                price, price * 10, pool)
+        });
+    }
+
+    std::string open_boxes(ENetEvent &event, int boxes)
+    {
+        ::peer &p = me(event);
+        const int price = box_price(p);
+        if (lucky_box.prizes.empty() || price <= 0) return "`4The Lucky Box isn't set up.``";
+        if (p.gems < static_cast<long long>(price) * boxes) return std::format("`4You need `${}`` gems.``", price * boxes);
+        if (static_cast<int>(p.slots.size()) + 3 > p.slot_size) return "`4Make room in your backpack first (3 free slots).``";
+
+        p.gems -= price * boxes;
+        econ("lucky box", -static_cast<long long>(price) * boxes);
+        std::map<short, int> got{};
+        int gems_won = 0;
+        for (int i = 0; i < boxes; ++i)
+        {
+            const spin_prize *won = roll(lucky_box);
+            const int count = RandomRange(won->min, won->max + 1);
+            if (won->id == GEMS) { gems_won += count; continue; }
+            std::vector<gift> one{ gift{ won->id, count } };
+            if (!fits(p, one)) { gems_won += price; continue; } // @note no room: the box price back
+            modify_item_inventory(event, ::slot(won->id, count));
+            got[won->id] += count;
+            if (won->rare) announce(std::format("`9LUCKY BOX! `w{}`` got `2{}``!", p.display_growid, prize_name(won->id, count)));
+        }
+        if (gems_won > 0) give(event, {}, gems_won, "lucky box prizes");
+        on::SetBux(event);
+
+        std::string text{};
+        if (gems_won > 0) text = std::format("{} gems", gems_won);
+        for (const auto &[id, count] : got) text += std::format("{}{}", text.empty() ? "" : ", ", prize_name(id, count));
+        bubble(event, std::format("`9Lucky Box``: `2{}``!", text));
+        send_action(*event.peer, "play_sfx", "file|audio/success.wav\ndelayMS|0\n");
+        return std::format("`2You got:`` `w{}``", text);
+    }
+}
+
+void lucky_box_command(ENetEvent &event, const std::string_view)
+{
+    if (staff_locked(me(event))) return on::ConsoleMessage(event.peer, "`4Staff accounts can't open Lucky Boxes.``");
+    box_dialog(event);
+}
+
+void lucky_box_return(ENetEvent &event, const ::hPipe &hPipe)
+{
+    if (staff_locked(me(event))) return;
+    const std::string button = hPipe["buttonClicked"];
+    if (button == "open1") return box_dialog(event, open_boxes(event, 1));
+    if (button == "open10") return box_dialog(event, open_boxes(event, 10));
 }

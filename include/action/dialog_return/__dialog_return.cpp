@@ -27,6 +27,7 @@
 #include "tools/sponsor.hpp"
 
 #include "tools/rewards.hpp"
+#include "tools/cps.hpp"
 #include "__dialog_return.hpp"
 
 std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)>> dialog_return_pool
@@ -58,6 +59,8 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"sendpm", std::bind(&sendpm_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_redeem", std::bind(&redeem_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_code", std::bind(&code_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_lucky_box", std::bind(&lucky_box_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_top", std::bind(&top_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_profile", std::bind(&profile_return, std::placeholders::_1, std::placeholders::_2)},
     {"friends", std::bind(&friends_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_friend", std::bind(&friend_request_return, std::placeholders::_1, std::placeholders::_2)},

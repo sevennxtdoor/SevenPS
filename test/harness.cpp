@@ -35,6 +35,8 @@
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
 #include "tools/rewards.hpp"
+#include "tools/rank.hpp"
+#include "tools/cps.hpp"
 #include "gamePacket/item_activate.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
@@ -1544,6 +1546,46 @@ int main()
         outbox.clear(); item_activate(ev2, ::gamePacket{ .id = 7188 });
         CHECK(held(*visitor, 7188) == 0 && held(*visitor, 1796) == 100, "1 BGL -> 100 DL");
         std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 1796 || s.id == 7188 || s.count == 0; });
+
+        std::puts("\n[R6] ranks spin more: Super VIP 2 a day");
+        load_ranks();
+        const int rank_before = visitor->rank_level;
+        visitor->rank_level = 2;
+        pset(*visitor, "spin_day", 0);
+        run(spin_command, ev2, "spin");
+        CHECK(said("1`` more spin"), "first spin: 1 more today");
+        run(spin_command, ev2, "spin");
+        CHECK(said("Come back tomorrow"), "second spin");
+        run(spin_command, ev2, "spin");
+        CHECK(said("already spun"), "no third");
+
+        std::puts("\n[R7] Lucky Box: costs gems, gives a prize, ranks get a discount");
+        visitor->rank_level = 0;
+        visitor->gems = 1000;
+        run(lucky_box_command, ev2, "luckybox");
+        CHECK(said("Lucky Box") && said("open1") && said("2000``") && said("World Lock"), "window with price and prizes");
+        outbox.clear(); lucky_box_return(ev2, ::hPipe("dialog_name|mt_lucky_box|buttonClicked|open1"));
+        CHECK(said("You need") && visitor->gems == 1000, "not enough gems: nothing happens");
+        visitor->gems = 30000;
+        int items_before = 0; for (const ::slot &s : visitor->slots) items_before += s.count;
+        outbox.clear(); lucky_box_return(ev2, ::hPipe("dialog_name|mt_lucky_box|buttonClicked|open10"));
+        int items_after = 0; for (const ::slot &s : visitor->slots) items_after += s.count;
+        CHECK(said("You got:") && (visitor->gems > 10000 - 1 || items_after > items_before), "10 boxes opened");
+        CHECK(visitor->gems < 30000 - 20000 + 10 * 1200 + 1, "paid 20000 (gem prizes at most 1200 each)");
+        visitor->rank_level = 5;
+        run(lucky_box_command, ev2, "luckybox");
+        CHECK(said("1500``") && said("25% off"), "GOD pays 1500");
+        visitor->rank_level = rank_before;
+        visitor->role = MODERATOR;
+        run(lucky_box_command, ev2, "luckybox");
+        CHECK(said("Staff accounts"), "staff can't");
+        visitor->role = PLAYER;
+
+        std::puts("\n[R8] /top is a menu");
+        run(top, ev2, "top");
+        CHECK(said("Leaderboards") && said("top_played") && said("top_level"), "menu with buttons");
+        outbox.clear(); top_return(ev2, ::hPipe("dialog_name|mt_top|buttonClicked|top_played"));
+        CHECK(said("Top 10: Most Played") && said("You are `w#"), "a list and your place");
 
         owner->role = owner_role, visitor->role = visitor_role;
         { ::hStmt d{ "DELETE FROM redeem_code WHERE code LIKE 'MTTEST%'" }; d.execute(); }
