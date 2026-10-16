@@ -595,7 +595,7 @@ int main()
     std::puts("\n[B1] /backup: owner only, real dump into backup/");
     {
         namespace fs = std::filesystem;
-        auto newest = []() { fs::path best; std::error_code ec; for (auto &f : fs::directory_iterator("backup", ec)) if (f.path().extension() == ".sql" && f.path() > best) best = f.path(); return best; };
+        auto newest = []() { fs::path best; std::error_code ec; for (auto &f : fs::directory_iterator(std::getenv("MIKETOPIA_BACKUP_DIR"), ec)) if (f.path().extension() == ".sql" && f.path() > best) best = f.path(); return best; };
         const fs::path before = newest();
         visitor->role = 0;
         outbox.clear(); backup_command(ev2, "backup now");

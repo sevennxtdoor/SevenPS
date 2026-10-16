@@ -3,6 +3,7 @@
 # run from MSYS2: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash /c/Users/acer/Belajar/GTPS/Gurotopia/test/run.sh"
 # build the server first (make binary=main_new.exe) so build/include/*.o are fresh.
 export OS=Windows_NT
+export MIKETOPIA_BACKUP_DIR=build/test/backup # @note never touch the real backup/ folder
 G=$(cd "$(dirname "$0")/.." && pwd)
 O="$G/build/test"
 mkdir -p "$O"
