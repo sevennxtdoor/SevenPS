@@ -2,7 +2,9 @@
 #include "https.hpp"
 #include "server_data.hpp"
 #include "tools/web_login.hpp"
+#include "automate/holiday.hpp" // @note localtime()
 #include <fstream>
+#include <filesystem>
 
 #include <openssl/err.h>
 
@@ -49,7 +51,18 @@ static void cross_log(const std::string &message)
 
 namespace
 {
-    struct request { std::string method, path, query, body; };
+    struct request { std::string method, path, query, body, line, headers; };
+
+    /* @note web.log: every request line + answer code (never the body, which can hold a password). headers only for
+     * unknown addresses, to see what the game asked for */
+    void log_web(const std::string &ip, const request &req, const std::string &reply)
+    {
+        std::ofstream log("web.log", std::ios::app);
+        const std::tm t = localtime();
+        const std::string code = reply.size() > 12 ? reply.substr(9, 3) : "?";
+        log << std::format("{:02}:{:02}:{:02} {} {} -> {}\n", t.tm_hour, t.tm_min, t.tm_sec, ip, req.line, code);
+        if (code == "404") log << req.headers << "\n\n";
+    }
 
     /* @note reads one HTTP request: headers up to 8 KB, a body up to 8 KB (Content-Length). anything bigger or broken is dropped.
      * the old code read exactly 213 bytes and printed them without an ending 0 (read past the buffer) */
@@ -69,9 +82,15 @@ namespace
         const std::string first = raw.substr(0, raw.find("\r\n"));
         const std::size_t sp1 = first.find(' '), sp2 = first.find(' ', sp1 + 1);
         if (sp1 == std::string::npos || sp2 == std::string::npos) return std::nullopt;
+        req.line = first.substr(0, std::min(first.find('?'), first.rfind(' '))) + (first.find('?') != std::string::npos ? "?(hidden)" : ""); // @note the query can hold a login token
+        req.headers = raw.substr(0, std::min<std::size_t>(header_end, 2000));
         req.method = first.substr(0, sp1);
         req.path = first.substr(sp1 + 1, sp2 - sp1 - 1);
         if (const std::size_t q = req.path.find('?'); q != std::string::npos) req.query = req.path.substr(q + 1), req.path.resize(q);
+        /* @note tolerant: "https://host/path", upper case letters, a trailing / all mean the same page */
+        if (req.path.starts_with("http")) if (const std::size_t at = req.path.find('/', req.path.find("://") + 3); at != std::string::npos) req.path.erase(0, at);
+        for (char &c : req.path) c = static_cast<char>(std::tolower(static_cast<u_char>(c)));
+        while (req.path.size() > 1 && req.path.back() == '/') req.path.pop_back();
 
         std::size_t length{};
         std::string headers = raw.substr(0, header_end);
@@ -125,13 +144,14 @@ namespace
                     gServer_data.server, gServer_data.port, gServer_data.type, gServer_data.type2, gServer_data.maint, gServer_data.loginurl, gServer_data.meta
                 ));
 
-        /* @note the login window the game opens */
-        if (req.path == "/player/login/dashboard")
+        auto login_page = []()
         {
             std::ifstream file("resources/login.html", std::ios::binary); // @note read every time: edit the page without a restart
             if (!file) return http("500 Internal Server Error", "text/plain", "resources/login.html is missing");
             return http("200 OK", "text/html; charset=utf-8", std::string(std::istreambuf_iterator<char>(file), {}));
-        }
+        };
+        /* @note the login window the game opens */
+        if (req.path == "/player/login/dashboard") return login_page();
         /* @note the page posts here: GrowID + password -> token */
         if (req.path == "/player/login/validate" && req.method == "POST")
             return http("200 OK", "application/json", web_login_request(req.body, ip));
@@ -147,7 +167,9 @@ namespace
         if (req.path == "/player/growid/checktoken")
         {
             const std::string token = form_value(req.body, "refreshToken");
-            if (session_growid(token).empty()) return http("401 Unauthorized", "text/plain", "Unauthorized");
+            /* @note an old/expired token (e.g. from the old vercel login): the game shows whatever we answer, so answer
+             * with the login page instead of a bare "Unauthorized" */
+            if (session_growid(token).empty()) return login_page();
             return http("200 OK", "text/html", token_json(token));
         }
         return http("404 Not Found", "text/plain", "Not Found");
@@ -168,8 +190,15 @@ void https::listener()
     }
 
     /* https://docs.openssl.org/master/man3/SSL_CTX_use_certificate/#return-values */
-    if (SSL_CTX_use_certificate_file(ctx, "resources/ctx/server.crt", SSL_FILETYPE_PEM) != 1 ||
-        SSL_CTX_use_PrivateKey_file(ctx, "resources/ctx/server.key", SSL_FILETYPE_PEM)  != 1)
+    /* @note miketopia.crt is signed by our own CA (installed in Windows, only valid for growtopia1/growtopia2.com), so the
+     * game's login window trusts it. server.crt (Gurotopia's, self-signed) was only accepted for server_data.php.
+     * miketopia.* are git-ignored: the key must never be uploaded */
+    const bool own = std::filesystem::exists("resources/ctx/miketopia.crt") && std::filesystem::exists("resources/ctx/miketopia.key");
+    const char *crt = own ? "resources/ctx/miketopia.crt" : "resources/ctx/server.crt";
+    const char *key = own ? "resources/ctx/miketopia.key" : "resources/ctx/server.key";
+    std::printf("[web] certificate: %s\n", crt);
+    if (SSL_CTX_use_certificate_file(ctx, crt, SSL_FILETYPE_PEM) != 1 ||
+        SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM)  != 1)
     {
         ERR_print_errors_fp(stderr);
     }
@@ -239,6 +268,7 @@ void https::listener()
         else if (std::optional<request> req = read_request(ssl); req)
         {
             const std::string reply = route(*req, ip);
+            log_web(ip, *req, reply);
             if (SSL_write(ssl, reply.data(), static_cast<int>(reply.size())) <= 0) ERR_print_errors_fp(stderr);
         }
 

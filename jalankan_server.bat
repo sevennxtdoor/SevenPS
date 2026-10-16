@@ -11,14 +11,22 @@ if not errorlevel 1 (
 )
 
 :start
-if exist main_new.exe (
-    echo Memasang versi server terbaru...
-    move /y main_new.exe main.exe >nul || (
-        echo [!] Gagal memasang versi baru. Coba lagi beberapa detik lagi.
-        pause
-        exit /b
-    )
+if not exist main_new.exe goto run
+echo Memasang versi server terbaru...
+rem antivirus sering mengunci file baru beberapa detik setelah dibuat: coba ulang, jangan langsung gagal
+set tries=0
+:install
+move /y main_new.exe main.exe >nul 2>nul && goto run
+set /a tries+=1
+if %tries% geq 15 (
+    echo [!] Gagal memasang versi baru setelah 15 detik. Server versi lama tetap dijalankan.
+    goto run
 )
+echo     file masih dikunci, coba lagi... (%tries%/15)
+timeout /t 1 /nobreak >nul
+goto install
+
+:run
 main.exe
 if %errorlevel%==2 (
     echo.
