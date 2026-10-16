@@ -27,17 +27,17 @@ std::string join(const std::vector<std::string>& range, const std::string& del)
 
 bool alpha(const std::string& str) 
 {
-    return !str.empty() && std::ranges::all_of(str, ::isalpha);
+    return !str.empty() && std::ranges::all_of(str, [](char c) { return std::isalpha(static_cast<u_char>(c)) != 0; }); // @note a negative char (UTF-8 from the client) is undefined for ::isalpha
 }
 
 bool number(const std::string& str) 
 {
-    return !str.empty() && std::ranges::all_of(str, ::isdigit);
+    return !str.empty() && std::ranges::all_of(str, [](char c) { return std::isdigit(static_cast<u_char>(c)) != 0; });
 }
 
 bool alnum(const std::string& str) 
 {
-    return !str.empty() && std::ranges::all_of(str, ::isalnum);
+    return !str.empty() && std::ranges::all_of(str, [](char c) { return std::isalnum(static_cast<u_char>(c)) != 0; });
 }
 
 #include <openssl/bio.h>

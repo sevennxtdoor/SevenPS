@@ -134,7 +134,9 @@ public:
     world(const std::string &name = "");/*DEFAULT*/
     ~world();
 
-    bool exists(const std::string& name);
+    static bool exists(const std::string& name); // @note static: ::world{} to ask would insert a world named ""
+
+    void save(); // @note writes everything to the database (the destructor and the autosave call this)
 
     template<typename T>
     void mysql_insert(const std::string& column, const T& value);
@@ -155,7 +157,7 @@ public:
     u_char minimum_entry_level{1}; // @note minimal level required to enter a world
 
     u_char visitors{}; // @note the current number of peers in a world, excluding invisable peers
-    u_char netid_counter{}; // @note a number that only increases, this value resets during ~world()
+    int netid_counter{}; // @note a number that only increases, this value resets during ~world(). was u_char: the 256th join got netid 0 (= "not in a world") and later ones reused netids of players still there
 
     std::vector<::block> blocks; // @note all blocks, size of 1D meaning (6000) instead of 2D (100, 60)
     u_int last_object_uid{0};

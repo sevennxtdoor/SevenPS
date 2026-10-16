@@ -211,10 +211,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::SEED:
                 {
                     auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
+                    if (tree == world->trees.end()) // @note a seed without its timer (old save, made by a machine...) crashed the server here
+                        tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 3), gamePacket.punch);
                     if (ticks() - tree->tick >= item.tick) // @todo limit this check.
                     {
                         block.hits[0] = 99;
-                        magplant_drop(event, ::slot(item.id - 1, RandomRange(1, tree->fruit*3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
+                        magplant_drop(event, ::slot(item.id - 1, RandomRange(1, std::max<int>(tree->fruit, 1) * 3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
                         add_stat(event, "harvested");
                     }
                     break;
@@ -498,7 +500,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                             .add_text_input("message", "", "", 128)
                             .end_dialog("megaphone", "Nevermind", "Broadcast")
                     });
-                    break;
+                    return; // @note used up on "Broadcast" (dialog_return/megaphone.cpp), not here: "Nevermind" used to lose it too
                 }
                 case 408: // @note Duct Tape
                 {
@@ -747,6 +749,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     case type::SEED:
                     {
                         auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
+                        if (tree == world->trees.end()) // @note a seed without its timer crashed the server when spliced
+                            tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 3), gamePacket.punch);
                         if (block.state[2] == S_SPLICED) throw std::runtime_error("It would be too dangerous to try to mix three seeds.");
                         for (::item &item : items)
                         {

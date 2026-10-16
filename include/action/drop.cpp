@@ -5,7 +5,8 @@
 
 void action::drop(ENetEvent& event, const std::string& header)
 {
-    const std::string &itemID = readch(header, '|')[4];
+    const std::vector<std::string> pipes = readch(header, '|');
+    const std::string itemID = (pipes.size() > 4) ? pipes[4] : ""; // @note readch(header)[4] read past the end of a short packet
     
     const ::item &item = id_to_item(atoi(itemID.c_str()));
     

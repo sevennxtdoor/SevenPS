@@ -6,6 +6,7 @@
 #include "tools/economy.hpp"
 #include "tools/rewards.hpp"
 #include "buy.hpp"
+#include <map>
 
 
 void action::buy(ENetEvent& event, const std::string& header, const std::string_view selection = "")
@@ -78,7 +79,12 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
         if (item == shouhin.btn)
         {
             int growtoken_cost = std::abs(shouhin.cost);
-            if (shouhin.btn == "upgrade_backpack") shouhin.cost = backpack_cost;
+            if (shouhin.btn == "upgrade_backpack")
+            {
+                if (No > 38) return; // @note maxed out: only hidden in the store, a proxy could still buy it
+                shouhin.cost = backpack_cost;
+            }
+            const int tokens_had = (growtoken == pPeer->slots.end()) ? 0 : growtoken->count; // @note the iterator dies when a new slot is added below
             if ((_tab == 5)
                 ? (growtoken == pPeer->slots.end() || growtoken->count < growtoken_cost)
                 : pPeer->gems < shouhin.cost)
@@ -124,6 +130,26 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
                 for (u_char i = 0; i < 3; ++i)
                     shouhin.items.emplace_back(ids[rand() % ids.size()], 1);
             }
+            /* @note room first: items that didn't fit were lost (or made a slot past the backpack size), the gems were still taken */
+            {
+                std::map<short, int> adding{};
+                for (const std::pair<short, short> &item : shouhin.items)
+                    if (item.first != 9412) adding[item.first] += item.second;
+                int new_kinds{};
+                bool fits = true;
+                for (const auto &[id, count] : adding)
+                {
+                    auto it = std::ranges::find(pPeer->slots, id, &::slot::id);
+                    if (((it == pPeer->slots.end()) ? 0 : it->count) + count > 200) fits = false;
+                    if (it == pPeer->slots.end()) ++new_kinds;
+                }
+                if (!fits || static_cast<int>(pPeer->slots.size()) + new_kinds > pPeer->slot_size)
+                {
+                    shouhin.items.resize(fixed_items);
+                    send_varlist(event.peer, { "OnStorePurchaseResult", std::format("You don't have enough room in your backpack for `0{}``! Make some room and try again.", shouhin.name) });
+                    return;
+                }
+            }
             std::string received{};
             /*{id, amount}*/
             for (const std::pair<short, short> &item : shouhin.items)
@@ -146,10 +172,10 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
                     shouhin.name, shouhin.cost, pPeer->gems -= shouhin.cost, received) :
                 std::format(
                     "You've purchased `0{}`` for `${}`` `2Growtokens``.\nYou have `${}`` `2Growtokens`` left.\n\n`5Received: ```0{}``",
-                    shouhin.name, growtoken_cost, growtoken->count - growtoken_cost, received)
+                    shouhin.name, growtoken_cost, tokens_had - growtoken_cost, received)
             });
             if (_tab < 5/*growtoken tab*/) on::SetBux(event), econ("store", -shouhin.cost);
-            else modify_item_inventory(event, ::slot(growtoken->id, -growtoken_cost));
+            else modify_item_inventory(event, ::slot(1486, static_cast<short>(-growtoken_cost)));
             add_stat(event, "store_buys"); // @note tutorial
             break;
         }

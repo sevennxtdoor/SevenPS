@@ -41,6 +41,15 @@
 #include "tools/rank.hpp"
 #include "tools/cps.hpp"
 #include "gamePacket/item_activate.hpp"
+#include "action/dialog_return/trash_item.hpp"
+#include "action/dialog_return/create_blast.hpp"
+#include "action/trade.hpp"
+#include "action/wrench.hpp"
+#include "action/trash.hpp"
+#include "action/drop.hpp"
+#include "action/itemfavourite.hpp"
+#include "action/info.hpp"
+#include "action/store.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1673,6 +1682,141 @@ int main()
         visitor->role = PLAYER; visitor->update_effects();
         CHECK(!(visitor->state & S_GHOST), "demoted: ghost is gone");
         visitor->role = saved_role;
+    }
+
+    /* ================= Bug scan 2026-10-17: exploits and crashes found in the full scan ================= */
+    {
+        std::puts("\n[BUG1] a faked trash dialog can't create items");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 242; });
+        outbox.clear(); trash_item(ev2, ::hPipe("dialog_name|trash_item|itemID|242|count|-200"));
+        CHECK(held(*visitor, 242) == 0, "minus count of an item we don't have: nothing made (was 200 free World Locks)");
+        visitor->slots.push_back(::slot(242, 5));
+        trash_item(ev2, ::hPipe("dialog_name|trash_item|itemID|242|count|-200"));
+        CHECK(held(*visitor, 242) == 5, "minus count of an item we have: nothing changes");
+        trash_item(ev2, ::hPipe("dialog_name|trash_item|itemID|242|count|3"));
+        CHECK(held(*visitor, 242) == 2, "trashing 3 of 5 leaves 2");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 242 || s.id == 4; });
+        visitor->emplace(::slot(4, -5));
+        CHECK(std::ranges::find(visitor->slots, static_cast<short>(4), &::slot::id) == visitor->slots.end(), "taking an item we don't have makes no stack");
+        CHECK(visitor->emplace(::slot(4, 250)) == 50 && held(*visitor, 4) == 200, "a new stack stops at 200, the rest comes back");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 4; });
+
+        std::puts("\n[BUG2] clothes can only be put on if they're in the backpack");
+        std::erase_if(visitor->slots, [&](const ::slot &s) { return s.id == hat2; });
+        visitor->clothing[clothing::HAIR] = 0;
+        outbox.clear(); item_activate(ev2, ::gamePacket{ .type = 10, .id = hat2 });
+        CHECK(visitor->clothing[clothing::HAIR] != hat2, "a hat we don't own stays off");
+        visitor->slots.push_back(::slot(hat2, 1));
+        item_activate(ev2, ::gamePacket{ .type = 10, .id = hat2 });
+        CHECK(visitor->clothing[clothing::HAIR] == hat2, "an owned hat goes on");
+        item_activate(ev2, ::gamePacket{ .type = 10, .id = hat2 });
+        CHECK(visitor->clothing[clothing::HAIR] == 0, "and comes off again");
+        std::erase_if(visitor->slots, [&](const ::slot &s) { return s.id == hat2; });
+
+        std::puts("\n[BUG3] picking up a drop that only partly fits doesn't duplicate it");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 2; });
+        std::erase_if(w.objects, [](const ::object &o) { return o.id == 2; });
+        visitor->slots.push_back(::slot(2, 150));
+        visitor->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        const int uid = add_object(ev2, ::slot(2, 100), visitor->pos, w);
+        outbox.clear(); item_activate_object(ev2, ::gamePacket{ .type = 0x0b, .id = uid });
+        auto drop = std::ranges::find(w.objects, static_cast<u_int>(uid), &::object::uid);
+        CHECK(held(*visitor, 2) == 200, "only what fits is picked up");
+        CHECK(drop != w.objects.end() && drop->count == 50, "the drop keeps the other 50 (it kept 100 before: free items)");
+        item_activate_object(ev2, ::gamePacket{ .type = 0x0b, .id = uid });
+        drop = std::ranges::find(w.objects, static_cast<u_int>(uid), &::object::uid);
+        CHECK(held(*visitor, 2) == 200 && drop != w.objects.end() && drop->count == 50, "full stack: nothing more taken");
+        std::erase_if(w.objects, [](const ::object &o) { return o.id == 2; });
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 2; });
+
+        std::puts("\n[BUG4] Thermonuclear Blast never wipes an existing world");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 1402; });
+        outbox.clear(); create_blast(ev2, ::hPipe("dialog_name|create_blast|id|1402|name|MTBLASTX"));
+        CHECK(!::world::exists("MTBLASTX"), "no blast in the backpack: no world made");
+        visitor->slots.push_back(::slot(1402, 1));
+        const short mannequin_before = w.blocks[cord(10, 20)].fg;
+        outbox.clear(); create_blast(ev2, ::hPipe("dialog_name|create_blast|id|1402|name|mttest"));
+        CHECK(said("already exists") && held(*visitor, 1402) == 1 && w.blocks[cord(10, 20)].fg == mannequin_before, "an existing world is refused and the blast kept");
+        outbox.clear(); create_blast(ev2, ::hPipe("dialog_name|create_blast|id|1402|name|a b"));
+        CHECK(said("letters and numbers") && held(*visitor, 1402) == 1, "a bad name is refused");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 1402; });
+
+        std::puts("\n[BUG5] short and garbage packets don't crash");
+        outbox.clear();
+        action::wrench(ev2, "action|wrench");
+        action::trash(ev2, "action|trash");
+        action::drop(ev2, "action|drop");
+        action::itemfavourite(ev2, "action|itemfavourite|itemID|abc"); // @note stoi("abc") ended the server
+        action::itemfavourite(ev2, "action|itemfavourite");
+        action::info(ev2, "action|info|itemID");
+        action::store(ev2, "action|store");
+        CHECK(true, "wrench/trash/drop/itemfavourite/info/store with missing fields");
+
+        std::puts("\n[BUG6] world save/load: a door, sign and seed without their data don't shift the rest of the world");
+        {
+            for (const char *table : { "world", "vending", "world_door", "world_area_lock", "world_box", "world_magplant", "world_mannequin", "world_fossil_prep", "world_special_tile" })
+            {
+                ::hStmt del{ std::format("DELETE FROM {} WHERE {} = 'MTSAVE'", table, std::string_view{ table } == "world" ? "name" : "world") }; del.execute();
+            }
+            short door_id = 0, seed_id = 0, sign_id = 0;
+            for (const ::item &it : items)
+            {
+                if (!door_id && it.type == type::DOOR) door_id = it.id;
+                if (!seed_id && it.type == type::SEED) seed_id = it.id;
+                if (!sign_id && it.type == type::SIGN) sign_id = it.id;
+            }
+            ::world saved{ "MTSAVE" };
+            saved.blocks[cord(5, 5)].fg = door_id; std::erase_if(saved.doors, [](const ::door &d) { return d.pos == ::pos{ 5, 5 }; });
+            saved.blocks[cord(6, 5)].fg = seed_id; std::erase_if(saved.trees, [](const ::tree &t) { return t.pos == ::pos{ 6, 5 }; });
+            saved.blocks[cord(7, 5)].fg = sign_id; saved.signs.emplace_back("HELLO", ::pos{ 7, 5 });
+            saved.blocks[cord(8, 5)].fg = 2;
+            saved.save();
+            ::world loaded{ "MTSAVE" };
+            bool same = loaded.blocks.size() == saved.blocks.size();
+            for (std::size_t i = 0; same && i < saved.blocks.size(); ++i)
+                same = (loaded.blocks[i].fg == saved.blocks[i].fg || saved.blocks[i].fg == 10/*a rock may turn into a fossil*/) && loaded.blocks[i].bg == saved.blocks[i].bg;
+            CHECK(same, "every block loads back the same");
+            auto sign = std::ranges::find(loaded.signs, ::pos{ 7, 5 }, &::sign::pos);
+            CHECK(sign != loaded.signs.end() && sign->label == "HELLO", "the sign after them keeps its text");
+            CHECK(std::ranges::find(loaded.trees, ::pos{ 6, 5 }, &::tree::pos) != loaded.trees.end(), "the seed got a timer");
+            ::blob map = saved.serialize();
+            CHECK(map.size() > 6000 * 8, "the world with them still serializes for the game");
+            for (const char *table : { "world", "vending", "world_door", "world_area_lock", "world_box", "world_magplant", "world_mannequin", "world_fossil_prep", "world_special_tile" })
+            {
+                ::hStmt del{ std::format("DELETE FROM {} WHERE {} = 'MTSAVE'", table, std::string_view{ table } == "world" ? "name" : "world") }; del.execute();
+            }
+        }
+
+        std::puts("\n[BUG7] logging in again on the same connection is ignored (it reloaded the backpack: duplication)");
+        {
+            const std::string growid = visitor->growid;
+            visitor->growid = "MTVISITOR"; visitor->gems = 1234; visitor->loaded = true;
+            outbox.clear(); action::tankIDName(ev2, "tankIDName|MTVISITOR|tankIDPass|madeup|protocol|225");
+            CHECK(visitor->growid == "MTVISITOR" && visitor->gems == 1234 && outbox.empty(), "tankIDName after logging in does nothing");
+            action::protocol(ev2, "protocol|225|ltoken|madeup");
+            CHECK(visitor->growid == "MTVISITOR" && outbox.empty(), "protocol after logging in does nothing");
+            visitor->loaded = false; // @note never saved over a real account
+            visitor->growid = growid;
+        }
+
+        std::puts("\n[BUG8] trade: changing the offer after the other side confirmed cancels the trade");
+        {
+            owner->slots.push_back(::slot(4, 10));
+            std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 242; });
+            visitor->slots.push_back(::slot(242, 5));
+            owner->trade_netid = visitor->netid; visitor->trade_netid = owner->netid;
+            owner->trading = visitor->trading = true;
+            owner->trade_items = { ::slot(4, 10) }; visitor->trade_items = { ::slot(242, 5) };
+            owner->trade_accepted = visitor->trade_accepted = true;
+            outbox.clear(); trade_confirm(ev, ::hPipe("dialog_name|trade_confirm|buttonClicked|accept"));
+            CHECK(owner->trade_confirmed, "the owner confirmed the deal");
+            action::rem_trade(ev2, "action|rem_trade|itemID|242"); // @note the visitor takes back their World Locks
+            trade_confirm(ev2, ::hPipe("dialog_name|trade_confirm|buttonClicked|accept"));
+            CHECK(held(*owner, 4) == 10 && held(*owner, 242) == 0 && held(*visitor, 242) == 5 && held(*visitor, 4) == 0, "nothing was swapped (the owner would have given 10 lava for nothing)");
+            end_trade(enet_peers[0]);
+            std::erase_if(owner->slots, [](const ::slot &s) { return s.id == 4; });
+            std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 242; });
+        }
     }
 
     /* ================= Every item: place, wrench, punch until it breaks ================= */

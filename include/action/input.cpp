@@ -19,6 +19,7 @@ void action::input(ENetEvent& event, const std::string& header)
     text.erase(text.begin(), std::find_if_not(text.begin(), text.end(), ::isspace));
     text.erase(std::find_if_not(text.rbegin(), text.rend(), ::isspace).base(), text.end());
     if (text.empty()) return; // @note we recheck if empty since we did trimming.
+    if (text.size() > 120 && !text.starts_with('/')) text.resize(120); // @note the game caps chat at 120: a proxy sent kilobytes to everyone in the world
     
     u_int now = ticks();
     pPeer->messages.push_back(now);

@@ -27,7 +27,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     if (atoi(hPipe["checkbox_disable_music"].c_str()) != 0)
         world->lock_state |= DISABLE_MUSIC;
     else world->lock_state &= ~DISABLE_MUSIC;
-    world->minimum_entry_level = atoi(hPipe["minimum_entry_level"].c_str());
+    world->minimum_entry_level = static_cast<u_char>(std::clamp(atoi(hPipe["minimum_entry_level"].c_str()), 1, 125)); // @note u_char: 300 became 44
 
     ::block &block = world->blocks[cord(pos.x, pos.y)];
 

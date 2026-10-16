@@ -5,11 +5,12 @@
 
 void action::itemfavourite(ENetEvent& event, const std::string& header)
 {
-    std::string id{readch(header, '|')[4]};
-    if (id.empty()) return;
+    const std::vector<std::string> pipes = readch(header, '|');
+    const int id = (pipes.size() > 4) ? atoi(pipes[4].c_str()) : 0; // @note [4] read past the end of a short packet, and stoi("abc") threw and crashed the server
+    if (id <= 0 || id_to_item(id).id == 0) return;
 
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    auto it = std::ranges::find(pPeer->fav, stoi(id));
+    auto it = std::ranges::find(pPeer->fav, id);
     bool fav = it != pPeer->fav.end();
     if (pPeer->fav.size() >= 20 && !fav)
     {
@@ -19,7 +20,7 @@ void action::itemfavourite(ENetEvent& event, const std::string& header)
         on::ConsoleMessage(event.peer, message);
         return;
     }
-    send_varlist(event.peer, { "OnFavItemUpdated", stoi(id), (fav) ? 0 : 1 });
+    send_varlist(event.peer, { "OnFavItemUpdated", id, (fav) ? 0 : 1 });
     if (fav) pPeer->fav.erase(it);
-    else pPeer->fav.emplace_back(stoi(id));
+    else pPeer->fav.emplace_back(id);
 }

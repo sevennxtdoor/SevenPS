@@ -16,6 +16,7 @@
 #include "tools/magplant.hpp"
 #include "tools/fishing.hpp"
 #include "commands/titles.hpp"
+#include "action/quit_to_exit.hpp"
 
 #include "join_request.hpp"
 
@@ -25,6 +26,9 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
     {
         ::peer *pPeer = static_cast<::peer*>(event.peer->data);
         ::hPipe hPipe{ header };
+        /* @note a modded client can ask to join while still in a world: that world was never left (it stayed loaded with a
+         * visitor that isn't there, and the player showed up in both). leave it first, like the real client does */
+        if (pPeer->netid != 0) action::quit_to_exit(event, "", true);
 
         std::string name =  hPipe["name"];
         if (name.empty() && !world_name.empty()) name = world_name;

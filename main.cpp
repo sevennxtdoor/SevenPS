@@ -20,17 +20,41 @@
 #include "include/tools/auth.hpp" // @note apply_password_reset()
 #include "include/tools/web_login.hpp" // @note web_login_tick()
 #include "include/tools/buffs.hpp" // @note buff_tick()
+#include "include/tools/autosave.hpp" // @note autosave_tick()
 #include <csignal>
+#include <atomic>
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define NOMINMAX
+    #include <windows.h> // @note SetConsoleCtrlHandler (last include: its macros stay out of our headers)
+#endif
 
 namespace
 {
     volatile std::sig_atomic_t gSignal = 0;
+    std::atomic<bool> gSaved{ false }; // @note set once everything is saved, after the main loop
 }
 static void signal_handler(int signal) { gSignal = signal; }
+
+#ifdef _WIN32
+/* @note closing the window (X), logging off or shutting down never raised SIGINT: Windows just ended the process and
+ * nothing was saved. this runs on its own thread; Windows waits for it (about 5 s), so stop the main loop and wait
+ * until it has saved everyone */
+static BOOL WINAPI console_handler(DWORD type)
+{
+    if (type != CTRL_CLOSE_EVENT && type != CTRL_LOGOFF_EVENT && type != CTRL_SHUTDOWN_EVENT) return FALSE; // @note Ctrl+C: SIGINT as before
+    gSignal = SIGINT;
+    for (int waited = 0; !gSaved && waited < 4500; waited += 50) Sleep(50);
+    return TRUE;
+}
+#endif
 
 int main()
 {
     std::signal(SIGINT, signal_handler);
+#ifdef _WIN32
+    SetConsoleCtrlHandler(console_handler, TRUE);
+#endif
 #ifdef SIGHUP // @note unix
     std::signal(SIGHUP, signal_handler); // @note PuTTY, SSH problems
 #endif
@@ -77,9 +101,11 @@ int main()
         hunt_tick(); // @note Item Hunt event
         backup_tick(); // @note daily database backup
         buff_tick(); // @note timed mods from consumables run out
+        autosave_tick(); // @note players & worlds every 5 minutes
     }
 
     safe_disconnect_peers(gSignal);
+    gSaved = true; // @note console_handler may let Windows close us now
     mysql_close(db); // @note deletes db (MYSQL* allocation)
     mysql_library_end();
 

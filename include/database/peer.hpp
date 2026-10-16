@@ -87,6 +87,7 @@ public:
     ~peer();
 
     void load(const std::string &growid, const std::string &password);
+    void save(); // @note writes the player to the database (the destructor and the autosave call this)
 
     bool exists(const std::string &growid);
 

@@ -94,6 +94,25 @@ void block::reset()
     return blob;
 }
 
+/* @note a door/sign/seed tile ALWAYS has its extra data, even when we have no entry for it (placed by a machine, an old
+ * save...): the loader and the game read it anyway, so a missing one shifted everything after it - the rest of the
+ * world loaded as garbage, and the game failed to enter the world */
+static void door_extra(::blob &blob, const ::world &world, const ::pos &pos)
+{
+    auto door = std::ranges::find(world.doors, pos, &::door::pos);
+    blob.push_back(door != world.doors.end() ? door->to_blob() : ::door("", "", "", pos).to_blob());
+}
+static void sign_extra(::blob &blob, const ::world &world, const ::pos &pos)
+{
+    auto sign = std::ranges::find(world.signs, pos, &::sign::pos);
+    blob.push_back(sign != world.signs.end() ? sign->to_blob() : ::sign("", pos).to_blob());
+}
+static void tree_extra(::blob &blob, const ::world &world, const ::pos &pos, bool seconds)
+{
+    auto tree = std::ranges::find(world.trees, pos, &::tree::pos);
+    blob.push_back(tree != world.trees.end() ? tree->to_blob(seconds) : ::tree(ticks(), 1, pos).to_blob(seconds));
+}
+
 ::blob world::serialize()
 {
     blob blob;
@@ -126,20 +145,11 @@ void block::reset()
             if (type == '\x01'/*doors, portal*/)
             {
                 if (block.fg == 6/*Main Door*/) this->spawn = block_pos.by_32(false);
-
-                auto door = std::ranges::find(this->doors, block_pos, &::door::pos);
-                if (door != this->doors.end())
-                {
-                    blob.push_back(door->to_blob());
-                }
+                door_extra(blob, *this, block_pos);
             }
             else if (type == '\x02'/*sign*/)
             {
-                auto sign = std::ranges::find(this->signs, block_pos, &::sign::pos);
-                if (sign != this->signs.end())
-                {
-                    blob.push_back(sign->to_blob());
-                }
+                sign_extra(blob, *this, block_pos);
             }
             else if (type == '\x03'/*lock*/)
             {
@@ -154,11 +164,7 @@ void block::reset()
             }
             else if (type == '\x04'/*seed*/)
             {
-                auto tree = std::ranges::find(this->trees, block_pos, &::tree::pos);
-                if (tree != this->trees.end())
-                {
-                    blob.push_back(tree->to_blob(true));
-                }
+                tree_extra(blob, *this, block_pos, true);
             }
             else if (type == '\x17'/*display block*/)
             {
@@ -360,6 +366,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
 }
 world::~world()
 {
+    this->save();
+}
+
+void world::save()
+{
+    if (this->name.empty() || this->blocks.empty()) return; // @note an empty (moved-from) copy has nothing to save
     this->mysql_update("owner", this->owner);
     if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this), save_special_tiles(*this);
     {
@@ -374,30 +386,9 @@ world::~world()
             if (u_char type = get_type(id_to_item(block.fg)); type > 0x00)
             {
                 const ::pos block_pos{i % x, i / x};
-                if (type == '\x01'/*doors, portal*/)
-                {
-                    auto door = std::ranges::find(this->doors, block_pos, &::door::pos);
-                    if (door != this->doors.end())
-                    {
-                        blob.push_back(door->to_blob());
-                    }
-                }
-                else if (type == '\x02'/*sign*/)
-                {
-                    auto sign = std::ranges::find(this->signs, block_pos, &::sign::pos);
-                    if (sign != this->signs.end())
-                    {
-                        blob.push_back(sign->to_blob());
-                    }
-                }
-                else if (type == '\x04'/*seed*/)
-                {
-                    auto tree = std::ranges::find(this->trees, block_pos, &::tree::pos);
-                    if (tree != this->trees.end())
-                    {
-                        blob.push_back(tree->to_blob());
-                    }
-                }
+                if (type == '\x01'/*doors, portal*/) door_extra(blob, *this, block_pos);
+                else if (type == '\x02'/*sign*/) sign_extra(blob, *this, block_pos);
+                else if (type == '\x04'/*seed*/) tree_extra(blob, *this, block_pos, false);
             }
             ++i;
         }
@@ -560,22 +551,14 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
     blob.u8(get_type(id_to_item(block.fg)));
     switch (item.type)
     {
-        case type::DOOR:
+        case type::DOOR: case type::PORTAL: case type::MAIN_DOOR: // @note all three are a door to the game (get_type 0x01): portals sent no label
         {
-            auto door = std::ranges::find(world.doors, gamePacket.punch, &::door::pos);
-            if (door != world.doors.end())
-            {
-                blob.push_back(door->to_blob());
-            }
+            door_extra(blob, world, gamePacket.punch);
             break;
         }
         case type::SIGN:
         {
-            auto sign = std::ranges::find(world.signs, gamePacket.punch, &::sign::pos);
-            if (sign != world.signs.end())
-            {
-                blob.push_back(sign->to_blob());
-            }
+            sign_extra(blob, world, gamePacket.punch);
             break;
         }
         case type::LOCK:
@@ -591,11 +574,7 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
         }
         case type::SEED:
         {
-            auto tree = std::ranges::find(world.trees, gamePacket.punch, &::tree::pos);
-            if (tree != world.trees.end())
-            {
-                blob.push_back(tree->to_blob(true));
-            }
+            tree_extra(blob, world, gamePacket.punch, true);
             break;
         }
         case type::DISPLAY_BLOCK:
@@ -697,6 +676,8 @@ void generate_world(::world &world)
 bool door_mover(::world &world, const ::pos &pos)
 {
     std::vector<::block> &blocks = world.blocks;
+    const int rows = static_cast<int>(blocks.size()) / 100;
+    if (pos.x < 0 || pos.x >= 100 || pos.y < 0 || pos.y + 1 >= rows) return false; // @note the bedrock goes below: on the last row it was written past the world
 
     if (blocks[cord(pos.x, pos.y)].fg != 0 ||
         blocks[cord(pos.x, (pos.y + 1))].fg != 0) return false;
@@ -706,7 +687,7 @@ bool door_mover(::world &world, const ::pos &pos)
         if (blocks[i].fg == 6/*Main Door*/)
         {
             blocks[i].fg = 0; // @note remove main door
-            blocks[cord(i % 100, (i / 100 + 1))].fg = 0; // @note remove bedrock below
+            if (static_cast<int>(i / 100) + 1 < rows) blocks[cord(i % 100, (i / 100 + 1))].fg = 0; // @note remove bedrock below
             break;
         }
     }

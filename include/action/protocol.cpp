@@ -9,6 +9,7 @@
 void action::protocol(ENetEvent& event, const std::string& header)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    if (pPeer->loaded) return; // @note already in the game: a 2nd login on this connection would reload (and dupe) the backpack
     /* @note ltoken = the session token from our own login page (tools/web_login.cpp), never the password.
      * the old login page sent base64 "growId=..&password=.." here, so whoever ran that page could read every password */
     std::vector<std::string> pipes = readch(header, '|');

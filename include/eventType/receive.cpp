@@ -12,6 +12,8 @@ void receive(ENetEvent& event)
     if (data.empty() || pPeer == nullptr) { enet_packet_destroy(event.packet); return; }
     if (!guard_packet(*event.peer, data[0ull] == 2 || data[0ull] == 3)) { enet_packet_destroy(event.packet); return; }
 
+    /* @note last line of defence: one handler throwing (std::stoi on "abc", substr past the end...) used to end the whole server */
+    try {
     switch (data[0ull])
     {
         case 2: case 3:
@@ -51,6 +53,11 @@ void receive(ENetEvent& event)
             break;
         }
         default: printf("received unqiue: %d\n", data[0ull]);
+    }
+    }
+    catch (const std::exception &exc)
+    {
+        std::printf("[receive] handler error (ignored): %s\n", exc.what());
     }
     enet_packet_destroy(event.packet);
 }

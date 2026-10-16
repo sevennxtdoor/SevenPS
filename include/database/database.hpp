@@ -48,35 +48,28 @@ struct blob
         mData.resize(size + sizeof(short));
         memcpy(mData.data() + size, &val, sizeof(short));
     }
+    /* @note reads past the end (broken or cut-off save) give 0 / "" instead of reading other memory; a negative length crashed the server */
+    bool readable(int pos, std::size_t size) const { return pos >= 0 && static_cast<std::size_t>(pos) + size <= mData.size(); }
+    template<typename T> void read(T &val, int &pos)
+    {
+        if (readable(pos, sizeof(T))) memcpy(&val, mData.data() + pos, sizeof(T));
+        else val = T{};
+        pos += sizeof(T);
+    }
     void read_string(std::string &val, int &pos)
     {
         short len{};
         read_i16(len, pos);
+        if (len < 0 || !readable(pos, len)) { val.clear(); pos = static_cast<int>(mData.size()); return; }
 
         val.resize(len);
         memcpy(val.data(), mData.data() + pos, len);
         pos += len;
     }
-    void read_u32(u_int &val, int &pos)
-    {
-        memcpy(&val, mData.data()+pos, sizeof(u_int));
-        pos += sizeof(u_int);
-    }
-    void read_i16(short &val, int &pos)
-    {
-        memcpy(&val, mData.data()+pos, sizeof(short));
-        pos += sizeof(short);
-    }
-    void read_i8(char &val, int &pos)
-    {
-        memcpy(&val, mData.data()+pos, sizeof(u_char));
-        pos += sizeof(u_char);
-    }
-    void read_u8(u_char &val, int &pos)
-    {
-        memcpy(&val, mData.data()+pos, sizeof(u_char));
-        pos += sizeof(u_char);
-    }
+    void read_u32(u_int &val, int &pos)   { read(val, pos); }
+    void read_i16(short &val, int &pos)   { read(val, pos); }
+    void read_i8(char &val, int &pos)     { read(val, pos); }
+    void read_u8(u_char &val, int &pos)   { read(val, pos); }
     void u8(u_char val) {
         mData.push_back(val);
     }

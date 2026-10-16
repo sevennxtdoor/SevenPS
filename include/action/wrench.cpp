@@ -12,9 +12,9 @@ void action::wrench(ENetEvent& event, const std::string& header)
     std::vector<std::string> pipes = readch(header, '|');
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
-    if ((pipes[3ull] == "netid" && !pipes[4ull].empty()/*empty netid*/))
+    if (pipes.size() > 4ull && pipes[3ull] == "netid" && !pipes[4ull].empty()/*empty netid*/) // @note [3]/[4] read past the end of a short packet
     {
-        const short netid = atoi(pipes[4ull].c_str());
+        const int netid = atoi(pipes[4ull].c_str());
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [event, pPeer, netid](ENetPeer& peer) 
         {
             ::peer *pOthers = static_cast<::peer*>(peer.data);

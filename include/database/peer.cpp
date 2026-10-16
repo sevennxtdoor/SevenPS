@@ -116,19 +116,28 @@ void peer::mysql_select_all()
     const u_char *u8 = blob.data();
 
     int pos{};
-    memcpy(&this->slot_size, u8 + pos, sizeof(int)); pos += sizeof(int);
-    short size{};
-    memcpy(&size, u8 + pos, sizeof(short)); pos += sizeof(short);
-    this->slots.resize(size);
-    for (::slot &slot : this->slots)
+    if (blob.size() >= sizeof(int) + sizeof(short))
     {
-        memcpy(&slot.id,    u8 + pos, sizeof(short)); pos += sizeof(short);
-        memcpy(&slot.count, u8 + pos, sizeof(short)); pos += sizeof(short);
+        memcpy(&this->slot_size, u8 + pos, sizeof(int)); pos += sizeof(int);
+        short size{};
+        memcpy(&size, u8 + pos, sizeof(short)); pos += sizeof(short);
+        /* @note a broken size read past the end of the data */
+        size = static_cast<short>(std::clamp<std::size_t>(size < 0 ? 0 : size, 0, (blob.size() - pos) / (2 * sizeof(short))));
+        this->slots.resize(size);
+        for (::slot &slot : this->slots)
+        {
+            memcpy(&slot.id,    u8 + pos, sizeof(short)); pos += sizeof(short);
+            memcpy(&slot.count, u8 + pos, sizeof(short)); pos += sizeof(short);
+        }
     }
+    this->slot_size = std::clamp(this->slot_size, 16, 396);
+    /* @note used-up stacks (count 0) were saved too and took a backpack slot forever */
+    std::erase_if(this->slots, [](const ::slot &s) { return s.count <= 0 && s.id != 18 && s.id != 32; });
+    for (::slot &s : this->slots) s.count = std::min<short>(s.count, 200);
 
     /* @note equipped clothing: one u_short id per clothing:: slot. NULL column reads as all zeros */
     auto cloth_blob = this->mysql_select<std::vector<u_char>>("clothing");
-    for (std::size_t i = 0; i < this->clothing.size(); ++i)
+    for (std::size_t i = 0; i < this->clothing.size() && (i + 1) * sizeof(u_short) <= cloth_blob.size(); ++i)
     {
         u_short id{};
         memcpy(&id, cloth_blob.data() + i * sizeof(u_short), sizeof(u_short));
@@ -209,6 +218,11 @@ void peer::load(const std::string &growid, const std::string &password)
 
 peer::~peer()
 {
+    this->save();
+}
+
+void peer::save()
+{
     /* @note a refused login still had growid set, so this wrote an empty inventory and 0 gems over the real account */
     if (!this->loaded) return;
     this->mysql_update<std::vector<u_char>>("inventory", this->serialize_inventory().data());
@@ -228,12 +242,12 @@ peer::~peer()
     if (this->login_time != 0) this->mysql_update<signed>("playtime", this->playtime + static_cast<int>(std::time(nullptr) - this->login_time));
 }
 
-u_short peer::emplace(::slot slot) 
+u_short peer::emplace(::slot slot)
 {
-    if (auto it = std::ranges::find(this->slots, slot.id, &::slot::id); it != this->slots.end()) 
+    if (auto it = std::ranges::find(this->slots, slot.id, &::slot::id); it != this->slots.end())
     {
         const u_short excess = std::max(0, (it->count + slot.count) - 200);
-        it->count = std::min(it->count + slot.count, 200);
+        it->count = std::clamp(it->count + slot.count, 0, 200); // @note never below 0: taking more than we have left a negative stack
         if (it->count == 0)
         {
             const ::item &item = id_to_item(it->id);
@@ -241,8 +255,13 @@ u_short peer::emplace(::slot slot)
         }
         return excess;
     }
-    else this->slots.emplace_back(std::move(slot)); // @note no such item in inventory, so we create a new entry.
-    return 0;
+    /* @note no such item in inventory, so we create a new entry. taking from an item we don't have used to create a
+     * stack of minus that amount, and a faked trash dialog (count -200) turned it into 200 free items */
+    if (slot.count <= 0) return 0;
+    const u_short excess = std::max(0, slot.count - 200);
+    slot.count = std::min<short>(slot.count, 200);
+    this->slots.emplace_back(std::move(slot));
+    return excess;
 }
 
 void peer::add_xp(ENetEvent &event, u_short value) 

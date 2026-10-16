@@ -9,7 +9,8 @@
 
 #include "sb.hpp"
 
-void sb(ENetEvent& event, const std::string_view text)
+/* @param megaphone paid with a Megaphone item instead of gems */
+static void super_broadcast(ENetEvent& event, const std::string_view text, bool megaphone)
 {
     if (text.size() <= sizeof("sb ")-1) return; // @note "/sb" with no message: substr() would throw and crash the server
     const std::string message = clean_text(std::string{ text.substr(sizeof("sb ")-1) }, 120);
@@ -49,7 +50,13 @@ void sb(ENetEvent& event, const std::string_view text)
 
     /* @note like CreativePS, a super broadcast costs gems (free for ranks with the perk) */
     constexpr int SB_COST = 1000;
-    if (const ::rank *r = get_rank(*pPeer); !(r && r->sb_free))
+    if (megaphone)
+    {
+        auto it = std::ranges::find(pPeer->slots, static_cast<short>(2480), &::slot::id);
+        if (it == pPeer->slots.end() || it->count < 1) return;
+        modify_item_inventory(event, ::slot(2480, -1));
+    }
+    else if (const ::rank *r = get_rank(*pPeer); !(r && r->sb_free))
     {
         if (pPeer->gems < SB_COST)
         {
@@ -71,3 +78,7 @@ void sb(ENetEvent& event, const std::string_view text)
         );
     });
 }
+
+void sb(ENetEvent& event, const std::string_view text) { super_broadcast(event, text, false); }
+
+void sb_megaphone(ENetEvent& event, const std::string_view text) { super_broadcast(event, text, true); }

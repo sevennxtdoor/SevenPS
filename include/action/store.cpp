@@ -7,7 +7,7 @@ void action::store(ENetEvent& event, const std::string& header)
 {
     std::vector<std::string> pipes = readch(header, '|');
 
-    if (header.empty() || pipes[3] == "gem") // @note location|gem
+    if (header.empty() || (pipes.size() > 3 && pipes[3] == "gem")) // @note location|gem. pipes[3] read past the end of a short packet
     {
         send_varlist(event.peer, {
             "OnStoreRequest",

@@ -53,8 +53,8 @@ void create_table_if_not_exist()
         "CREATE TABLE IF NOT EXISTS world ("
             "name VARCHAR(24) NOT NULL PRIMARY KEY,"
             "owner INT DEFAULT 0,"
-            "blocks BLOB,"
-            "objects BLOB"
+            "blocks MEDIUMBLOB,"
+            "objects MEDIUMBLOB"
         ")";
     std::string query_vending =
         "CREATE TABLE IF NOT EXISTS vending ("
@@ -92,11 +92,14 @@ void create_table_if_not_exist()
     std::string query_redeem = "CREATE TABLE IF NOT EXISTS redeem_code (code VARCHAR(20) NOT NULL PRIMARY KEY, gems INT NOT NULL DEFAULT 0, items VARCHAR(255), uses_left INT NOT NULL DEFAULT 1, expires BIGINT NOT NULL DEFAULT 0, created_by VARCHAR(18))"; // @note redeem codes (tools/rewards.cpp)
     std::string query_redeem_used = "CREATE TABLE IF NOT EXISTS redeem_used (code VARCHAR(20) NOT NULL, user_id INT NOT NULL, used BIGINT, PRIMARY KEY (code, user_id))";
     std::string query_special_tile = "CREATE TABLE IF NOT EXISTS world_special_tile (world VARCHAR(24) NOT NULL, x INT NOT NULL, y INT NOT NULL, data VARCHAR(64), PRIMARY KEY (world, x, y))"; // @note Harmonic Crystals, Bunny Egg
+    /* @note BLOB holds 64 KB: a world full of trees/signs or with 4000+ drops didn't fit, so its save was refused and every change lost */
+    std::string query_world_size = "ALTER TABLE world MODIFY COLUMN blocks MEDIUMBLOB, MODIFY COLUMN objects MEDIUMBLOB";
     if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()) || mysql_query(db, query_weather.c_str()) ||
         mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_door_password.c_str()) || mysql_query(db, query_staff_log.c_str()) || mysql_query(db, query_area_lock.c_str()) || mysql_query(db, query_box.c_str()) || mysql_query(db, query_magplant.c_str()) || mysql_query(db, query_mannequin.c_str()) || mysql_query(db, query_guild.c_str()) || mysql_query(db, query_password.c_str()) || mysql_query(db, query_fossil_prep.c_str()) || mysql_query(db, query_special_tile.c_str()) || mysql_query(db, query_redeem.c_str()) || mysql_query(db, query_redeem_used.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }
+    if (mysql_query(db, query_world_size.c_str())) std::fprintf(stderr, "%s\n", mysql_error(db)); // @note after CREATE: the table must exist
 }
 
 void mysql_connect()
@@ -209,21 +212,23 @@ MYSQL_BIND make_bind_out(float &buffer)
 {
     return { .buffer = &buffer, .buffer_type = MYSQL_TYPE_FLOAT };
 }
+/* @note out buffers: a longer value is cut off at this size. it was 1 KB for text (a big `profile` lost its end) and 60 KB
+ * for blobs (the blocks of a world full of trees/signs didn't fit, so the bottom of the world loaded empty) */
 MYSQL_BIND make_bind_out(std::string &buffer)
 {
-    buffer.resize(1024, '\0');
+    buffer.resize(64 * 1024, '\0');
 
     return { .buffer = buffer.data(), .buffer_length = (u_long)buffer.size(), .buffer_type = MYSQL_TYPE_STRING };
 }
 MYSQL_BIND make_bind_out(std::vector<u_char> &buffer)
 {
-    buffer.resize(cord(0, 60)* sizeof(::block));
+    buffer.resize(1024 * 1024);
 
     return { .buffer = buffer.data(), .buffer_length = (u_long)buffer.size(), .buffer_type = MYSQL_TYPE_BLOB };
 }
 MYSQL_BIND make_bind_out(::blob &buffer)
 {
-    buffer.resize(cord(0, 60)* sizeof(::block));
+    buffer.resize(1024 * 1024);
 
     return { .buffer = buffer.data().data(), .buffer_length = (u_long)buffer.size(), .buffer_type = MYSQL_TYPE_BLOB };
 }

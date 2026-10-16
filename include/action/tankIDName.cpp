@@ -10,6 +10,9 @@
 void action::tankIDName(ENetEvent& event, const std::string& header)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    /* @note logging in again on the same connection reloaded the backpack from the database: items given away since
+     * the last save came back (duplication), and progress since then was lost */
+    if (pPeer->loaded) return;
 
     std::vector<std::string> pipes = readch(header, '|');
     if (pipes.empty() || pipes.size() < 41ull) enet_peer_disconnect_later(event.peer, 0);

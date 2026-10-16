@@ -23,12 +23,12 @@ void action::info(ENetEvent& event, const std::string& header)
 {
     const std::vector<std::string> pipes = readch(header, '|');
 
-    for (std::size_t i = 0; i < pipes.size(); ++i) 
+    for (std::size_t i = 0; i + 1 < pipes.size(); ++i) // @note i+1 read past the end when itemID was the last pipe
     {
         if (pipes[i] == "itemID")
         {
             const u_short itemID = atoi(pipes[i+1].c_str());
-            if (itemID > items.size()) return;
+            if (itemID >= items.size()) return;
 
             const ::item &item = id_to_item(itemID);
 

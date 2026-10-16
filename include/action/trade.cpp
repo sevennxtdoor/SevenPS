@@ -64,9 +64,10 @@ static void refresh(ENetPeer &a, ENetPeer &b, bool locked)
 static void deal_changed(ENetPeer &p)
 {
     ENetPeer *partner = partner_of(p);
-    data(p)->trade_accepted = false;
+    data(p)->trade_accepted = data(p)->trade_confirmed = false;
     if (!partner || !data(p)->trading) return;
-    data(*partner)->trade_accepted = false;
+    /* @note confirmed too: after one side pressed "Do The Trade!", the other could still swap their offer for nothing */
+    data(*partner)->trade_accepted = data(*partner)->trade_confirmed = false;
 
     refresh(p, *partner, false);
     for (ENetPeer *to : { &p, partner })
@@ -318,6 +319,13 @@ void trade_confirm(ENetEvent& event, const ::hPipe &hPipe)
         return;
     }
     ::peer *pPartner = data(*partner);
+    /* @note the confirmation window is for the deal both accepted: a change since then un-accepted it */
+    if (!pPeer->trade_accepted || !pPartner->trade_accepted)
+    {
+        overlay(*event.peer, "`4The deal has changed.`` Trade again to see the new offer.");
+        end_trade(*event.peer);
+        return;
+    }
 
     pPeer->trade_confirmed = true;
     if (!pPartner->trade_confirmed)
