@@ -1,0 +1,319 @@
+# MikeTopia punch effects: what your punch looks like when you wear an item. One item per line:
+#   item id|punch effect id|item name (just for reading)
+# The server reads this file again whenever it changes, no restart needed.
+# Try an effect in game with /punch {id} (staff), then fix a line here if an item looks wrong.
+# Sources: MikeTopia's old list (GTOS + the Growtopia wiki "Mods" pages) and GrowServer (MIT, (c) JadlionHD).
+
+138|1|Cyclopean Visor
+366|2|Heartbow
+472|3|Tommygun
+594|4|Elvish Longbow
+768|5|Sawed-Off Shotgun
+900|6|Dragon Hand
+910|7|Reanimator Remote
+930|8|Death Ray
+1010|8|Destructo Ray
+1016|9|Six Shooter
+1204|10|Focused Eyes
+1378|11|Ice Dragon Hand
+1440|12|Evil Space Helmet
+1464|2|Golden Heartbow
+1484|12|Atomic Shadow Scythe
+1512|14|Pet Leprechaun
+1542|15|Battle Trout
+1570|18|Mariachi Guitar
+1576|16|Fiesta Dragon
+1648|14|Unicorn Garland
+1676|17|Squirt Gun
+1710|18|Keytar
+1712|18|Bass Guitar
+1714|18|Tambourine
+1738|11|Crystal Cape
+1748|19|Flamethrower
+1780|20|Legendbot-009
+1782|21|Dragon of Legend
+1804|22|Zeus' Lightning Bolt
+1868|23|Violet Protodrake Leash
+1874|24|Ring Of Force
+1946|25|Ice Calf Leash
+1952|26|Owlbeard
+1956|27|Chaos Cursed Wand
+1960|28|Ecto Pack
+1980|30|Claw Glove
+1998|23|Skeletal Dragon Claw
+2066|31|Cosmic Unicorn Bracelet
+2212|32|Black Crystal Dragon
+2218|33|Mighty Snow Rod
+2220|34|Tiny Tank
+2266|35|Crystal Glaive
+2386|36|Heavenly Scythe
+2388|37|Heartbreaker Hammer
+2450|38|Diamond Dragon
+2476|39|Burning Eyes
+2512|41|Marshmallow Basket
+2572|42|Flame Scythe
+2592|43|Legendary Katana
+2636|29|Rapier
+2720|44|Electric Bow
+2752|45|Pineapple Launcher
+2754|46|Demonic Arm
+2756|47|The Gungnir
+2800|25|Penguin Leash
+2802|49|Poseidon's Trident
+2854|26|Phoenix Pacifier
+2866|50|Wizard's Staff
+2876|51|BLYoshi's Free Dirt
+2878|52|FC Cleats
+2880|52|Man U Cleats
+2886|54|Baseball Glove
+2890|55|Basketball
+2906|53|Tennis Racquet
+2908|29|Carrot Sword
+2910|56|Emerald Staff
+2952|29|Digger's Spade
+2976|1|Cybernetic Eye
+3066|57|Fire Hose
+3070|29|Fire Ax
+3108|29|Chainsaw Hand
+3124|58|Soul Orb
+3162|29|Twin Swords
+3166|93|Pet Slime
+3168|59|Strawberry Slime
+3214|60|Axe Of Winter
+3238|61|Magical Carrot
+3274|62|T-Shirt Cannon
+3300|64|Party Blaster
+3418|65|Serpent Staff
+3466|29|Sushi Knife
+3476|66|Spring Bouquet
+3596|67|Pinata Pal
+3680|77|Phlogiston
+3686|68|Toy Lock-Bot
+3716|69|Neutron Gun
+3932|30|Rock Hammer
+3934|29|Rock Chisel
+4136|4|Heatbow
+4150|31|Eye Of Growganoth
+4166|29|Death's Scythe
+4170|53|Logarithmic Wheel
+4208|39|Demonic Horns
+4290|71|Solsascarf
+4464|73|AK-8087
+4474|72|Skull Launcher
+4506|29|Butcher Knife
+4644|18|Saxamaphone
+4746|75|Diamond Horn
+4748|40|Diamond Horns
+4778|76|Adventurer's Whip
+4840|78|Balloon Launcher
+4956|29|Emerald Pickaxe
+4996|77|Burning Hands
+5002|19|Playful Fire Sprite
+5006|56|Playful Wood Sprite
+5206|17|Cloak of Falling Waters
+5276|131|Celestial Lance
+5424|4|Winter Frost Bow
+5456|4|Silverstar Bow
+5480|80|Rayman's Fist
+6026|76|Whip of Truth
+6044|18|Fiesta Mariachi Guitar
+6110|81|Pineapple Spear
+6298|84|Smoog the Great Dragon
+6308|82|Beach Ball
+6310|83|Watermelon Slice
+6312|153|Phoenix Sword
+6382|8|Startopian Empire - Force Shield & Phase Blaster
+6756|85|Scepter of the Honor Guard
+6782|133|Horns of Infinity
+6804|106|Bubble Gun
+6892|87|Sorcerer's Tunic of Mystery
+6966|88|Riding Bull
+7044|86|Jade Crescent Axe
+7088|89|Ezio's Armguards
+7098|90|Apocalypse Scythe
+7136|92|Ethereal Rainbow Dragon
+7192|91|Shadow Spirit of the Underworld
+7196|95|Monarch Butterfly Wings
+7216|94|Mad Hatter
+7384|98|Go-Go-Growformer!
+7392|96|Mage's Orb
+7402|100|Snowflake Eyes with Rugged Winter Beard
+7408|61|Abominable Snowman Suit
+7414|99|Chipmunk
+7424|101|Snowfrost's Candy Cane Blade
+7470|102|Narwhal Tusk Staff
+7488|103|SLaminator's Boomerang
+7504|17|Super Squirt Rifle 500
+7568|107|Hovernator Drone - White
+7570|107|Hovernator Drone - Black
+7572|107|Hovernator Drone - Red
+7574|107|Hovernator Drone - Golden
+7586|104|Sonic Buster Sword
+7646|104|Tyr's Spear
+7650|105|Mjolnir
+7660|109|Super Party Launcher
+7668|108|Air Horn
+7736|111|Dragon Knight's Spear
+7758|6|Prehistoric Dragon Claw
+7760|6|Star Dragon Claw
+7826|111|Heartstaff
+7828|111|Golden Heartstaff
+7830|111|Heartsword
+7832|111|Golden Heartsword
+7836|112|Morty the Gray Elephant
+7838|112|Morty the Orange Elephant
+7840|112|Morty the Pink Elephant
+7842|112|Morty the Diamond Elephant
+7912|22|War Hammers of Darkness
+7950|113|Ionic Pulse Cannon Tank
+8002|114|Money Gun
+8006|19|Hellfire Horns - Black
+8008|19|Hellfire Horns - Blue
+8010|19|Hellfire Horns - Orange
+8012|19|Hellfire Horns - Ruby
+8022|116|Junk Cannon
+8036|118|Balloon Bunny
+8038|120|Pet Egg
+8372|121|Giant Eye Head
+8432|132|Galactic Destructor - Green
+8434|132|Galactic Destructor - Purple
+8436|132|Galactic Destructor - Red
+8452|36|Hands of the Void
+8554|29|Caduceaxe
+8732|29|Bamboo Sword
+8816|128|Astro Shades - Red
+8818|128|Astro Shades - Orange
+8820|128|Astro Shades - Purple
+8822|128|Astro Shades - Green
+8910|129|Leaf Blower
+8942|130|Dual Crescent Blade
+8944|131|Sun Blade
+8946|133|Storm Breaker
+8950|132|Sniper Rifle
+8960|134|Spring-Loaded Fists
+9006|135|Spirit of Anubis
+9032|90|Scythe of the Underworld
+9058|136|Cursed Katana
+9060|109|Hilarious Honker
+9066|138|Claw Of Growganoth
+9082|137|Rocket-Powered Warhammer
+9116|111|Red Laser Scimitar
+9118|111|Green Laser Scimitar
+9120|111|Blue Laser Scimitar
+9122|111|Purple Laser Scimitar
+9136|139|Dueling Star Fighter - Rebel Raider
+9138|140|Dueling Star Fighter - Imperial Enforcer
+9172|141|Armored WinterBot - Back
+9194|60|Hammer Of Winter
+9254|143|Euphoric Dragon
+9256|144|Party Bubble Blaster
+9272|6|Draconic Claw
+9304|137|Brutal Hand Fans
+9340|95|Datemaster's Rose
+9342|146|Datemaster's Bling
+9348|119|Medusa's Crown
+9376|149|Mining Mech
+9378|148|Lightning Gauntlets
+9396|43|Balrog's Tail
+9410|150|Radiant Doom Staff
+9430|30|Pooka Hood
+9448|30|Egg Ammo Belt
+9452|30|Loafers
+9454|30|Carrot on a Stick
+9462|151|Boastful Brawler Hair
+9606|152|Doomsday Warhammer
+9716|153|Crystal Infused Sword
+9738|92|Staff of the Deep
+10046|169|Growboy
+10050|170|Really Dangerous Pet Llama
+10064|168|Capuchin Leash
+10128|171|Mechanical Butler
+10130|4|Sun Shooter Bow
+10210|172|Cloak of Equilibrium
+10288|17|JackBowe's Koala
+10330|178|Shadow Crown
+10334|111|Black Balrog's Tail
+10336|39|Black Burning Eyes
+10388|180|Swordfish Sword
+10426|183|Mystic Snow Fox
+10442|184|Winter Light Launcher
+10498|111|Candy Cane Scythe
+10506|185|Spruce Goose
+10578|111|Mystic Battle Lance
+10618|187|Perilous Pirate Ship
+10626|111|Rose Rifle
+10652|188|Love Charged Hands
+10670|111|Bow of the Rainbow
+10676|191|Shamrock Shuriken
+10680|111|Finias' Red Javelin
+10694|193|Mini Minokawa
+10714|194|Steampunk Arm
+10722|196|Bunny Ear Magnifying Glass
+10724|195|Lil Growpeep's Baaaa Blaster
+10754|197|Helping Hand
+10886|200|Pineapple Chakram
+10888|199|Giant Pineapple Pizza Paddle
+10890|202|Rocket Powered Pineapple Vacuum
+10922|203|Pegasus Lance
+10952|207|Space Badger
+10954|215|Space Mouse
+10956|213|Space Dog
+10958|214|Space Pig
+10960|212|Space Rabbit
+10990|205|Alien Recon Wagon
+10998|206|Suspicious Weather Balloon
+11000|208|Channel G News Van
+11006|209|Soul Scythe
+11020|89|Dark Assassin's Armguards
+11046|210|Hydro Cannon
+11052|211|Super Duper Ice Cream Scooper
+11076|216|Ambu-Lance
+11078|31|Cute Mutant Wonky
+11080|31|Cute Mutant Plonky
+11082|31|Cute Mutant Boogle
+11084|217|Beowulf's Blade
+11116|220|Crystal Crown
+11118|218|Sonic Buster Katana
+11120|219|Primordial Jade Lance
+11140|225|Legendary Destroyer
+11142|223|Legendary Owl
+11158|221|Zodiac Ring
+11162|222|Finger Gun
+11232|224|Ouroboros Charm
+11240|227|Seed Gatling Gun
+11248|226|Staff of S'mores
+11250|228|Harvest Jade Hat
+11284|229|Paper Wasp Pet
+11292|231|Lightning Umbrella
+11298|111|Sakura's Revenge
+11308|200|Royal Clam Cruiser
+11312|111|Spider Sniper
+11314|233|Cauldron Cannon
+11316|234|Skull of Burning Horrors
+11324|235|Pharaoh's Pendant
+11326|111|Ferryman of the Underworld
+11354|236|Turkey Float
+11380|111|Black Bow of the Rainbow
+11438|237|Digital Bow
+11440|111|Mystic Bow
+11442|111|Royal Mystic Bow
+11464|237|Ice Dragon Scythe
+11506|245|Mask of The Dragon
+11508|245|Royal Mask of The Dragon
+11548|242|Guardian Armor
+11552|242|Royal Guardian Armor
+11562|245|Pet Blood Dragon
+11630|237|Monkey Warrior's Staff
+11674|237|Fancy Flute
+11704|245|Alpha Wolf
+11706|245|Royal Alpha Wolf
+11716|237|Mallet of Sucelles
+11718|237|Harp of Aibell
+11760|237|Growing Guardian Armor
+11768|245|Fish Tank Head
+11786|237|Soft-boiled Scepter
+11814|241|Rabbit Top Hat
+11818|248|Equinox Scarf
+11872|237|Comida Crusher
+11876|248|Serpent Shoulders
+11882|245|Neurovision

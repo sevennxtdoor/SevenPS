@@ -28,6 +28,9 @@
 #include "gamePacket/movement.hpp"
 #include "tools/guard.hpp"
 #include "tools/web_login.hpp"
+#include "onVariant/SetClothing.hpp"
+#include "tools/playmods.hpp"
+#include "commands/punch.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1006,6 +1009,44 @@ int main()
         CHECK(form_value("a=1&growId=Mi%6Be&b=", "growId") == "Mike" && form_value("x=1", "growId").empty(), "form_value");
         CHECK(token_json("abc").find("\"accountType\":\"growtopia\"") != std::string::npos, "answer the game understands");
         { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTWEB','MTWEB2')" }; del.execute(); }
+    }
+
+    /* ================= Items: punch effects & playmods ================= */
+    std::puts("\n[I1] punch effects from resources/punch_effects.txt");
+    {
+        CHECK(get_punch_id(138) == 1 && get_punch_id(3066) == 57 && get_punch_id(8006) == 19, "Cyclopean Visor 1, Fire Hose 57, Hellfire Horns 19");
+        CHECK(get_punch_id(2) == 0 && get_punch_id(0) == 0, "items without an effect: 0");
+
+        ::peer *wearer = static_cast<::peer*>(ev.peer->data);
+        const auto saved = wearer->clothing;
+        auto state_packet = [&]() -> std::array<u_char, 4> {
+            for (auto &p : outbox) if (p.peer == ev.peer && p.data.size() > 8 && p.data[0] == 4 && p.data[4] == 0x14) return { p.data[4], p.data[5], p.data[6], p.data[7] };
+            return { 0, 0, 0, 0 };
+        };
+        wearer->clothing.fill(0);
+        wearer->clothing[clothing::HAND] = 3066; // @note Fire Hose: effect 57 + punch range +1
+        wearer->update_effects();
+        outbox.clear(); on::SetClothing(*ev.peer);
+        const auto fh = state_packet();
+        CHECK(fh[1] == 57 && fh[2] == 0x80 && fh[3] == 0x81, "Fire Hose: state packet punch 57, build 128, punch range 129");
+
+        wearer->clothing[clothing::HAND] = 0;
+        wearer->clothing[clothing::HAIR] = 4748; // @note Diamond Horns: build +1
+        wearer->update_effects();
+        outbox.clear(); on::SetClothing(*ev.peer);
+        const auto dh = state_packet();
+        CHECK(dh[2] == 0x81 && dh[3] == 0x80, "Diamond Horns: build range 129");
+
+        wearer->clothing[clothing::HAIR] = 0;
+        wearer->clothing[clothing::HAND] = 1904; // @note The One Ring: eyes only
+        wearer->update_effects();
+        CHECK((wearer->state & 0x4) != 0, "The One Ring: invisible state bit");
+        wearer->clothing[clothing::HAND] = 0;
+        wearer->update_effects();
+        CHECK((wearer->state & PLAYMOD_STATES) == 0 && wearer->punch_effect == 0, "taking it off clears the bit and the punch effect");
+
+        wearer->clothing = saved;
+        wearer->update_effects();
     }
 
     /* ================= News & rules ================= */

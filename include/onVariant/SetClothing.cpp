@@ -16,7 +16,9 @@ void on::SetClothing(ENetPeer &peer)
     }, pPeer->netid);
 
     ::gamePacket gamePacket {
-        .type = 0x14 | ((0x808000 + pPeer->punch_effect) << 8), // @note 0x8080{}14 - PACKET_SET_CHARACTER_STATE
+        /* @note PACKET_SET_CHARACTER_STATE (0x14): byte 1 punch effect, byte 2 build range, byte 3 punch range.
+         * 128 = normal reach, 129 = +1 tile... (GTopia's SendCharacterState and GrowServer agree) */
+        .type = static_cast<int>(0x14u | (static_cast<u_int>(pPeer->punch_effect) << 8) | ((0x80u + playmod_range(*pPeer, false)) << 16) | ((0x80u + playmod_range(*pPeer, true)) << 24)),
         .netid = pPeer->netid,
         .count = 125.0f, // @note gtnoob has this as 'waterspeed'
         .id = pPeer->state, // @note 04 invisible (only eyes/mouth), 08 no arms, 16 no face, 32 invisible (only legs/arms), 64 devil horns, 128 angel halo, 2048 frozen, 4096 gray skin?,8192 ducttape, 16384 Onion effect, 32768 stars effect, 65536 zombie, 131072 hit by lava, 262144 shadow effect, 524288 irradiated effect, 1048576 spotlight, 2097152 pineapple thingy

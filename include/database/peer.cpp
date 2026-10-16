@@ -289,6 +289,9 @@ void peer::update_effects()
     if (this->clothing[clothing::BACK] != 0 || has_playmod(*this, PM_DOUBLE_JUMP)) this->state |= S_DOUBLE_JUMP;
     else                                     this->state &= ~S_DOUBLE_JUMP;
 
+    /* @note looks/abilities from worn items (playmods.txt 'extra'): halo, horns, sparkle, fireproof... */
+    this->state = (this->state & ~PLAYMOD_STATES) | playmod_states(*this);
+
     /* @note staff are super supporters: bigger name + green wrench, unless /hidestatus */
     if (this->role >= MODERATOR && !this->hide_status) this->state |= S_SUPER_SUPPORTER;
     else                                               this->state &= ~S_SUPER_SUPPORTER;

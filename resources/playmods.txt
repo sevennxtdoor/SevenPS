@@ -2,8 +2,21 @@
 #   item id|speed|gravity|name|extra
 # Normal speed is 250 (higher = faster, lower = slower), normal gravity is 1000 (lower = higher jumps).
 # Use 0 to leave speed or gravity unchanged. You can edit this file while the server runs.
-# extra (optional, comma separated): dj = double jump, dig = Enhanced Digging (blocks need 1 hit less)
+# extra (optional, comma separated):
+#   dj = double jump, dig = Enhanced Digging (blocks need 1 hit less)
+#   pr+N = punch N tiles further, br+N = build N tiles further (N = 1..10)
+#   eyes (invisible, only eyes), horns, halo, highjump, fireproof (lava doesn't hurt), spikeproof,
+#   stinky, sparkle, shadow, irradiated, spotlight
 # Back items (wings, capes) already give double jump.
+
+# From GTopia's playmods (MIT, (c) keichira)
+1904|0|0|Invisible (The One Ring)|eyes
+3066|0|0|Long Reach (Fire Hose)|pr+1
+3716|0|0|Hunting Ghosts (Neutron Gun)|pr+2
+4746|0|0|Energized Horn (Diamond Horn)|br+1
+4748|0|0|Energized Horn (Diamond Horns)|br+1
+4750|0|0|Energized Horn (Diamond Devil Horns)|br+1
+1940|330|0|Speedy (Diamond Rocket Shoes)
 
 # Speedy
 496|330|0|Speedy (Air Robinsons)

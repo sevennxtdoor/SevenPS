@@ -2,6 +2,7 @@
 #include "action/respawn.hpp"
 #include "tools/fishing.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/playmods.hpp"
 
 #include "movement.hpp"
 
@@ -18,7 +19,7 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     fishing_moved(event); // @note walking away pulls the line in
 
     /* add fireproof only take away 1 hp instead of 2 */
-    if (gamePacket.state & state::S_LAVA_HIT) pPeer->pain_hp -= 2;
+    if ((gamePacket.state & state::S_LAVA_HIT) && !(pPeer->state & STATE_FIREPROOF)) pPeer->pain_hp -= 2; // @note fireproof items (playmods.txt)
     if (pPeer->pain_hp <= 0) action::respawn(event, ""), pPeer->pain_hp = 10;
     
     gamePacket.netid = pPeer->netid;
