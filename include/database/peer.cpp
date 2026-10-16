@@ -203,10 +203,13 @@ void peer::load(const std::string &growid, const std::string &password)
         this->mysql_update<std::vector<u_char>>("inventory", this->serialize_inventory().data());
     }
     this->mysql_select_all();
+    this->loaded = true;
 }
 
 peer::~peer()
 {
+    /* @note a refused login still had growid set, so this wrote an empty inventory and 0 gems over the real account */
+    if (!this->loaded) return;
     this->mysql_update<std::vector<u_char>>("inventory", this->serialize_inventory().data());
     this->mysql_update<std::vector<u_char>>("clothing", this->serialize_clothing().data());
     this->mysql_update<signed>("titles_on", this->titles_on); // @note `titles` (owned) is written by /givetitle directly

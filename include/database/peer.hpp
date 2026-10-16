@@ -179,6 +179,7 @@ public:
     int wl_bank{};               // @note world locks in the World Lock Bank, saved
     int playtime{};              // @note seconds played before this login, saved
     std::time_t login_time{};    // @note when this session started
+    bool loaded{};               // @note set by load(): only a loaded peer may be saved over its account
     u_char online_status{};      // @note 0 online, 1 busy, 2 away. not saved
 
     /* @note stats, achievements, goals, grow pass, wardrobe, pet, ignore list... (tools/profile.cpp), saved */

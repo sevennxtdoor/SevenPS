@@ -41,6 +41,7 @@ void action::protocol(ENetEvent& event, const std::string& header)
         std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
         send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
         send_action(*event.peer, "logon_fail", "");
+        pPeer->growid.clear(); // @note this peer is not that account
         return;
     }
     const std::string password = pPeer->password;
