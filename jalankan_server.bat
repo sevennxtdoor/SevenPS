@@ -13,16 +13,17 @@ if not errorlevel 1 (
 :start
 if not exist main_new.exe goto run
 echo Memasang versi server terbaru...
-rem antivirus sering mengunci file baru beberapa detik setelah dibuat: coba ulang, jangan langsung gagal
+rem McAfee Firewall memegang main.exe (program yang diizinkan firewall), jadi main.exe tidak bisa diganti dengan move.
+rem copy tetap bisa (isi file ditimpa, file-nya sendiri tidak diganti), lalu main_new.exe dihapus.
 set tries=0
 :install
-move /y main_new.exe main.exe >nul 2>nul && goto run
+copy /b /y main_new.exe main.exe >nul 2>nul && del main_new.exe >nul 2>nul && goto run
 set /a tries+=1
-if %tries% geq 60 (
-    echo [!] Gagal memasang versi baru setelah 60 detik. Server versi lama tetap dijalankan.
+if %tries% geq 30 (
+    echo [!] Gagal memasang versi baru setelah 30 detik. Server versi lama tetap dijalankan.
     goto run
 )
-echo     file masih dikunci, coba lagi... (%tries%/60)
+echo     file masih dikunci, coba lagi... (%tries%/30)
 timeout /t 1 /nobreak >nul
 goto install
 
