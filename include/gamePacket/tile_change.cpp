@@ -19,6 +19,7 @@
 #include "tools/system_worlds.hpp"
 #include "tools/jammer.hpp"
 #include "tools/consumables.hpp"
+#include "tools/buffs.hpp"
 #include "action/quit_to_exit.hpp"
 #include "action/join_request.hpp"
 #include "item_activate_object.hpp"
@@ -395,6 +396,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     {
                         /* @todo merge gems more effectively */
                         int gems = gem_bonus(*pPeer, RandomRange(1, rarity_to_gem)) * (event_on(event_type::GEMS) ? 2 : 1); // @note rank bonus, Gems x2 event
+                        if (buff_lucky(*pPeer) && !RandomRange(0, 10)) gems *= RandomRange(2, 6); // @note Lucky! (Four Leaf Clover...): 10% chance of 2-5x
                         for (short i : {10, 5, 1}/* gem type */)
                             for (; gems >= i; gems -= i/* downgrade type */)
                                 magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);

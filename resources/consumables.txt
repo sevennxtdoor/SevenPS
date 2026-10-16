@@ -1,0 +1,46 @@
+# MikeTopia consumables with a timed mod (buff). One item per line:
+#   item id|target|seconds|mod name|effects|added message|removed message
+# target:  self = use it on yourself, player = on any player (also you), other = on another player
+# effects (comma separated):
+#   skin=RRGGBB         skin color while the mod lasts
+#   speed=N, gravity=N  like playmods.txt (normal 250 / 1000; higher gravity = lower jumps)
+#   horns, halo, frozen, stinky, shadow, sparkle, zombie   looks the game draws
+#   lucky   10% chance a block drops 2-5x the gems     repel   hides the Legendary title (Doctor Repulsion)
+#   curse   sent to HELL, can't leave until it ends     kill    the player dies right away (no mod)
+#   burp    a loud BURRRPPP bubble
+# The server reads this file again whenever it changes. Durations and messages come from the Growtopia wiki
+# (growtopia.fandom.com, "Mods" and the item pages); skin colors are MikeTopia's pick (the wiki only names them).
+
+# --- on yourself ---
+196|self|3600|Feelin' Blue|skin=0000FF|A blueberry slides down your throat!|The effects of the blueberry have worn off.
+4672|self|900|Envious|skin=50C850|It ain't easy being you.|Healthy color restored.
+540|self|900|Envious|skin=50C850,burp|It ain't easy being you.|Healthy color restored.
+1634|self|5|Caffeinated|speed=330|You are full of caffeine!|Ugh. Caffeine crash.
+1988|self|300|Haunted|shadow|Something is lurking in the shadows...|Everything's back to normal!
+3742|self|60|Spray Tan|skin=E08A3C|You are orange.|The spray tan wore off.
+528|self|1800|Lucky!|lucky|You're luckier than before!|Your luck has worn off.
+750|self|1800|Lucky!|lucky|You're luckier than before!|Your luck has worn off.
+1056|self|1800|Lucky!|lucky|You're luckier than before!|Your luck has worn off.
+676|self|86400|Doctor Repulsion|repel|Doctors won't come near you!|You no longer repel doctors.
+764|self|90|Infected!|zombie|You've been infected by the g-Virus. Punch others to infect them, too! Braiiiins...|You've been cured.
+
+# --- on any player ---
+126|player|1800|Devil Horns|horns|You little devil...|Off the naughty list!
+1964|player|1800|Devil Horns|horns|You little devil...|Off the naughty list!
+128|player|1800|Angelic Halo|halo|You have been good.|You're falling out of favor.
+874|player|180|Egged!|skin=FFE63C|You have egg on your face.|You washed your face!
+962|player|180|Saucy!|skin=FF3C3C|You are a saucy person.|You got cleaned up.
+712|player|5|ON FIRE!!!|skin=FF5028,speed=330|You are burning up!|The fire's out.
+960|player|5|ON FIRE!!!|speed=330|You are burning up!|The fire's out.
+368|player|3|Muddy|skin=5A3C1E,speed=150,gravity=1400|You've been splattered with mud!|Clean again!
+3728|player|6|Slimed!|speed=150,gravity=1400|You're covered in ectoplasm!|You got cleaned up.
+2002|player|86400|Doctor Repulsion|repel|Doctors won't come near you!|You no longer repel doctors.
+# Perfume: the wiki doesn't say how long it lasts, 10 minutes is MikeTopia's pick
+388|player|600|Stinky|stinky|You really really smell.|The air clears.
+
+# --- on another player ---
+274|other|10|Frozen|frozen|Freeze!|You've thawed out.
+1368|other|2|Frozen!|frozen|Your body has turned to ice. You can't move!|You've thawed out.
+384|other|3600|Valentine|skin=FF96BE|You are somebody's valentine!|Yuck!
+278|other|600|Curse|curse|You've been cursed to (the world) hell!|You are no longer bound to the netherworld, you're free to go.
+276|other|0|Fire Wand|kill||

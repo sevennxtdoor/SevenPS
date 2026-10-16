@@ -8,6 +8,9 @@
 #include "tools/playmods.hpp"
 #include "tools/profile.hpp"
 #include "tools/economy.hpp"
+#include "tools/buffs.hpp"
+#include "commands/warp.hpp"
+#include "action/respawn.hpp"
 
 #include "consumables.hpp"
 
@@ -257,8 +260,47 @@ static bool fragments(ENetEvent &event, ::world &world, const ::item &item)
     return true;
 }
 
+/* @note a timed mod from consumables.txt, used on yourself or on the player standing on `tile` */
+static void use_buff(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item, const buff_def &def)
+{
+    ENetPeer *other{}; // @note someone else on that tile wins over you, so you can hit a player standing on top of you
+    peers(world.name, PEER_SAME_WORLD, [&](ENetPeer &p)
+    {
+        if (&p != event.peer && other == nullptr && static_cast<::peer*>(p.data)->pos.by_32(true) == tile) other = &p;
+    });
+    const bool self = (tile == me(event).pos.by_32(true));
+
+    ENetPeer *target{};
+    if (def.target == "self") { if (!on_self(event, tile)) return; target = event.peer; }
+    else if (def.target == "other") target = other;
+    else target = other ? other : (self ? event.peer : nullptr);
+    if (target == nullptr)
+        return bubble(event, (def.target == "other") ? "Use this on another player." : "Use this on a player.");
+
+    ::peer &t = *static_cast<::peer*>(target->data);
+    if (target != event.peer && t.role >= MODERATOR && me(event).role < t.role)
+        return bubble(event, "`4You can't use that on staff.``"); // @note no cursing or freezing the moderators
+
+    take(event, item.id);
+    ENetEvent te{ .peer = target };
+    buff_add(te, def, event);
+    if (def.curse)
+    {
+        const int ends = static_cast<int>(std::time(nullptr)) + def.seconds;
+        pset(t, "curse_until", std::max(pget(t, "curse_until"), ends)); // @note the same lock as /curse (join_request keeps them in HELL)
+        warp(te, "warp HELL");
+    }
+    if (def.kill)
+    {
+        on::ConsoleMessage(target, std::format("`4You were burned to a crisp by ``{}`4!``", me(event).display_growid));
+        action::respawn(te, "");
+    }
+}
+
 bool use_consumable(ENetEvent &event, ::world &world, ::block &block, const ::pos &tile, const ::item &item)
 {
+    if (const buff_def *def = buff_for_item(item.id)) { use_buff(event, world, tile, item, *def); return true; }
+
     switch (item.id)
     {
         case 228: case 1778: return grow_spray(event, world, block, tile, item);
@@ -275,30 +317,14 @@ bool use_consumable(ENetEvent &event, ::world &world, ::block &block, const ::po
             bubble(event, "`5The card crumbles into Valentine's Dust...``");
             return true;
         }
-        case 540: // @note Green Beer
-        {
-            take(event, item.id);
-            peers(world.name, PEER_SAME_WORLD, [&](ENetPeer &p) { send_varlist(&p, { "OnTalkBubble", me(event).netid, "`2BURRRPPP...!``", 0u }); });
-            return true;
-        }
-        case 764: // @note g-Virus: become a zombie (slow, green). Zombie Jammer only stops bites, not the virus itself
+        case 782: // @note Antidote: ends the g-Virus (Green Beer and the g-Virus are in consumables.txt now)
         {
             if (!on_self(event, tile)) return true;
-            if (me(event).state & S_ZOMBIE) { bubble(event, "You are already a zombie!"); return true; }
+            if (!has_buff(me(event), "Infected!")) { bubble(event, "You're not sick!"); return true; }
             take(event, item.id);
-            me(event).state |= S_ZOMBIE;
-            on::SetClothing(*event.peer);
-            send_varlist(event.peer, { "OnAddNotification", "interface/large/infected.rttex", "`4You are infected! Use an Antidote to get better.``", "audio/skel.wav", 0 });
-            return true;
-        }
-        case 782: // @note Antidote
-        {
-            if (!on_self(event, tile)) return true;
-            if (!(me(event).state & S_ZOMBIE)) { bubble(event, "You're not sick!"); return true; }
-            take(event, item.id);
-            me(event).state &= ~S_ZOMBIE;
-            on::SetClothing(*event.peer);
+            buff_remove(event, "Infected!");
             bubble(event, "`2You feel much better!``");
+            on::ConsoleMessage(event.peer, "You've been cured. (`$Infected!`` mod removed)");
             return true;
         }
     }

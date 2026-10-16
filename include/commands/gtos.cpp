@@ -7,6 +7,7 @@
 #include "tools/rank.hpp"
 #include "tools/jammer.hpp"
 #include "tools/playmods.hpp"
+#include "tools/buffs.hpp"
 #include "tools/wrench_menu.hpp"
 #include "tools/economy.hpp"
 
@@ -168,6 +169,8 @@ void status(ENetEvent &event, const std::string_view text)
     on::ConsoleMessage(event.peer, std::format("`o** Playmods: `w{}``{}{}``", playmod_names(p),
         muted_left(p) ? std::format("`o, `4muted`` for `w{}``", duration(muted_left(p))) : "",
         cursed_left(p) ? std::format("`o, `4cursed`` for `w{}``", duration(cursed_left(p))) : ""));
+    if (const std::string buffs = buff_names(p); !buffs.empty())
+        on::ConsoleMessage(event.peer, std::format("`o** Mods: `w{}``", buffs)); // @note timed mods from consumables
 }
 
 /* ---------- staff ---------- */

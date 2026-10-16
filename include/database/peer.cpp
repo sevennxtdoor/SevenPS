@@ -12,6 +12,7 @@
 #include "action/quit_to_exit.hpp"
 #include "tools/string.hpp"
 #include "tools/playmods.hpp"
+#include "tools/buffs.hpp"
 
 #include "peer.hpp"
 
@@ -174,7 +175,7 @@ std::string peer::name_as(std::string_view color) const
     return std::format("{}{}{}{}{}{}``", color, rank_tag, tag,
         (shown & T_DOCTOR) ? "Dr. " : "",
         this->nick.empty() ? this->growid : this->nick,
-        (shown & T_LEGEND) ? " of Legend" : "");
+        ((shown & T_LEGEND) && !buff_repel(*this)) ? " of Legend" : ""); // @note Doctor Repulsion (Apple) hides it for a while
 }
 
 ::blob peer::serialize_inventory() const
@@ -289,8 +290,8 @@ void peer::update_effects()
     if (this->clothing[clothing::BACK] != 0 || has_playmod(*this, PM_DOUBLE_JUMP)) this->state |= S_DOUBLE_JUMP;
     else                                     this->state &= ~S_DOUBLE_JUMP;
 
-    /* @note looks/abilities from worn items (playmods.txt 'extra'): halo, horns, sparkle, fireproof... */
-    this->state = (this->state & ~PLAYMOD_STATES) | playmod_states(*this);
+    /* @note looks/abilities from worn items (playmods.txt 'extra'): halo, horns, sparkle, fireproof... and from timed mods (consumables.txt) */
+    this->state = (this->state & ~(PLAYMOD_STATES | BUFF_STATES)) | playmod_states(*this) | buff_states(*this);
 
     /* @note staff are super supporters: bigger name + green wrench, unless /hidestatus */
     if (this->role >= MODERATOR && !this->hide_status) this->state |= S_SUPER_SUPPORTER;

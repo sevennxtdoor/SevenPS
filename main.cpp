@@ -19,6 +19,7 @@
 #include "include/tools/guild.hpp" // @note load_guilds()
 #include "include/tools/auth.hpp" // @note apply_password_reset()
 #include "include/tools/web_login.hpp" // @note web_login_tick()
+#include "include/tools/buffs.hpp" // @note buff_tick()
 #include <csignal>
 
 namespace
@@ -75,6 +76,7 @@ int main()
         fishing_tick(); // @note fish bites
         hunt_tick(); // @note Item Hunt event
         backup_tick(); // @note daily database backup
+        buff_tick(); // @note timed mods from consumables run out
     }
 
     safe_disconnect_peers(gSignal);

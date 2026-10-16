@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include "tools/jammer.hpp"
+#include "tools/buffs.hpp"
 
 #include "playmods.hpp"
 
@@ -77,6 +78,7 @@ static bool in_antigravity(const ::peer &p)
             if (it->second.speed > 0) speed = (it->second.speed < NORMAL_SPEED) ? std::min(speed, it->second.speed) : std::max(speed, it->second.speed);
             if (it->second.gravity > 0) gravity = std::min(gravity, it->second.gravity);
         }
+    buff_physics(p, speed, gravity); // @note Caffeinated, Muddy, Slimed...
     if (p.state & S_ZOMBIE) speed = ZOMBIE_SPEED;
     if (in_antigravity(p)) gravity = std::min(gravity, ANTIGRAVITY);
     return { speed, gravity };
@@ -117,7 +119,6 @@ std::string playmod_names(const ::peer &p)
     const auto add = [&names](std::string_view n) { names += std::format("{}{}", names.empty() ? "" : ", ", n); };
     for (float cloth : p.clothing)
         if (auto it = mods.find(static_cast<short>(cloth)); cloth != 0 && it != mods.end()) add(it->second.name);
-    if (p.state & S_ZOMBIE) add("`2Zombie``");
     if (in_antigravity(p)) add("Antigravity");
     return names.empty() ? "none" : names;
 }

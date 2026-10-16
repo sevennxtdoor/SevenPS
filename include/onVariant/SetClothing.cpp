@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "tools/playmods.hpp"
+#include "tools/buffs.hpp"
 #include "SetClothing.hpp"
 
 void on::SetClothing(ENetPeer &peer)
@@ -11,7 +12,7 @@ void on::SetClothing(ENetPeer &peer)
         CL_Vec3f{pPeer->clothing[clothing::HAIR], pPeer->clothing[clothing::SHIRT], pPeer->clothing[clothing::LEGS]}, 
         CL_Vec3f{pPeer->clothing[clothing::FEET], pPeer->clothing[clothing::FACE], pPeer->clothing[clothing::HAND]}, 
         CL_Vec3f{pPeer->clothing[clothing::BACK], pPeer->clothing[clothing::HEAD], pPeer->clothing[clothing::CHARM]}, 
-        (pPeer->state & S_GHOST) ? -140 : pPeer->skin_color,
+        (pPeer->state & S_GHOST) ? -140 : buff_skin(*pPeer).value_or(pPeer->skin_color), // @note Blueberry, Egg, Spray Tan...
         CL_Vec3f{pPeer->clothing[clothing::ANCES], 0.0f, 0.0f}
     }, pPeer->netid);
 

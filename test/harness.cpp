@@ -31,6 +31,7 @@
 #include "onVariant/SetClothing.hpp"
 #include "tools/playmods.hpp"
 #include "commands/punch.hpp"
+#include "tools/buffs.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1047,6 +1048,74 @@ int main()
 
         wearer->clothing = saved;
         wearer->update_effects();
+    }
+
+    /* ================= Timed consumables (buffs) ================= */
+    std::puts("\n[B1] consumables.txt is read");
+    {
+        const buff_def *blue = buff_for_item(196), *curse_wand = buff_for_item(278), *fire = buff_for_item(276);
+        CHECK(blue && blue->target == "self" && blue->seconds == 3600 && blue->has_skin, "Blueberry: self, 1 hour, skin");
+        CHECK(blue && blue->skin == 0xFF0000FFu, "blue skin in the game's order (b<<24|g<<16|r<<8|a)");
+        CHECK(curse_wand && curse_wand->curse && curse_wand->target == "other", "Curse Wand curses others");
+        CHECK(fire && fire->kill && fire->seconds == 0, "Fire Wand kills, no mod");
+        CHECK(buff_for_item(2) == nullptr, "Dirt is not a consumable");
+    }
+    {
+        const ::pos me_at{ 11, 20 }, them_at{ 13, 20 };
+        owner->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        visitor->pos = ::pos{ 13 * 32.0f, 20 * 32.0f };
+        const auto owner_role = owner->role, visitor_role = visitor->role;
+        owner->role = PLAYER; visitor->role = PLAYER;
+        owner->slot_size = 60;
+        for (short id : { 196, 126, 274, 764, 782, 276, 676 }) owner->slots.push_back(::slot(id, 3));
+
+        std::puts("\n[B2] Blueberry on yourself");
+        use(ev, *owner, 196, them_at); CHECK(said("Must be used on yourself") && held(*owner, 196) == 3, "not on someone else, kept");
+        use(ev, *owner, 196, me_at);
+        CHECK(held(*owner, 196) == 2, "one Blueberry eaten");
+        CHECK(has_buff(*owner, "Feelin' Blue") && said("Feelin' Blue"), "Feelin' Blue mod added");
+        CHECK(buff_skin(*owner) == 0xFF0000FFu, "skin is blue now");
+        CHECK(buff_names(*owner).find("Feelin' Blue (1 hour)") != std::string::npos, "/status shows it with time left");
+
+        std::puts("\n[B3] Devil Horns on another player, Freeze Wand only on others");
+        use(ev, *owner, 126, them_at);
+        CHECK(has_buff(*visitor, "Devil Horns") && (visitor->state & 0x40), "visitor has horns");
+        CHECK(!has_buff(*owner, "Devil Horns"), "not me");
+        use(ev, *owner, 274, me_at); CHECK(said("another player") && held(*owner, 274) == 3, "Freeze Wand refuses yourself");
+        use(ev, *owner, 274, ::pos{ 30, 20 }); CHECK(said("another player") && held(*owner, 274) == 3, "nobody there, kept");
+        use(ev, *owner, 274, them_at); CHECK((visitor->state & 0x800) && held(*owner, 274) == 2, "visitor frozen");
+
+        std::puts("\n[B4] staff can't be hit by players");
+        visitor->role = MODERATOR;
+        use(ev, *owner, 274, them_at); CHECK(said("staff") && held(*owner, 274) == 2, "refused, kept");
+        visitor->role = PLAYER;
+
+        std::puts("\n[B5] g-Virus and Antidote");
+        use(ev, *owner, 782, me_at); CHECK(said("not sick") && held(*owner, 782) == 3, "Antidote needs a virus");
+        use(ev, *owner, 764, me_at);
+        CHECK((owner->state & S_ZOMBIE) && has_buff(*owner, "Infected!"), "zombie");
+        CHECK(player_physics(*owner).x < 250.0f, "zombies are slow");
+        use(ev, *owner, 782, me_at);
+        CHECK(!(owner->state & S_ZOMBIE) && !has_buff(*owner, "Infected!") && held(*owner, 782) == 2, "cured");
+        CHECK(has_buff(*owner, "Feelin' Blue"), "other mods stay");
+
+        std::puts("\n[B6] Fire Wand, Apple");
+        use(ev, *owner, 276, them_at); CHECK(said("OnKilled") && held(*owner, 276) == 2, "visitor dies");
+        use(ev, *owner, 676, me_at); CHECK(buff_repel(*owner), "Doctor Repulsion");
+
+        std::puts("\n[B7] mods run out");
+        for (auto &[key, value] : visitor->profile)
+            if (key.starts_with("buff:")) value = std::format("{}{}", std::time(nullptr) - 1, value.substr(value.find('/')));
+        visitor->loaded = owner->loaded = true; // @note buff_tick skips players still logging in
+        Sleep(1100); outbox.clear(); buff_tick();
+        visitor->loaded = owner->loaded = false; // @note never saved over a real account
+        CHECK(said("Off the naughty list") && said("thawed out"), "removed messages");
+        CHECK(!(visitor->state & (0x40 | 0x800)) && buff_names(*visitor).empty(), "horns and ice gone");
+        CHECK(has_buff(*owner, "Feelin' Blue"), "owner's hour isn't up");
+
+        std::erase_if(owner->profile, [](const auto &kv) { return kv.first.starts_with("buff:"); });
+        owner->update_effects(); visitor->update_effects();
+        owner->role = owner_role; visitor->role = visitor_role;
     }
 
     /* ================= News & rules ================= */
