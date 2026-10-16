@@ -1,0 +1,73 @@
+# MikeTopia fossils (Growassic Park) and the Mystery Pinata. The server reads this file again when it changes.
+# How it works (Growtopia wiki: Fossil Rock, Rock Hammer, Rock Chisel, Fossil, Fossil Prep Station):
+#   1. a loaded world can turn one of its rocks into a fossil rock
+#   2. tap the fossil rock with a Rock Hammer until "I unearthed a fossil!" (hit it again with the hammer = smashed)
+#   3. break it while wearing a Rock Chisel -> a Fossil drops (Amber Necklace: 5% chance of 2)
+#      breaking it any other way smashes the fossil and leaves the normal rock
+#   4. Fossil Brush on a Fossil that nobody has picked up yet -> Polished Fossil
+#   5. use a Fossil or Polished Fossil on a Fossil Prep Station, wait, then punch it for a prize
+#
+# rock|fossil rock id|normal rock id|name
+# spawn|N            N% chance that a world gets a fossil rock when it loads (MikeTopia's pick)
+# hammer|N           N% chance that one hammer tap unearths the fossil (MikeTopia's pick, the wiki says "slight")
+# prep_time|min|max  seconds in the prep station (wiki: an hour to a day)
+# prep|item id|weight Fossil|weight Polished Fossil|name   prizes (wiki list, weights are MikeTopia's pick, 0 = never)
+# pinata|item id|becomes id|name   an item lying under a Mystery Pinata when it breaks changes into another (wiki)
+
+spawn|10
+hammer|20
+prep_time|3600|86400
+
+rock|3918|10|Fossil Rock -> Rock
+rock|3920|944|Fossil Boulder -> Boulder
+rock|3922|1538|Deep Fossil Rock -> Deep Rock
+rock|3924|2492|Fossilroid -> Asteroid
+rock|3926|1134|Alien Fossil Rock -> Mars Rock
+rock|3928|3930|Igneous Fossil Rock -> Igneous Rock
+
+prep|3948|20|15|Amber Block
+prep|3940|20|0|Ammonite Block
+prep|3946|20|15|Ancient Plant Seed
+prep|3942|15|15|Dino Ribcage
+prep|4126|15|15|Stone Spear
+prep|3944|5|12|Dinosaur Mask
+prep|6800|5|10|Pet Rock
+prep|4236|3|8|Extractium Shard
+prep|11220|3|0|Moyaimorph Mask
+prep|3950|2|10|T-Rex Skull
+
+pinata|1584|3596|Mystery Pinata -> Pinata Pal
+pinata|2634|3602|Mexican Dress -> Fiesta Dress
+pinata|1580|1586|Burrito -> Pet Burrito
+pinata|3274|4660|T-Shirt Cannon -> Confetti Cannon
+pinata|4474|4660|Skull Launcher -> Confetti Cannon
+pinata|1568|710|Lucky Pinata Hat -> Fiesta Sombrero
+pinata|678|1574|Crimson Eagle Wings -> Parrot Wings
+pinata|330|1578|Cactus -> Party Cactus
+pinata|802|2636|Red Growsaber -> Rapier
+pinata|806|2636|Green Growsaber -> Rapier
+pinata|808|2636|Blue Growsaber -> Rapier
+pinata|804|2636|Black Growsaber -> Rapier
+pinata|812|2636|Double Growsaber -> Rapier
+pinata|810|2636|Flamesaber -> Rapier
+pinata|900|1576|Dragon Hand -> Fiesta Dragon
+pinata|1378|1576|Ice Dragon Hand -> Fiesta Dragon
+pinata|2160|2642|Super Cape - Blue -> Cape of Shadows
+pinata|2164|2642|Super Cape - Purple -> Cape of Shadows
+pinata|2162|2642|Super Cape - Green -> Cape of Shadows
+pinata|2158|2642|Super Cape - Red -> Cape of Shadows
+pinata|2166|2642|Super Cape - Black -> Cape of Shadows
+pinata|2614|2620|Luchador Jersey - El Astro -> Luchador Jersey - El Verdugo
+pinata|2616|2620|Luchador Jersey - El Peligro -> Luchador Jersey - El Verdugo
+pinata|2618|2620|Luchador Jersey - El Tigre -> Luchador Jersey - El Verdugo
+pinata|2606|2612|Luchador Tights - El Astro -> Luchador Tights - El Verdugo
+pinata|2608|2612|Luchador Tights - El Peligro -> Luchador Tights - El Verdugo
+pinata|2610|2612|Luchador Tights - El Tigre -> Luchador Tights - El Verdugo
+pinata|2598|2604|Luchador Mask - El Astro -> Luchador Mask - El Verdugo
+pinata|2600|2604|Luchador Mask - El Peligro -> Luchador Mask - El Verdugo
+pinata|2602|2604|Luchador Mask - El Tigre -> Luchador Mask - El Verdugo
+pinata|1570|6044|Mariachi Guitar -> Fiesta Mariachi Guitar
+pinata|414|6030|Sheet Music: Bass Note -> Sheet Music: Spanish Guitar Note
+pinata|2624|6056|Luchador Championship Belt -> Bandolier
+pinata|8310|8312|Coati Scarf -> Fiesta Coati Scarf
+pinata|1572|15436|Churro Block -> Bag of Churros

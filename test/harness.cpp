@@ -32,6 +32,7 @@
 #include "tools/playmods.hpp"
 #include "commands/punch.hpp"
 #include "tools/buffs.hpp"
+#include "tools/special_blocks.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1116,6 +1117,152 @@ int main()
         std::erase_if(owner->profile, [](const auto &kv) { return kv.first.starts_with("buff:"); });
         owner->update_effects(); visitor->update_effects();
         owner->role = owner_role; visitor->role = visitor_role;
+    }
+
+    /* ================= Special blocks: loot, fossils, Mystery Pinata ================= */
+    {
+        const auto owner_role = owner->role;
+        owner->role = PLAYER;
+        owner->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        owner->slot_size = 60;
+        const auto saved_hand = owner->clothing[clothing::HAND];
+        auto punch = [&](const ::pos &at) { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = at }); };
+        auto on_tile = [&](const ::pos &at, short id) {
+            int n = 0;
+            for (const ::object &o : w.objects) if (o.id == id && o.pos.by_32(true) == at) n += o.count;
+            return n;
+        };
+        auto clear_tile = [&](const ::pos &at) { std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == at; }); };
+        auto break_it = [&](const ::pos &at, short id) { for (int k = 0; k < 40 && w.blocks[cord(at.x_int(), at.y_int())].fg == id; ++k) punch(at); };
+
+        std::puts("\n[X1] Mystery Block drops 1-50 gems, no block or seed");
+        const ::pos lt{ 14, 20 };
+        clear_tile(lt);
+        w.blocks[cord(14, 20)].fg = 120;
+        break_it(lt, 120);
+        CHECK(w.blocks[cord(14, 20)].fg == 0, "it broke");
+        CHECK(on_tile(lt, 112) >= 1 && on_tile(lt, 112) <= 50, "1-50 gems on the ground");
+        CHECK(on_tile(lt, 120) == 0 && on_tile(lt, 121) == 0, "no Mystery Block or seed");
+        CHECK(said("breaks open"), "tells what came out");
+
+        std::puts("\n[X2] Summer Surprise gives 3 prizes, Deep Iron gives ore");
+        clear_tile(lt);
+        w.blocks[cord(14, 20)].fg = 836;
+        break_it(lt, 836);
+        {
+            int prizes = 0;
+            for (const ::object &o : w.objects) if (o.pos.by_32(true) == lt) ++prizes;
+            const std::string t = all_text();
+            const std::size_t at = t.find("breaks open: ");
+            const std::string line = (at != std::string::npos) ? t.substr(at, t.find("``", at) - at) : "";
+            std::printf("  %s\n", line.c_str());
+            CHECK(std::ranges::count(line, ',') == 2, "3 prizes named");
+            CHECK(prizes >= 1, "prizes on the ground");
+        }
+        clear_tile(lt);
+        w.blocks[cord(14, 20)].fg = 3608;
+        break_it(lt, 3608);
+        CHECK(on_tile(lt, 3610) >= 1 && on_tile(lt, 3610) <= 5, "1-5 Deep Iron Ore");
+
+        std::puts("\n[X3] fossil rock broken without tools: fossil smashed, plain rock stays");
+        const ::pos ft{ 16, 20 };
+        clear_tile(ft);
+        ::block &fb = w.blocks[cord(16, 20)];
+        owner->clothing[clothing::HAND] = 0;
+        fb.fg = 3918; fb.hits[0] = 0;
+        break_it(ft, 3918);
+        CHECK(fb.fg == 10 && said("smashed"), "Fossil Rock -> Rock");
+        CHECK(on_tile(ft, 3936) == 0, "no fossil");
+
+        std::puts("\n[X4] Rock Hammer taps never break it, then unearths; another tap smashes it");
+        fb.fg = 3918; fb.hits[0] = 0;
+        owner->clothing[clothing::HAND] = 3932;
+        bool loose = false;
+        for (int k = 0; k < 300 && !loose; ++k) { punch(ft); loose = said("unearthed"); }
+        CHECK(loose, "unearthed a fossil");
+        CHECK(fb.fg == 3918 && fb.hits[0] == 0, "rock undamaged by the hammer");
+        punch(ft);
+        CHECK(fb.fg == 10 && said("smashed"), "hammering it again smashes it");
+
+        std::puts("\n[X5] hammer then Rock Chisel -> a Fossil drops");
+        fb.fg = 3918; fb.hits[0] = 0;
+        loose = false;
+        for (int k = 0; k < 300 && !loose; ++k) { punch(ft); loose = said("unearthed"); }
+        owner->clothing[clothing::HAND] = 3934;
+        break_it(ft, 3918);
+        CHECK(fb.fg == 0, "rock gone");
+        CHECK(on_tile(ft, 3936) == 1, "one Fossil on the ground");
+
+        std::puts("\n[X6] Fossil Brush on the fresh fossil -> Polished Fossil");
+        owner->clothing[clothing::HAND] = 0;
+        owner->slots.push_back(::slot(4132, 2));
+        use(ev, *owner, 4132, ft);
+        CHECK(on_tile(ft, 4134) == 1 && on_tile(ft, 3936) == 0, "polished");
+        CHECK(held(*owner, 4132) == 1, "one brush used");
+        use(ev, *owner, 4132, ft);
+        CHECK(said("nobody has picked up") && held(*owner, 4132) == 1, "nothing to brush, brush kept");
+
+        std::puts("\n[X7] Fossil Prep Station");
+        namespace fs = std::filesystem;
+        const fs::path home = fs::current_path(), sandbox = home / "build/test/prep_sandbox";
+        fs::create_directories(sandbox / "resources");
+        {
+            std::ifstream in(home / "resources/fossils.txt");
+            std::ofstream out(sandbox / "resources/fossils.txt");
+            for (std::string line; std::getline(in, line); ) out << (line.starts_with("prep_time|") ? "prep_time|1|1" : line) << '\n';
+        }
+        fs::copy_file(home / "resources/loot.txt", sandbox / "resources/loot.txt", fs::copy_options::overwrite_existing);
+        fs::current_path(sandbox); // @note a 1 second prep time without touching the real file
+        const ::pos pt{ 18, 20 };
+        w.blocks[cord(18, 20)].fg = 3938;
+        owner->slots.push_back(::slot(3936, 1));
+        use(ev, *owner, 3936, ::pos{ 19, 20 });
+        CHECK(said("Prep Station") && held(*owner, 3936) == 1, "Fossil only goes into a station");
+        use(ev, *owner, 3936, pt);
+        CHECK(said("dissolving") && held(*owner, 3936) == 0, "fossil put in");
+        punch(pt);
+        CHECK(said("being prepared") && w.blocks[cord(18, 20)].fg == 3938, "can't break it while it works");
+        visitor->slots = { ::slot(4134, 1) };
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 4134, .pos = visitor->pos, .punch = pt });
+        CHECK(held(*visitor, 4134) == 1, "visitor can't put a fossil in the owner's station");
+        Sleep(1100);
+        punch(pt);
+        CHECK(said("turned out to be"), "prize message");
+        CHECK(w.blocks[cord(18, 20)].fg == 3938, "station stays");
+        punch(pt);
+        CHECK(!said("being prepared") && !said("turned out"), "empty again: normal punch");
+        fs::current_path(home);
+
+        std::puts("\n[X8] Mystery Pinata changes the items under it");
+        const ::pos mp{ 20, 20 };
+        clear_tile(mp);
+        add_object(ev, ::slot(330/*Cactus*/, 3), ::pos{ 20 * 32.0f + 4, 20 * 32.0f + 4 }, w);
+        add_object(ev, ::slot(2/*Dirt*/, 5), ::pos{ 20 * 32.0f + 6, 20 * 32.0f + 6 }, w);
+        w.blocks[cord(20, 20)].fg = 1584;
+        break_it(mp, 1584);
+        CHECK(on_tile(mp, 1578) == 3 && on_tile(mp, 330) == 0, "3 Cactus -> 3 Party Cactus");
+        CHECK(on_tile(mp, 2) >= 5, "Dirt stays Dirt");
+
+        std::puts("\n[X9] a loading world can turn a rock into a fossil rock");
+        {
+            /* @note on MTTEST's own blocks (a new ::world would write a row to the database), put back afterwards */
+            const std::vector<::block> saved_blocks = w.blocks;
+            w.blocks.assign(6000, ::block{});
+            w.blocks[cord(5, 40)].fg = 10;
+            bool spawned = false;
+            for (int k = 0; k < 400 && !spawned; ++k) { fossil_spawn(w); spawned = w.blocks[cord(5, 40)].fg == 3918; }
+            CHECK(spawned, "Rock -> Fossil Rock");
+            w.blocks[cord(5, 40)].fg = 10;
+            w.name = "START";
+            for (int k = 0; k < 400; ++k) fossil_spawn(w);
+            w.name = "MTTEST";
+            CHECK(w.blocks[cord(5, 40)].fg == 10, "never in START");
+            w.blocks = saved_blocks;
+        }
+
+        owner->clothing[clothing::HAND] = saved_hand;
+        owner->role = owner_role;
+        ::hStmt del{ "DELETE FROM world_fossil_prep WHERE world = 'MTTEST'" }; del.execute();
     }
 
     /* ================= News & rules ================= */

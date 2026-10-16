@@ -9,6 +9,7 @@
 #include "tools/profile.hpp"
 #include "tools/economy.hpp"
 #include "tools/buffs.hpp"
+#include "tools/special_blocks.hpp"
 #include "commands/warp.hpp"
 #include "action/respawn.hpp"
 
@@ -300,6 +301,7 @@ static void use_buff(ENetEvent &event, ::world &world, const ::pos &tile, const 
 bool use_consumable(ENetEvent &event, ::world &world, ::block &block, const ::pos &tile, const ::item &item)
 {
     if (const buff_def *def = buff_for_item(item.id)) { use_buff(event, world, tile, item, *def); return true; }
+    if (special_use(event, world, block, tile, item)) return true; // @note Fossil Brush, Fossil, Polished Fossil
 
     switch (item.id)
     {

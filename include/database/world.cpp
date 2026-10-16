@@ -12,6 +12,7 @@
 #include "tools/boxes.hpp"
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
+#include "tools/special_blocks.hpp"
 
 char get_type(const ::item &item)
 {
@@ -353,12 +354,12 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this), load_fossil_preps(*this), fossil_spawn(*this);
 }
 world::~world()
 {
     this->mysql_update("owner", this->owner);
-    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this);
     {
         ::blob blob;
 

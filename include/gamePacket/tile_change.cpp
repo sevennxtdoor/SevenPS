@@ -30,6 +30,7 @@
 #include "tools/fishing.hpp"
 #include "tools/casino.hpp"
 #include "tools/economy.hpp"
+#include "tools/special_blocks.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -149,6 +150,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     send_particle_effect(event, gamePacket.punch.by_32(), {color, 0x61});
                 }
             }
+            if (special_punch(event, *world, block, gamePacket.punch, item)) return; // @note fossils & prep station (tools/special_blocks.cpp)
+
             switch (item.id)
             {
                 case 4296: // @note Surg-E
@@ -333,6 +336,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             if (item.type == type::MAGPLANT) magplant_removed(event, *world, gamePacket.punch);
             if (item.type == type::MANNEQUIN) mannequin_removed(*world, gamePacket.punch);
             block.state[3] &= ~S_VANISH; // @note remove paint
+            const bool own_drops = special_break(event, *world, block, gamePacket.punch, item, tile_update); // @note loot blocks, fossils, Mystery Pinata
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
             {
@@ -372,7 +376,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 world->owner = 0; // @todo have a seperate thing for 'range_lock'
             }
 
-            if (item.cat == CAT_RETURN)
+            if (own_drops) { } // @note special_break() dropped its own prizes
+            else if (item.cat == CAT_RETURN)
             {
                 int uid = add_object(event, ::slot(item.id, 1), gamePacket.pos, *world);
                 item_activate_object(event, ::gamePacket{.id = uid, .punch = gamePacket.punch});

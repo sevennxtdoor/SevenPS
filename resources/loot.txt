@@ -1,0 +1,186 @@
+# MikeTopia loot blocks: what a block drops when it breaks, instead of its normal gems/seed/block.
+#   =block id|picks|name                 starts a block. picks = how many prizes one break gives
+#   item id|min|max|weight|flags|name    one prize. item 112 = gems
+# weight: bigger = more often, compared with the other prizes of the same block.
+#         %N = a separate N% chance on every break (not one of the picks)
+# flags:  rare = everyone online sees "<player> found <item>!"
+# The prize lists come from the Growtopia wiki (growtopia.fandom.com, each block's page). The wiki has no
+# chances, so the weights are MikeTopia's pick: change them freely. The server reads this file again when it changes.
+# Pinata and Mystery Pinata are not here: you put items under them, Mystery Pinata changes some (fossils.txt "pinata").
+
+=120|1|Mystery Block
+112|1|50|1||Gems
+
+=542|1|Pot O' Gold
+112|1|200|1||Gems
+
+=3604|1|Golden Treasure Hoard
+112|50|500|40||Gems
+262|1|1|5||Crystal Block
+826|1|1|5||Emerald Block
+828|1|1|5||Ruby Block
+2812|1|1|5||Sapphire Block
+3606|1|1|5||Topaz Block
+2002|1|1|5||Golden Apple
+3582|1|1|5||Golden Cave Crystal
+3574|1|1|3||Spelunker's Headlamp
+10102|1|1|2||Golden Cuff Beard
+11228|1|1|2||Old Rocker Hair
+12308|1|1|1|rare|Eldritch Eyes
+13700|1|1|1|rare|Pet Moyaimorph
+
+=3608|1|Deep Iron
+3610|1|5|1||Deep Iron Ore
+
+=7628|1|Hidden Treasure
+7590|1|10|1||Map Fragment
+7764|1|1|%5||Stone Egg
+
+=2478|1|Locke's Mystery Box
+2472|1|1|1||Pink Suitcoat
+2470|1|1|1||Pink Fedora
+2474|1|1|1||Fancy Pants
+2466|1|1|1||Pencil Mustache
+2468|1|1|1||Distinguished Grey Hair
+10116|1|1|1||Growmoji Weary
+3758|1|1|1||B.O.O. Sign
+11222|1|1|1||Fade Hair
+12496|1|1|1||Mysterious Detective's Hair
+13778|1|1|1||Prisoner Cap
+13780|1|1|1||Prisoner Suit
+
+=7368|1|Thanksgiving Turkey
+7344|1|1|1||Dead Thanksgiving Turkey
+
+=836|3|Summer Surprise
+12202|1|1|1||Banana Caution Cone
+6308|1|1|1||Beach Ball
+848|1|1|1||Beach Umbrella
+3702|1|1|1||Blue Flip Flops
+8602|1|1|1||Chinos - Pastel Blue
+8600|1|1|1||Chinos - Pastel Orange
+12194|1|1|1||Coconut Capsule
+12192|1|1|1||Coconut Crown
+11068|1|1|1||Coconut Mocktail
+832|5|5|1||Coral
+2860|1|1|1||Cow Skull
+6328|1|1|1||Crab Wall Mount
+6324|1|1|1||Deck Chair
+834|5|5|1||Fireworks
+2862|1|1|1||Flamingo
+8612|1|1|1||Floppy Straw Sun Hat
+4810|1|1|1||Floral Lei
+6326|1|1|1||Flying Disc
+9744|1|1|1||Fruity Trousers
+3700|1|1|1||Green Flip Flops
+9756|1|1|1||Hammock
+842|1|1|1||Hula Bobblehead
+9748|1|1|1||Life Ring
+11066|1|1|1||Lobster Onesie Claws
+11062|1|1|1||Lobster Onesie Hood
+11064|1|1|1||Lobster Onesie Suit
+840|1|1|1||Men's Swimsuit
+850|5|5|1||Ocean Rock
+3704|1|1|1||Paper Airplane
+8592|1|1|1||Polo Shirt - Blue
+8594|1|1|1||Polo Shirt - Pink
+3698|1|1|1||Red Flip Flops
+3740|1|1|1||Root Beer
+442|10|10|1||Sand
+846|10|10|1||Seaweed
+4804|1|1|1||Silk Bolt - Floral
+13626|1|1|1||Slippers in Sand
+3742|1|1|1||Spray Tan
+8610|1|1|1||Straw Fedora
+2856|1|1|1||Sun Block
+1680|1|1|1||Super Fireworks
+844|1|1|1||Swim Fins
+14618|1|1|1||Swimming Cap
+14620|1|1|1||Swimming Goggles
+11058|1|1|1||Thermometer
+15534|1|1|1||Tied-Up Towel
+2858|1|1|1||Tiki Torch
+11040|1|1|1|rare|Ultra Red Phoenix Fragment
+822|5|5|1||Water Bucket
+838|1|1|1||Women's Swimsuit
+4812|1|1|1||Zinc
+
+=718|1|Ultra Pinata
+716|1|1|10||Adobe Block
+11896|3|3|10||Angel of Independence Statue
+4672|1|1|10||Avocado
+9614|1|1|10||Burrito Broncho Chair
+10812|1|1|10||Cactus Onesie
+9634|1|1|10||Chichen-Itza Hat
+9632|1|1|10||Chichen-Itza Shirt
+9608|1|1|10||Chip-and-Dip
+1572|1|1|10||Churro Block
+11898|1|1|10||Corn Field Ladder
+704|1|1|10||Desperado Mustache
+6058|1|1|10||Dual Six-Shooters
+3598|2|5|10||Festive Banner
+9624|1|4|10||Fiesta Block
+14506|1|1|10||Fiesta Cape
+9626|1|4|10||Fiesta Wallpaper
+706|1|1|10||Flamenco Dress
+10818|1|1|10||Giant Taco House
+6052|1|1|10||Growmoji Cactus
+712|1|1|10||Habanero Pepper
+11900|1|1|10||Harmonipan
+708|1|1|10||Hibiscus Hair
+10826|1|1|2||Lava Pinata
+4736|1|1|10||Luchador Announcer
+1568|1|1|5||Lucky Pinata Hat
+15444|1|1|10||Magma Dress
+4724|1|1|10||Mariachi Hat
+4728|1|1|10||Mariachi Pants
+4726|1|1|10||Mariachi Suit
+11892|4|4|10||Marigold Flowers
+2634|1|1|10||Mexican Dress
+714|1|1|10||Olmec Head
+10816|1|1|10||Pan Flute
+720|1|1|10||Pinata
+2632|2|5|10||Pinata Block
+6054|1|1|10||Pinata Lasso
+702|1|1|10||Poncho
+8316|2|5|10||Pueblock
+8320|2|5|10||Pueblock Door
+8322|2|5|10||Pueblock Wallpaper
+8318|1|5|10||Pueblock Window
+13436|8|8|10||Puerto Growtopia House - Blue
+13438|8|8|10||Puerto Growtopia House - Yellow
+8314|1|1|5||Riding Llama
+10828|10|10|10||Sheet Music: Mexican Trumpet
+700|1|1|10||Sombrero
+9620|1|1|10||Trumpet
+2630|1|3|10||Wrestling Ring
+
+=10826|1|Lava Pinata
+11896|3|3|10||Angel of Independence Statue
+10800|1|1|10||Cactus Cannon
+9634|1|1|10||Chichen-Itza Hat
+9632|1|1|10||Chichen-Itza Shirt
+13422|1|1|10||Chili Con Charme
+9608|1|1|10||Chip-and-Dip
+6042|1|1|10||Feather Headdress
+2638|1|1|10||Foxy Hat
+10818|20|20|10||Giant Taco House
+1570|1|1|10||Mariachi Guitar
+9610|1|1|10||Mexican Hot Sauce Rocket Pack
+12640|1|1|10||Minokawa Wings
+1584|1|1|10||Mystery Pinata
+11876|1|1|10||Serpent Shoulders
+2640|1|1|10||Swordsman's Mask
+10804|1|1|10||Waay Chivo Mask
+15434|1|1|1|rare|Aquatic Volcanic Cannon
+13432|1|1|1|rare|Aquatic Volcanic Cape
+14496|1|1|1|rare|Aquatic Volcanic Crown
+13430|1|1|1|rare|Aquatic Volcanic Pauldrons
+13434|1|1|1|rare|Aquatic Volcanic Wings
+10168|1|1|1|rare|Bling Wings
+11288|1|1|1|rare|Wyvern Wings
+15432|1|1|1|rare|Volcanic Cannon
+10806|1|1|1|rare|Volcanic Cape
+14494|1|1|1|rare|Volcanic Crown
+13428|1|1|1|rare|Volcanic Pauldrons
+11870|1|1|1|rare|Volcanic Wings
