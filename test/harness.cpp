@@ -1394,6 +1394,56 @@ int main()
         CHECK(get_type(id_to_item(872)) == 0x09 && size_of(0x09) == 4, "Chicken: provider timer");
         CHECK(get_type(id_to_item(2)) == 0x00, "Dirt: none");
 
+        std::puts("\n[Y10] a provider grows for its own time, then a punch harvests it");
+        const ::pos pv{ 28, 20 };
+        w.blocks[cord(28, 20)] = ::block{};
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == pv; });
+        owner->slots.push_back(::slot(866, 1));
+        use(866, pv);
+        CHECK(w.blocks[cord(28, 20)].fg == 866 && held(*owner, 866) == 0, "Cow placed");
+        CHECK(size_of(0x09) == 4, "tile data: u32 seconds");
+        punch(pv);
+        CHECK(!said("harvested") && on_tile(pv, 868) == 0, "not ready: no milk");
+        w.blocks[cord(28, 20)].hits[0] = 0;
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = pv });
+        CHECK(said("ready in") && (said("1d 0h") || said("23h")), "wrench: ready in about a day");
+        const int cow_tick = items[866].tick;
+        items[866].tick = 0; // @note no waiting a day in a test
+        punch(pv);
+        CHECK(said("harvested the Cow") && on_tile(pv, 868) >= 1 && on_tile(pv, 868) <= 2, "1-2 Milk");
+        CHECK(w.blocks[cord(28, 20)].fg == 866 && w.blocks[cord(28, 20)].hits[0] == 0, "the Cow stays, undamaged");
+        items[866].tick = cow_tick;
+        punch(pv);
+        CHECK(!said("harvested"), "growing again after the harvest");
+        w.blocks[cord(28, 20)].hits[0] = 0;
+        save_special_tiles(w);
+        {
+            ::hStmt q{ "SELECT COUNT(*) FROM world_special_tile WHERE world = 'MTTEST' AND data LIKE 'p|%'" };
+            long long n{}; MYSQL_BIND r = make_bind_out(n);
+            mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt);
+            CHECK(n == 1, "planting time saved");
+        }
+
+        std::puts("\n[Y11] ATM gives gems, Sheep Shears double the Wool, unknown providers say so");
+        auto harvest = [&](short id) {
+            w.blocks[cord(28, 20)] = ::block{}; w.blocks[cord(28, 20)].fg = id;
+            std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == pv; });
+            special_placed(w, pv, id_to_item(id));
+            const int tick = items[id].tick; items[id].tick = 0;
+            punch(pv);
+            items[id].tick = tick;
+        };
+        harvest(1008);
+        CHECK(on_tile(pv, 112) >= 1 && on_tile(pv, 112) <= 100, "ATM: 1-100 gems");
+        const auto hand = owner->clothing[clothing::HAND];
+        owner->clothing[clothing::HAND] = 3914;
+        harvest(3888);
+        CHECK(on_tile(pv, 3890) >= 2 && on_tile(pv, 3890) <= 6 && on_tile(pv, 3890) % 2 == 0, "Sheep + shears: 2-6 Wool");
+        owner->clothing[clothing::HAND] = hand;
+        harvest(16104);
+        CHECK(said("doesn't know its prizes"), "Gumball Machine: no prize list yet");
+        w.blocks[cord(28, 20)] = ::block{};
+
         w.is_public = was_public;
         owner->role = owner_role;
         ::hStmt del{ "DELETE FROM world_special_tile WHERE world = 'MTTEST'" }; del.execute();

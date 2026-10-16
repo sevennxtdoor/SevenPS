@@ -22,8 +22,8 @@ namespace
 
     /* ---------- resources/loot.txt & resources/fossils.txt, read again whenever they change ---------- */
 
-    std::unordered_map<short, loot_block> loot{};
-    std::filesystem::file_time_type loot_at{};
+    std::unordered_map<short, loot_block> loot{}, providers{};
+    std::filesystem::file_time_type loot_at{}, providers_at{};
 
     std::unordered_map<short, short> fossil_to_rock{}, rock_to_fossil{}, pinata_change{};
     std::vector<prep_prize> prep_prizes{};
@@ -52,16 +52,17 @@ namespace
         return out;
     }
 
-    void load_loot()
+    /* @note resources/loot.txt & resources/providers.txt */
+    void load_table(const char *path, std::unordered_map<short, loot_block> &table, std::filesystem::file_time_type &at)
     {
-        if (!changed("resources/loot.txt", loot_at)) return;
-        loot.clear();
+        if (!changed(path, at)) return;
+        table.clear();
         loot_block *current = nullptr;
-        for (std::vector<std::string> &v : lines_of("resources/loot.txt"))
+        for (std::vector<std::string> &v : lines_of(path))
         {
             if (v[0].starts_with('='))
             {
-                current = &loot[static_cast<short>(atoi(v[0].c_str() + 1))];
+                current = &table[static_cast<short>(atoi(v[0].c_str() + 1))];
                 current->picks = (v.size() > 1) ? std::max(1, atoi(v[1].c_str())) : 1;
                 continue;
             }
@@ -72,8 +73,9 @@ namespace
             p.rare = v.size() > 4 && v[4] == "rare";
             if (p.id > 0 && p.max >= p.min && p.min > 0) current->prizes.emplace_back(p);
         }
-        std::printf("loot: %zu block(s)\n", loot.size());
+        std::printf("%s: %zu block(s)\n", path, table.size());
     }
+    void load_loot() { load_table("resources/loot.txt", loot, loot_at); }
 
     void load_fossils()
     {
@@ -167,18 +169,14 @@ namespace
 
     /* ---------- loot blocks ---------- */
 
-    bool break_loot(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item)
+    /* @note rolls the prizes of `lb` onto the tile. `twice_id`: that prize counts double (Sheep Shears) */
+    std::vector<std::string> roll_prizes(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item, const loot_block &lb, short twice_id = 0)
     {
-        load_loot();
-        auto it = loot.find(item.id);
-        if (it == loot.end()) return false;
-        const loot_block &lb = it->second;
-
         int total = 0;
         for (const prize &p : lb.prizes) total += p.weight;
         std::vector<std::string> got{};
         const auto award = [&](const prize &p) {
-            const int count = RandomRange(p.min, p.max + 1); // @note RandomRange(a, b) never returns b
+            const int count = RandomRange(p.min, p.max + 1) * (p.id == twice_id ? 2 : 1); // @note RandomRange(a, b) never returns b
             drop_item(event, world, tile, p.id, count);
             got.emplace_back(name_of(p.id, count));
             if (p.rare) announce_rare(event, p.id, item);
@@ -195,13 +193,23 @@ namespace
         }
         for (const prize &p : lb.prizes)
             if (p.percent > 0 && RandomRange(0, 100) < p.percent) award(p);
+        return got;
+    }
 
-        if (!got.empty())
-        {
-            std::string text{};
-            for (const std::string &g : got) text += (text.empty() ? "" : ", ") + g;
-            bubble(event, std::format("`wThe {} breaks open: `2{}``!", item.raw_name, text));
-        }
+    std::string list_of(const std::vector<std::string> &got)
+    {
+        std::string text{};
+        for (const std::string &g : got) text += (text.empty() ? "" : ", ") + g;
+        return text;
+    }
+
+    bool break_loot(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item)
+    {
+        load_loot();
+        auto it = loot.find(item.id);
+        if (it == loot.end()) return false;
+        const std::vector<std::string> got = roll_prizes(event, world, tile, item, it->second);
+        if (!got.empty()) bubble(event, std::format("`wThe {} breaks open: `2{}``!", item.raw_name, list_of(got)));
         me(event).add_xp(event, std::trunc(1.0f + item.rarity / 5.0f));
         return true;
     }
@@ -435,4 +443,14 @@ void save_fossil_preps(::world &world)
         hStmt.bind_param(params);
         hStmt.execute();
     }
+}
+
+bool provider_prize(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item, short twice_id)
+{
+    load_table("resources/providers.txt", providers, providers_at);
+    auto it = providers.find(item.id);
+    if (it == providers.end()) return false;
+    const std::vector<std::string> got = roll_prizes(event, world, tile, item, it->second, twice_id);
+    if (!got.empty()) bubble(event, std::format("`wYou harvested the {}: `2{}``!", item.raw_name, list_of(got)));
+    return true;
 }

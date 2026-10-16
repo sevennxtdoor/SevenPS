@@ -22,3 +22,7 @@ extern void fossil_spawn(::world &world);
 /* @note fossils soaking in Fossil Prep Stations, kept in the `world_fossil_prep` table */
 extern void load_fossil_preps(::world &world);
 extern void save_fossil_preps(::world &world);
+
+/* @note a ready provider was harvested: drops its prizes from resources/providers.txt (`twice_id`: that prize counts double).
+ * @return false if the provider has no prize list */
+extern bool provider_prize(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item, short twice_id = 0);

@@ -7,6 +7,7 @@
 #include "tools/area_lock.hpp"
 #include "tools/magplant.hpp"
 #include "tools/profile.hpp"
+#include "tools/special_blocks.hpp"
 #include "automate/holiday.hpp"
 
 #include "special_tiles.hpp"
@@ -16,6 +17,7 @@ namespace
     constexpr short RED_CRYSTAL = 2242, BLACK_CRYSTAL = 2250;
     constexpr short CHI_HARMONIZER = 5258, HARMONIC_LOCK = 5260, RAINBOW_CRYSTAL_BLOCK = 3146, WATER_BUCKET = 822;
     constexpr short BUNNY_EGG = 610, MAGIC_EGG_ITEM = 611;
+    constexpr short SHEEP_SHEARS = 3914, WOOL = 3890;
     constexpr int CLUSTER = 5;
 
     struct recipe { short id; int count; bool valentine; };
@@ -109,11 +111,22 @@ namespace
         std::string crystals{}; // @note crystal cluster: "1".."5" per crystal, sorted once it has 5
         int chi[4]{};           // @note what the cluster wants: Earth, Fire, Air, Water
         u_int eggs{};           // @note bunny egg: Magic Eggs in it
+        long long planted{};    // @note provider: when it started growing (unix time)
     };
     /* @note world name -> tiles. never erased, same reason as vending machines (world copies) */
     std::unordered_map<std::string, std::vector<special_tile>> tiles{};
 
     ::peer &me(ENetEvent &event) { return *static_cast<::peer*>(event.peer->data); }
+
+    long long now() { return static_cast<long long>(std::time(nullptr)); }
+
+    std::string time_left(long long seconds)
+    {
+        if (seconds >= 86400) return std::format("{}d {}h", seconds / 86400, seconds % 86400 / 3600);
+        if (seconds >= 3600) return std::format("{}h {}m", seconds / 3600, seconds % 3600 / 60);
+        if (seconds >= 60) return std::format("{}m {}s", seconds / 60, seconds % 60);
+        return std::format("{}s", seconds);
+    }
 
     void bubble(ENetEvent &event, const std::string &text)
     {
@@ -157,6 +170,7 @@ namespace
         const short fg = fg_at(world, tile);
         if (is_crystal(fg)) return &new_cluster(world, tile, fg);
         if (fg == BUNNY_EGG) return &tiles[world.name].emplace_back(special_tile{ .pos = tile, .eggs = 1 });
+        if (id_to_item(fg).type == type::PROVIDER) return &tiles[world.name].emplace_back(special_tile{ .pos = tile, .planted = now() });
         return nullptr;
     }
 
@@ -409,13 +423,33 @@ bool special_place(ENetEvent &event, ::world &world, ::block &block, const ::pos
     return false;
 }
 
-void special_placed(::world &world, const ::pos &tile, const ::item &item)
+bool special_placed(::world &world, const ::pos &tile, const ::item &item)
 {
-    if (is_crystal(item.id)) new_cluster(world, tile, item.id);
+    if (is_crystal(item.id)) { new_cluster(world, tile, item.id); return true; }
+    if (item.type == type::PROVIDER)
+    {
+        forget(world, tile);
+        tiles[world.name].emplace_back(special_tile{ .pos = tile, .planted = now() });
+        return true;
+    }
+    return false;
 }
 
 bool special_tile_punch(ENetEvent &event, ::world &world, ::block &block, const ::pos &tile, const ::item &item)
 {
+    if (item.type == type::PROVIDER && block.fg == item.id)
+    {
+        special_tile *t = find_or_make(world, tile);
+        if (t == nullptr || now() - t->planted < item.tick) return false; // @note not ready: it takes damage like any block
+        ::peer &p = me(event);
+        if (!provider_prize(event, world, tile, item, p.clothing[clothing::HAND] == SHEEP_SHEARS ? WOOL : 0))
+            bubble(event, std::format("`wThe {} is ready, but MikeTopia doesn't know its prizes yet.``", item.raw_name));
+        t->planted = now();
+        p.add_xp(event, 1);
+        add_stat(event, "provided");
+        update_tile(event, world, tile);
+        return true;
+    }
     if (!is_crystal(item.id) || block.fg != item.id) return false;
     special_tile *t = find_or_make(world, tile);
     if (t == nullptr || t->crystals.size() < CLUSTER) return false;
@@ -428,7 +462,7 @@ bool special_tile_punch(ENetEvent &event, ::world &world, ::block &block, const 
 
 bool special_tile_break(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item)
 {
-    if (is_crystal(item.id)) { forget(world, tile); return false; }
+    if (is_crystal(item.id) || item.type == type::PROVIDER) { forget(world, tile); return false; }
     if (item.id != BUNNY_EGG) return false;
     const special_tile *t = find(world, tile);
     const u_int eggs = t ? t->eggs : 1;
@@ -457,6 +491,23 @@ bool special_tile_wrench(ENetEvent &event, ::world &world, const ::pos &tile, co
                 "add_textbox|Break it for a surprise: the bigger the egg, the better the prize. Past 100% it may burst!|left|\n"
                 "end_dialog|popup||OK|\n",
                 BUNNY_EGG, egg_size(eggs), eggs, (eggs == 1) ? "" : "s"
+            )
+        });
+        return true;
+    }
+    if (item.type == type::PROVIDER)
+    {
+        const special_tile *t = find_or_make(world, tile);
+        const long long left = t ? std::max(0LL, item.tick - (now() - t->planted)) : item.tick;
+        send_varlist(event.peer, {
+            "OnDialogRequest",
+            std::format(
+                "set_default_color|`o\n"
+                "add_label_with_icon|big|`w{}``|left|{}|\n"
+                "add_textbox|{}|left|\n"
+                "end_dialog|popup||OK|\n",
+                item.raw_name, item.id,
+                (left == 0) ? "`2It's ready!`` Punch it to harvest." : std::format("It will be ready in `w{}``.", time_left(left))
             )
         });
         return true;
@@ -496,7 +547,12 @@ void special_extra(::blob &blob, ::world &world, const ::pos &tile, u_char type)
             blob.u8(random != world.random_blocks.end() ? random->value : 0);
             break;
         }
-        case 0x09: blob.u32(0); break; // @note Chicken, Cow, ATM...: seconds since planted (providers aren't harvested yet)
+        case 0x09: // @note Chicken, Cow, ATM...: seconds since planted, the client shows it ready after the item's grow time
+        {
+            const special_tile *t = find(world, tile);
+            blob.u32(t ? static_cast<u_int>(std::clamp(now() - t->planted, 0LL, 0x7fffffffLL)) : 0);
+            break;
+        }
         case 0x06: case 0x07: case 0x0c: str(""), str(""), str(""), blob.u8(0x00); break; // @note mailbox, bulletin, donation box: 3 strings + flags
         case 0x0a: blob.i32(-1), blob.u8(127); break; // @note achievement block: owner, achievement (127 = blank)
         case 0x0b: blob.i32(-1), str(""); break; // @note heart monitor: owner, name
@@ -552,6 +608,7 @@ void load_special_tiles(::world &world)
             for (int i = 0; i < 4; ++i) t.chi[i] = atoi(v[2 + i].c_str());
         }
         else if (v.size() >= 2 && v[0] == "e") t.eggs = static_cast<u_int>(std::max(1, atoi(v[1].c_str())));
+        else if (v.size() >= 2 && v[0] == "p") t.planted = atoll(v[1].c_str());
         else continue;
         list.emplace_back(t);
     }
@@ -571,6 +628,7 @@ void save_special_tiles(::world &world)
         std::string data{};
         if (is_crystal(fg) && !t.crystals.empty()) data = std::format("c|{}|{}|{}|{}|{}", t.crystals, t.chi[0], t.chi[1], t.chi[2], t.chi[3]);
         else if (fg == BUNNY_EGG) data = std::format("e|{}", t.eggs);
+        else if (id_to_item(fg).type == type::PROVIDER) data = std::format("p|{}", t.planted);
         else continue; // @note broken meanwhile
         const signed x = t.pos.x_int(), y = t.pos.y_int();
         ::hStmt hStmt{ "INSERT INTO world_special_tile (world, x, y, data) VALUES (?, ?, ?, ?)" };

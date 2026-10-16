@@ -22,10 +22,10 @@ int main()
         for (std::size_t i = 0; i < list.size() && i < 6; ++i) std::printf("%s%s", i ? ", " : "", list[i * (list.size() / std::min<std::size_t>(list.size(), 6))]->raw_name.c_str());
         std::printf("\n");
     }
-    /* @note full list for scripts: id|type|cloth_type|name */
+    /* @note full list for scripts: id|type|cloth_type|name|tick (grow time in seconds)|rarity */
     if (FILE *f = std::fopen("build/test/items.tsv", "w"))
     {
-        for (const ::item &it : items) std::fprintf(f, "%u|%u|%u|%s\n", it.id, it.type, it.cloth_type, it.raw_name.c_str());
+        for (const ::item &it : items) std::fprintf(f, "%u|%u|%u|%s|%d|%d\n", it.id, it.type, it.cloth_type, it.raw_name.c_str(), it.tick, it.rarity);
         std::fclose(f);
     }
     std::fflush(stdout);

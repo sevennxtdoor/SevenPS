@@ -205,55 +205,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                         throw std::runtime_error(std::format("`5[```w{}`` `$World Locked`` by (null)`5]``", world->name)); // @todo add owner name
                     break;
                 }
-                case type::PROVIDER:
-                {
-                    //if (ticks() - block.tick >= item.tick)
-                    //{
-                        switch (item.id)
-                        {
-                            case 1008: // @note ATM
-                            {
-                                u_char gems = RandomRange(1, 100); // @note source: https://growtopia.fandom.com/wiki/ATM_Machine
-                                for (short i : {100, 50, 10, 5, 1}/* gem type */)
-                                    for (; gems >= i; gems -= i/* downgrade type */)
-                                        magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
-                                        
-                                break;
-                            }
-                            case 872:/*chicken*/ case 866:/*cow*/ case 1632:/*coffee maker*/ case 3888:/*sheep*/
-                            {
-                                magplant_drop(event, ::slot(item.id+2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
-                                break;
-                            }
-                            case 5116:/*tea set*/
-                            {
-                                magplant_drop(event, ::slot(item.id-2, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
-                                break;
-                            }
-                            case 2798:/*well*/
-                            {
-                                magplant_drop(event, ::slot(822/*water bucket*/, RandomRange(1, 2)), gamePacket.punch.by_32(), *world);
-                                break;
-                            }
-                            case 928:/*science station*/ // @note source: https://growtopia.fandom.com/wiki/Science_Station
-                            {
-                                short chemcial = 
-                                    (!RandomRange(0, 16)) ? chemcial = 918/*P*/ : 
-                                    (!RandomRange(0, 8))  ? chemcial = 920/*B*/ : 
-                                    (!RandomRange(0, 6))  ? chemcial = 924/*Y*/ : 
-                                    (!RandomRange(0, 4))  ? chemcial = 916/*R*/ : chemcial = 914/*G*/;
-                                magplant_drop(event, {chemcial, 1}, gamePacket.punch.by_32(), *world);
-                                break;
-                            }
-                        }
-                        //block.tick = ticks();
-                        send_tile_update(event, std::move(gamePacket), block, *world); // @note update countdown on provider.
-
-                        pPeer->add_xp(event, 1);
-                        return;
-                    //}
-                    break;
-                }
+                /* @note providers: a ready one is harvested by special_tile_punch() (resources/providers.txt), otherwise it takes damage. the old code here dropped prizes on every punch (ATM: up to 100 gems a punch) and providers could never be broken */
                 case type::SEED:
                 {
                     auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
@@ -917,7 +869,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             block.state[2] |= (pPeer->facing_left) ? S_LEFT : S_RIGHT;
             (item.type == type::BACKGROUND) ? block.bg = gamePacket.id : block.fg = gamePacket.id;
-            if (item.type == type::CRYSTAL) special_placed(*world, gamePacket.punch, item), tile_update = true; // @note the client needs the cluster data
+            if (special_placed(*world, gamePacket.punch, item)) tile_update = true; // @note crystal cluster / provider timer (tools/special_tiles.cpp)
             if (from_remote) magplant_remote_used(event, *world);
             else pPeer->emplace(::slot(item.id, -1));
             add_stat(event, "placed");

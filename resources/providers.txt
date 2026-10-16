@@ -1,0 +1,136 @@
+# MikeTopia providers: punch a ready provider to harvest it, it starts growing again.
+# the grow time is the item's own (items.dat), the prizes come from the Growtopia wiki provider pages.
+# same format as resources/loot.txt:
+#   =provider|picks|name             then the prizes it can give:
+#   item|min|max|weight|flags|name   weight = chance among the picks, %N = always rolled on its own with N% chance, flags: rare = announce it
+# 112 = gems. Sheep Shears in the hand double the Wool. not here yet: Winterfest Calendars, Hatching Dragon Eggs,
+# Building Blocks Machine, Wonder Provider, Diamond Builders Bonanza, Balloon Filling Station, Well of Love, Gumball Machine,
+# Ice Cream Truck (limited uses or unknown prizes) - they just grow.
+=866|1|Cow
+868|1|2|1||Milk
+=872|1|Chicken
+874|1|2|1||Egg
+=1044|1|Buffalo
+868|1|2|1||Milk
+=2798|1|Well
+822|1|2|1||Water Bucket
+=5116|1|Tea Set
+5114|1|2|1||Tea
+=1632|1|Coffee Maker
+1634|1|1|1||Coffee
+=928|1|Science Station
+914|1|1|40||Chemical G
+916|1|1|25||Chemical R
+924|1|1|15||Chemical Y
+920|1|1|13||Chemical B
+918|1|1|7||Chemical P
+=1008|1|ATM Machine
+112|1|10|70||Gems
+112|11|30|25||Gems
+112|31|100|5||Gems
+=3888|1|Sheep
+3890|1|3|1||Wool
+=3044|1|Tackle Box
+2914|1|2|1||Wiggly Worm
+3012|1|2|1||Shiny Flashy Thing
+3014|1|2|1||Salmon Eggs
+3016|1|2|1||Fishing Fly
+3018|1|2|1||Shrimp Lure
+5528|1|2|1||Mega-Pellet Bait
+5526|1|2|1||Uranium Glowing Lure
+=6212|1|Surgical Tool Bag
+1258|1|1|1||Surgical Sponge
+1260|1|1|1||Surgical Scalpel
+1262|1|1|1||Surgical Anesthetic
+1264|1|1|1||Surgical Antiseptic
+1266|1|1|1||Surgical Antibiotics
+1268|1|1|1||Surgical Splint
+1270|1|1|1||Surgical Stitches
+4308|1|1|1||Surgical Pins
+4310|1|1|1||Surgical Transfusion
+4312|1|1|1||Surgical Defibrillator
+4314|1|1|1||Surgical Clamp
+4316|1|1|1||Surgical Ultrasound
+4318|1|1|1||Surgical Lab Kit
+=6414|1|Star Tool Droid
+6520|1|1|1||AI Brain
+6538|1|1|1||Cyborg Diplomat
+6522|1|1|1||Galactibolt
+6528|1|1|1||Gigablaster
+6540|1|1|1||Growton Torpedo
+6518|1|1|1||HyperShields
+6530|1|1|1||Quadriscanner
+6524|1|1|1||Space Meds
+6536|1|1|1||Star Supplies
+6534|1|1|1||Stellar Documents
+6532|1|1|1||Tactical Drone
+6526|1|1|1||Teleporter Charge
+=1636|1|Awkward Friendly Unicorn
+3198|1|1|%100||Gift of the Unicorn
+728|1|1|50||Clouds
+360|1|1|50||Dreamstone Block
+308|1|1|50||Rainbow Block
+306|1|1|50||Rainbow Wig
+2966|1|1|50||Enchanted Spatula
+1646|1|1|20||Happy Unicorn Block
+3170|1|1|20||Angry Unicorn Block
+1644|1|1|10||Unicorn Jumper
+1642|1|1|10||Horse Mask
+3524|1|1|5||Scroll Bulletin
+1640|1|1|2|rare|Very Bad Unicorn
+1638|1|1|2|rare|Unicorn Horn
+2582|1|1|2|rare|Teddy Bear
+=8076|1|Keenan GT's Awesome Item-O-Matic
+8078|10|10|1||Keenan GT's Red Block
+8080|10|10|1||Keenan GT's Green Block
+8084|10|10|1||Keenan GT's Yellow Block
+8082|10|10|1||Keenan GT's Blue Block
+8086|2|2|1||Keenan GT's Ruby Block
+=8088|1|VenomST's Awesome Item-O-Matic
+8090|10|10|1||VenomST's Red Block
+8092|10|10|1||VenomST's Green Block
+8096|10|10|1||VenomST's Yellow Block
+8094|10|10|1||VenomST's Blue Block
+8098|2|2|1||VenomST's Ruby Block
+=8100|1|LinkTrader GT's Awesome Item-O-Matic
+8102|10|10|1||LinkTrader GT's Red Block
+8104|10|10|1||LinkTrader GT's Green Block
+8108|10|10|1||LinkTrader GT's Yellow Block
+8106|10|10|1||LinkTrader GT's Blue Block
+8110|2|2|1||LinkTrader GT's Ruby Block
+=8112|1|Tery's Awesome Item-O-Matic
+8114|10|10|1||Tery's Red Block
+8116|10|10|1||Tery's Green Block
+8120|10|10|1||Tery's Yellow Block
+8118|10|10|1||Tery's Blue Block
+8122|2|2|1||Tery's Ruby Block
+=8124|1|evets_gt's Awesome Item-O-Matic
+8126|10|10|1||evets_gt's Red Block
+8128|10|10|1||evets_gt's Green Block
+8132|10|10|1||evets_gt's Yellow Block
+8130|10|10|1||evets_gt's Blue Block
+8134|2|2|1||evets_gt's Ruby Block
+=8136|1|BenBarrage's Awesome Item-O-Matic
+8138|10|10|1||BenBarrage's Red Block
+8140|10|10|1||BenBarrage's Green Block
+8144|10|10|1||BenBarrage's Yellow Block
+8142|10|10|1||BenBarrage's Blue Block
+8146|2|2|1||BenBarrage's Ruby Block
+=8148|1|MrSongo GT's Awesome Item-O-Matic
+8150|10|10|1||MrSongo GT's Red Block
+8152|10|10|1||MrSongo GT's Green Block
+8156|10|10|1||MrSongo GT's Yellow Block
+8154|10|10|1||MrSongo GT's Blue Block
+8158|2|2|1||MrSongo GT's Ruby Block
+=8160|1|OldGertie's Awesome Item-O-Matic
+8162|10|10|1||OldGertie's Red Block
+8164|10|10|1||OldGertie's Green Block
+8168|10|10|1||OldGertie's Yellow Block
+8166|10|10|1||OldGertie's Blue Block
+8170|2|2|1||OldGertie's Ruby Block
+=8172|1|macproof_gt's Awesome Item-O-Matic
+8174|10|10|1||macproof_gt's Red Block
+8176|10|10|1||macproof_gt's Green Block
+8180|10|10|1||macproof_gt's Yellow Block
+8178|10|10|1||macproof_gt's Blue Block
+8182|2|2|1||macproof_gt's Ruby Block
