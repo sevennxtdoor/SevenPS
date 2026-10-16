@@ -18,11 +18,11 @@ set tries=0
 :install
 move /y main_new.exe main.exe >nul 2>nul && goto run
 set /a tries+=1
-if %tries% geq 15 (
-    echo [!] Gagal memasang versi baru setelah 15 detik. Server versi lama tetap dijalankan.
+if %tries% geq 60 (
+    echo [!] Gagal memasang versi baru setelah 60 detik. Server versi lama tetap dijalankan.
     goto run
 )
-echo     file masih dikunci, coba lagi... (%tries%/15)
+echo     file masih dikunci, coba lagi... (%tries%/60)
 timeout /t 1 /nobreak >nul
 goto install
 
