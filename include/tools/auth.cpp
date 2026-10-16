@@ -96,41 +96,51 @@ std::optional<std::string> account_name(const std::string &growid)
     return std::string(buffer, std::min<u_long>(length, sizeof(buffer)));
 }
 
-std::string growid_of(int user_id)
+namespace
 {
-    static std::unordered_map<int, std::string> cache{};
-    if (auto it = cache.find(user_id); it != cache.end()) return it->second;
+    /* @note the owner's name like the game shows it over their head (green, or the @ tag and color of staff): online it is
+     * exactly their display name, offline it is rebuilt from the database (growid + role) */
+    std::string owner_display(int user_id)
+    {
+        std::string shown{};
+        peers("", PEER_ALL, [&shown, user_id](ENetPeer &p)
+        {
+            if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr && pPeer->user_id == user_id && !pPeer->growid.empty())
+                shown = pPeer->name_as("`2");
+        });
+        if (!shown.empty()) return shown;
 
-    std::string name{};
-    peers("", PEER_ALL, [&name, user_id](ENetPeer &p)
-    {
-        if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr && pPeer->user_id == user_id && !pPeer->growid.empty())
-            name = pPeer->growid;
-    });
-    if (name.empty())
-    {
-        ::hStmt hStmt{ "SELECT growid FROM peer WHERE uid = ? LIMIT 1" };
+        ::hStmt hStmt{ "SELECT growid, role FROM peer WHERE uid = ? LIMIT 1" };
         MYSQL_BIND param = make_bind_in(user_id);
         hStmt.bind_param(&param);
         char buffer[32]{};
         u_long length{};
-        MYSQL_BIND result{};
-        result.buffer_type = MYSQL_TYPE_STRING;
-        result.buffer = buffer;
-        result.buffer_length = sizeof(buffer);
-        result.length = &length;
-        mysql_stmt_bind_result(hStmt.pStmt, &result);
+        signed role{};
+        MYSQL_BIND result[2]{};
+        result[0].buffer_type = MYSQL_TYPE_STRING;
+        result[0].buffer = buffer;
+        result[0].buffer_length = sizeof(buffer);
+        result[0].length = &length;
+        result[1] = make_bind_out(role);
+        mysql_stmt_bind_result(hStmt.pStmt, result);
         hStmt.execute();
         mysql_stmt_store_result(hStmt.pStmt);
-        if (mysql_stmt_fetch(hStmt.pStmt) != 0) return "(unknown)";
-        name.assign(buffer, std::min<u_long>(length, sizeof(buffer)));
+        if (mysql_stmt_fetch(hStmt.pStmt) != 0) return "`w(unknown)``";
+
+        const std::string growid(buffer, std::min<u_long>(length, sizeof(buffer)));
+        switch (role)
+        {
+            case OWNER:     return std::format("`9@{}``", growid);
+            case DEVELOPER: return std::format("`6@{}``", growid);
+            case MODERATOR: return std::format("`#@{}``", growid);
+            default:        return std::format("`2{}``", growid);
+        }
     }
-    return cache[user_id] = name;
 }
 
 std::string world_locked_text(const std::string &world_name, int owner)
 {
-    return std::format("`5[```w{}`` `$World Locked`` by {}`5]``", world_name, growid_of(owner));
+    return std::format("`5[```w{}`` `$World Locked`` by {}`5]``", world_name, owner_display(owner));
 }
 
 std::string hash_password(const std::string &password)

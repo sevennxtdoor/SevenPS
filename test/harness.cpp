@@ -1822,7 +1822,12 @@ int main()
         {
             owner->growid = "MTOWNER"; const auto role = visitor->role; visitor->role = 0; w.is_public = false;
             outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = ::pos{ 10, 20 } });
-            CHECK(said("World Locked") && said("MTOWNER"), "the visitor is told the world is locked by MTOWNER");
+            CHECK(said("World Locked") && said("`2MTOWNER"), "the visitor is told the world is locked by MTOWNER (green, the owner's color)");
+            const auto owner_role = owner->role; owner->role = MODERATOR;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1100)); // @note the message shows once a second
+            outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = ::pos{ 10, 20 } });
+            CHECK(said("@MTOWNER"), "a staff owner shows with their @ tag");
+            owner->role = owner_role;
             visitor->role = role;
         }
     }
