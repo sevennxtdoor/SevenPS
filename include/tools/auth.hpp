@@ -15,3 +15,6 @@ extern void apply_password_reset();
 
 /* `ip`: the player's IP, for the per-IP limits in tools/guard.hpp */
 extern std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip);
+
+/* @return the GrowID as stored (its real upper/lower case), empty if there is no such account */
+extern std::optional<std::string> account_name(const std::string &growid);

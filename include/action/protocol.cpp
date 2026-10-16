@@ -1,6 +1,6 @@
 #include "pch.hpp"
 #include "tools/auth.hpp"
-#include "tools/guard.hpp"
+#include "tools/web_login.hpp"
 #include "https/server_data.hpp"
 #include "proton/Variant.hpp"
 
@@ -9,42 +9,23 @@
 void action::protocol(ENetEvent& event, const std::string& header)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    try 
-    {
-        std::vector<std::string> pipes = readch(header, '|');
-        if (pipes.size() < 4ull) throw std::runtime_error("");
+    /* @note ltoken = the session token from our own login page (tools/web_login.cpp), never the password.
+     * the old login page sent base64 "growId=..&password=.." here, so whoever ran that page could read every password */
+    std::vector<std::string> pipes = readch(header, '|');
+    std::string token{};
+    for (std::size_t i = 0; i + 1 < pipes.size(); ++i)
+        if (pipes[i] == "ltoken") token = pipes[i + 1];
 
-        if (pipes[2ull] == "ltoken")
-        {
-            const std::string &decoded = base64_decode(pipes[3ull]);
-            if (decoded.empty()) throw std::runtime_error("");
-
-            if (std::size_t pos = decoded.find("growId="); pos != std::string::npos) 
-            {
-                pos += strlen("growId=");
-                pPeer->growid = decoded.substr(pos, decoded.find('&', pos) - pos);
-            }
-            if (std::size_t pos = decoded.find("password="); pos != std::string::npos) 
-            {
-                pos += strlen("password=");
-                pPeer->password = decoded.substr(pos, decoded.find('&', pos) - pos);
-            }
-        } // @note delete decoded
-        if (pPeer->growid.empty() || pPeer->password.empty()) throw std::runtime_error("");
-    }
-    catch (...) { 
-        send_action(*event.peer, "logon_fail", "");
-        return; // @note stop processing invalid protocol data
-    }
-    /* @note the password was never checked: any password opened any account */
-    if (const std::string why = authenticate(pPeer->growid, pPeer->password, true, peer_ip(*event.peer)); !why.empty())
+    const std::string growid = session_growid(token);
+    if (growid.empty())
     {
-        std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
-        send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
+        std::printf("[login] refused: no valid login token (old or made-up)\n");
+        send_action(*event.peer, "log", "msg|`4Please log in again`` on the MikeTopia login page.");
         send_action(*event.peer, "logon_fail", "");
-        pPeer->growid.clear(); // @note this peer is not that account
         return;
     }
+    pPeer->growid = growid;
+    pPeer->password = token; // @note goes back to the client as tankIDPass (SetHasGrowID below), checked again in tankIDName
     const std::string password = pPeer->password;
     pPeer->load(pPeer->growid, pPeer->password); // @todo i want remove this tbh. since we only are fetching user_id which seems a waste.
     pPeer->loaded = false; // @note this first connection only hands over to the game connection: it must never save (stale data over the real session)

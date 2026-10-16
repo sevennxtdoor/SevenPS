@@ -76,6 +76,26 @@ namespace
     }
 }
 
+std::optional<std::string> account_name(const std::string &growid)
+{
+    if (!valid_growid(growid)) return std::nullopt;
+    ::hStmt hStmt{ "SELECT growid FROM peer WHERE growid = ? LIMIT 1" };
+    MYSQL_BIND param = make_bind_in(growid);
+    hStmt.bind_param(&param);
+    char buffer[32]{};
+    u_long length{};
+    MYSQL_BIND result{};
+    result.buffer_type = MYSQL_TYPE_STRING;
+    result.buffer = buffer;
+    result.buffer_length = sizeof(buffer);
+    result.length = &length;
+    mysql_stmt_bind_result(hStmt.pStmt, &result);
+    hStmt.execute();
+    mysql_stmt_store_result(hStmt.pStmt);
+    if (mysql_stmt_fetch(hStmt.pStmt) != 0) return std::nullopt;
+    return std::string(buffer, std::min<u_long>(length, sizeof(buffer)));
+}
+
 std::string hash_password(const std::string &password)
 {
     std::vector<u_char> salt(SALT_BYTES);

@@ -1,6 +1,5 @@
 #include "pch.hpp"
-#include "tools/auth.hpp"
-#include "tools/guard.hpp"
+#include "tools/web_login.hpp"
 #include "action/quit.hpp"
 #include "automate/holiday.hpp"
 
@@ -17,25 +16,28 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
 
     /* @todo instead of setting these values we should check if there valid from SQL.*/
     std::string protocol{};
-    for (std::size_t i = 0; i < pipes.size(); ++i) 
+    for (std::size_t i = 0; i + 1 < pipes.size(); ++i) // @note i+1 read past the end on the last pipe
     {
         if      (pipes[i] == "tankIDName") pPeer->growid = pipes[i+1];
         else if (pipes[i] == "tankIDPass") pPeer->password = pipes[i+1];
         else if (pipes[i] == "protocol")   protocol = pipes[i+1];
         else if (pipes[i] == "country")    pPeer->country = pipes[i+1];
-        else if (pipes[i] == "user")       pPeer->user_id = std::stoi(pipes[i+1]); // @todo validate user_id
+        else if (pipes[i] == "user")       pPeer->user_id = atoi(pipes[i+1].c_str()); // @note std::stoi threw on "user|x" and crashed the server @todo validate user_id
     }
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
-    /* @note this second connection used to trust tankIDName: a modded client could log in as anyone (even the owner) */
-    if (const std::string why = authenticate(pPeer->growid, pPeer->password, false, peer_ip(*event.peer)); !why.empty())
+    /* @note this second connection used to trust tankIDName: a modded client could log in as anyone (even the owner).
+     * tankIDPass is the session token we gave in protocol.cpp, it must belong to this very GrowID */
+    const std::string owner = session_growid(pPeer->password);
+    if (owner.empty() || !std::ranges::equal(owner, pPeer->growid, [](char a, char b) { return std::tolower(static_cast<u_char>(a)) == std::tolower(static_cast<u_char>(b)); }))
     {
-        std::printf("[login] %s refused: %s\n", pPeer->growid.c_str(), why.c_str()); // @note never the password
-        send_action(*event.peer, "log", std::format("msg|`4Failed`` logging in: {}", why));
+        std::printf("[login] %s refused: no valid login token\n", pPeer->growid.c_str());
+        send_action(*event.peer, "log", "msg|`4Please log in again`` on the MikeTopia login page.");
         send_action(*event.peer, "logon_fail", "");
         pPeer->growid.clear();
         return;
     }
+    pPeer->growid = owner; // @note the stored spelling
     /* @note same account already online: two copies of one inventory could trade/drop the same items (duplication).
      * the old session is saved and closed first, then this one loads what it saved */
     peers("", PEER_ALL, [&event, pPeer](ENetPeer &p)

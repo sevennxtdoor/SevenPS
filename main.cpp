@@ -18,6 +18,7 @@
 #include "include/tools/backup.hpp" // @note backup_tick()
 #include "include/tools/guild.hpp" // @note load_guilds()
 #include "include/tools/auth.hpp" // @note apply_password_reset()
+#include "include/tools/web_login.hpp" // @note web_login_tick()
 #include <csignal>
 
 namespace
@@ -65,9 +66,10 @@ int main()
     bool restarting{};
     while (!gSignal && !restarting)
     {
-        if (enet_host_service(host, &event, 1000/*ms*/) > 0)
+        if (enet_host_service(host, &event, 100/*ms, was 1000: the login page waits for web_login_tick*/) > 0)
             if (const auto i = eventType_pool.find(event.type); i != eventType_pool.end())
                 i->second(event);
+        web_login_tick(); // @note answers the login page (password checks need the database, which lives on this thread)
         restarting = restart_tick(); // @note /restart countdown
         cps_tick(); // @note automatic events & broadcasts
         fishing_tick(); // @note fish bites

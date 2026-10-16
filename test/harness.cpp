@@ -27,6 +27,7 @@
 #include "eventType/receive.hpp"
 #include "gamePacket/movement.hpp"
 #include "tools/guard.hpp"
+#include "tools/web_login.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -825,11 +826,13 @@ int main()
         auto b64 = [](const std::string &in) { static const char *t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"; std::string out; int val = 0, bits = -6;
             for (u_char c : in) { val = (val << 8) + c; bits += 8; while (bits >= 0) { out.push_back(t[(val >> bits) & 0x3F]); bits -= 6; } }
             if (bits > -6) out.push_back(t[((val << 8) >> (bits + 8)) & 0x3F]); while (out.size() % 4) out.push_back('='); return out; };
-        outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + b64("growId=MTAUTH2&password=nope&"));
-        CHECK(said("logon_fail") && !said("OnSendToServer"), "step 1 with a wrong password: refused");
-        login->growid.clear(); login->password.clear();
         outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + b64("growId=MTAUTH2&password=plainpw&"));
-        CHECK(said("SetHasGrowID") && said("OnSendToServer"), "step 1 right password: SetHasGrowID + OnSendToServer");
+        CHECK(said("logon_fail") && !said("OnSendToServer"), "step 1 with the old token (base64 growId + password): refused");
+        login->growid.clear(); login->password.clear();
+        const std::string tok = session_new("MTAUTH2");
+        outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + tok);
+        CHECK(said("SetHasGrowID") && said("OnSendToServer") && login->growid == "MTAUTH2", "step 1 with a session token: SetHasGrowID + OnSendToServer");
+        CHECK(!said("plainpw") && said(tok), "the game gets the token, never the password");
 
         std::string pad; for (int k = 0; k < 40; ++k) pad += "k" + std::to_string(k) + "|v|";
         ::peer *second = new ::peer(); lp.data = second;
@@ -837,7 +840,14 @@ int main()
         CHECK(said("logon_fail") && second->growid.empty(), "step 2 with only a GrowID (no right password): refused");
         ::peer *third = new ::peer(); lp.data = third;
         outbox.clear(); action::tankIDName(le, "tankIDName|MTAUTH2|tankIDPass|plainpw|protocol|225|country|id|" + pad);
-        CHECK(!said("logon_fail") && said("OnSuperMainStartAcceptLogon"), "step 2 with the right password: logged in");
+        CHECK(said("logon_fail"), "step 2 with the password instead of the token: refused");
+        third->growid.clear(); third->password.clear();
+        outbox.clear(); action::tankIDName(le, "tankIDName|MTAUTH2|tankIDPass|" + tok + "|protocol|225|country|id|" + pad);
+        CHECK(!said("logon_fail") && said("OnSuperMainStartAcceptLogon"), "step 2 with the token: logged in");
+        ::peer *fourth = new ::peer(); lp.data = fourth;
+        outbox.clear(); action::tankIDName(le, "tankIDName|Mike|tankIDPass|" + tok + "|protocol|225|country|id|" + pad);
+        CHECK(said("logon_fail") && fourth->growid.empty(), "MTAUTH2's token can't log in as Mike");
+        third->loaded = false; // @note never saves
 
         std::puts("\n[A4] forgotten password: reset_password.txt");
         { std::ofstream r("reset_password.txt"); r << "MTAUTH2|newpass1\r\n"; }
@@ -923,28 +933,29 @@ int main()
 
         ENetPeer &a = real->peers[0]; a.state = ENET_PEER_STATE_CONNECTED; a.data = new ::peer();
         ENetEvent ea{}; ea.peer = &a;
-        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + b64("growId=MTSAFE&password=wrong1&"));
-        CHECK(said("logon_fail"), "wrong password refused");
+        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + std::string(64, 'a'));
+        CHECK(said("logon_fail"), "made-up token refused");
         delete static_cast<::peer*>(a.data); a.data = nullptr;
         CHECK(gems_in_db("MTSAFE") == 5000, "closing a refused login saves nothing (it wiped Mike's account!)");
 
         a.data = new ::peer();
-        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + b64("growId=MTSAFE&password=safepass1&"));
-        CHECK(said("OnSendToServer"), "right password: handed to the game connection");
+        const std::string safe_tok = session_new("MTSAFE");
+        outbox.clear(); action::protocol(ea, "protocol|225|ltoken|" + safe_tok);
+        CHECK(said("OnSendToServer"), "good token: handed to the game connection");
         static_cast<::peer*>(a.data)->gems = 1;
         delete static_cast<::peer*>(a.data); a.data = nullptr;
         CHECK(gems_in_db("MTSAFE") == 5000, "the first (hand-over) connection never saves");
 
         a.data = new ::peer();
         std::string pad; for (int k = 0; k < 40; ++k) pad += "k" + std::to_string(k) + "|v|";
-        outbox.clear(); action::tankIDName(ea, "tankIDName|MTSAFE|tankIDPass|safepass1|protocol|225|country|id|" + pad);
+        outbox.clear(); action::tankIDName(ea, "tankIDName|MTSAFE|tankIDPass|" + safe_tok + "|protocol|225|country|id|" + pad);
         ::peer *first = static_cast<::peer*>(a.data);
         CHECK(first->loaded && first->gems == 5000, "logged in, 5000 gems loaded");
         first->gems = 7777; // @note earned in game, not saved yet
 
         ENetPeer &b = real->peers[1]; b.state = ENET_PEER_STATE_CONNECTED; b.data = new ::peer();
         ENetEvent eb{}; eb.peer = &b;
-        outbox.clear(); action::tankIDName(eb, "tankIDName|mtsafe|tankIDPass|safepass1|protocol|225|country|id|" + pad);
+        outbox.clear(); action::tankIDName(eb, "tankIDName|mtsafe|tankIDPass|" + session_new("MTSAFE") + "|protocol|225|country|id|" + pad);
         CHECK(a.data == nullptr && a.state != ENET_PEER_STATE_CONNECTED, "logging in again closes the old session (no duplicate inventories)");
         CHECK(said("logged in from another place"), "old session is told why");
         CHECK(static_cast<::peer*>(b.data)->gems == 7777, "new session gets what the old one had (saved first, then loaded)");
@@ -967,6 +978,34 @@ int main()
         std::vector<u_char> gp(4 + sizeof(::gamePacket), 0); gp[0] = 4; gp[4] = 3;
         ENetEvent r = ue; r.packet = enet_packet_create(gp.data(), gp.size(), 0); outbox.clear(); receive(r);
         CHECK(outbox.empty(), "punching/placing before login: ignored");
+    }
+
+    std::puts("\n[W1] MikeTopia's own login page");
+    {
+        { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTWEB','MTWEB2')" }; del.execute(); }
+        auto token_of = [](const std::string &json) { const std::size_t at = json.find("\"token\":\""); return at == std::string::npos ? std::string{} : json.substr(at + 9, 64); };
+
+        CHECK(web_login_handle("mode=login&growId=MTWEB&password=abcd1", "127.0.0.1").find("doesn't exist") != std::string::npos, "log in to an account that doesn't exist: refused");
+        CHECK(web_login_handle("mode=register&growId=MTWEB&password=abcd1&confirm=abcd2", "127.0.0.1").find("not the same") != std::string::npos, "new account: passwords must match");
+        CHECK(web_login_handle("mode=register&growId=MT%21WEB&password=abcd1&confirm=abcd1", "127.0.0.1").find("\"error\"") != std::string::npos, "new account: bad GrowID refused");
+        const std::string made = web_login_handle("mode=register&growId=MTWEB&password=p%40ss+word%26x&confirm=p%40ss+word%26x", "127.0.0.1");
+        CHECK(made.find("\"status\":\"success\"") != std::string::npos && session_growid(token_of(made)) == "MTWEB", "new account made, gets a token");
+        CHECK(account_name("mtweb").value_or("") == "MTWEB", "account is in the database");
+        CHECK(web_login_handle("mode=register&growId=mtweb&password=zzzz1&confirm=zzzz1", "127.0.0.1").find("already taken") != std::string::npos, "the same GrowID can't be made twice");
+
+        const std::string ok = web_login_handle("mode=login&growId=mtweb&password=p%40ss+word%26x", "127.0.0.1");
+        CHECK(session_growid(token_of(ok)) == "MTWEB", "log in with the url-encoded password (p@ss word&x), lower-case GrowID -> MTWEB");
+        CHECK(ok.find("p@ss") == std::string::npos, "the answer never has the password in it");
+        CHECK(web_login_handle("mode=login&growId=MTWEB&password=wrong", "127.0.0.1").find("Wrong password") != std::string::npos, "wrong password refused");
+        CHECK(web_login_handle("mode=login&growId=MTWEB", "127.0.0.1").find("Fill in") != std::string::npos, "missing password");
+
+        CHECK(session_growid("").empty() && session_growid(std::string(64, 'f')).empty() && session_growid("Z3Jvd0lkPU1pa2U=").empty(), "empty / made-up / old-style tokens: no account");
+        CHECK(session_growid(token_of(ok)) == "MTWEB" && token_of(ok) != token_of(made), "every login gets its own token");
+        std::string last{}; for (int k = 0; k < 6; ++k) last = session_new("MTWEB2");
+        CHECK(session_growid(last) == "MTWEB2" && session_growid(token_of(made)) == "MTWEB", "at most 5 tokens per account (others untouched)");
+        CHECK(form_value("a=1&growId=Mi%6Be&b=", "growId") == "Mike" && form_value("x=1", "growId").empty(), "form_value");
+        CHECK(token_json("abc").find("\"accountType\":\"growtopia\"") != std::string::npos, "answer the game understands");
+        { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTWEB','MTWEB2')" }; del.execute(); }
     }
 
     /* ================= News & rules ================= */
