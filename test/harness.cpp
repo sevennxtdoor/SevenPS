@@ -35,6 +35,7 @@
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
 #include "tools/rewards.hpp"
+#include "commands/ghost.hpp"
 #include "action/join_request.hpp"
 #include "action/quit_to_exit.hpp"
 #include "tools/rank.hpp"
@@ -1657,6 +1658,21 @@ int main()
         CHECK(said("of Legend") && said("|maxLevel") && said("|doctor"), "and again the next time");
         w.visitors -= 10;
         visitor->titles = saved_titles, visitor->titles_on = saved_on, visitor->role = saved_role, visitor->rank_level = saved_rank;
+    }
+
+    /* ================= /ghost is staff only ================= */
+    {
+        std::puts("\n[T10] /ghost only for moderators and above");
+        const auto saved_role = visitor->role;
+        visitor->role = PLAYER; visitor->state &= ~S_GHOST;
+        outbox.clear(); ghost(ev2, "ghost");
+        CHECK(said("moderators and above") && !(visitor->state & S_GHOST), "a player can't");
+        visitor->role = MODERATOR;
+        outbox.clear(); ghost(ev2, "ghost");
+        CHECK(visitor->state & S_GHOST, "a moderator can");
+        visitor->role = PLAYER; visitor->update_effects();
+        CHECK(!(visitor->state & S_GHOST), "demoted: ghost is gone");
+        visitor->role = saved_role;
     }
 
     /* ================= Every item: place, wrench, punch until it breaks ================= */

@@ -294,6 +294,7 @@ void peer::update_effects()
     this->state = (this->state & ~(PLAYMOD_STATES | BUFF_STATES)) | playmod_states(*this) | buff_states(*this);
 
     /* @note staff are super supporters: bigger name + green wrench, unless /hidestatus */
+    if (this->role < MODERATOR) this->state &= ~S_GHOST; // @note a demoted moderator stops being a ghost
     if (this->role >= MODERATOR && !this->hide_status) this->state |= S_SUPER_SUPPORTER;
     else                                               this->state &= ~S_SUPER_SUPPORTER;
 }
