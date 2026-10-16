@@ -1592,6 +1592,50 @@ int main()
         { ::hStmt d{ "DELETE FROM redeem_used WHERE code LIKE 'MTTEST%'" }; d.execute(); }
     }
 
+    /* ================= Chemical Combiners ================= */
+    {
+        const auto owner_role = owner->role;
+        owner->role = PLAYER;
+        owner->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        const ::pos lt{ 30, 20 };
+        auto punch = [&]() { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = lt }); };
+        auto on_tile = [&](short id) { int n = 0; for (const ::object &o : w.objects) if (o.id == id && o.pos.by_32(true) == lt) n += o.count; return n; };
+        auto drop = [&](short id, short count) { add_object(ev, ::slot(id, count), ::pos{ 30 * 32.0f + 8, 20 * 32.0f + 8 }, w); };
+        ::block &lb = w.blocks[cord(30, 20)];
+        lb = ::block{}; lb.fg = 912;
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == lt; });
+
+        std::puts("\n[K1] a punch opens the Laboratory");
+        punch();
+        CHECK(lb.state[2] & S_TOGGLE, "open");
+        lb.hits[0] = 0;
+
+        std::puts("\n[K2] Combover = 1 Chemical G + 5 Chemical R + 2 Chemical Y");
+        drop(914, 3); drop(916, 5); drop(924, 2); drop(2, 4);
+        punch();
+        CHECK(said("made `2Combover") && on_tile(770) == 1, "Combover dropped");
+        CHECK(on_tile(914) == 2 && on_tile(916) == 0 && on_tile(924) == 0, "used exactly the recipe, 2 Chemical G left");
+        CHECK(on_tile(2) == 4 && (lb.state[2] & S_TOGGLE) && lb.hits[0] == 0, "other items stay, still open, no damage");
+
+        std::puts("\n[K3] no recipe: the punch closes it");
+        punch();
+        CHECK(!said("made") && !(lb.state[2] & S_TOGGLE), "closed");
+        lb.hits[0] = 0;
+
+        std::puts("\n[K4] Chocolate Sprinkles Block only in a Microwave");
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == lt; });
+        lb.state[2] |= S_TOGGLE;
+        drop(1358, 10); drop(5374, 10); drop(954, 25);
+        punch();
+        CHECK(said("melt the chocolate") && on_tile(5376) == 0 && on_tile(954) == 25, "Laboratory refuses, items kept");
+        lb.fg = 1472; lb.hits[0] = 0;
+        punch();
+        CHECK(on_tile(5376) == 5 && on_tile(954) == 0, "Microwave makes 5");
+        lb = ::block{};
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == lt; });
+        owner->role = owner_role;
+    }
+
     /* ================= News & rules ================= */
     std::puts("\n[N1] gazette in English with a rules button");
     outbox.clear(); on::RequestGazette(ev);

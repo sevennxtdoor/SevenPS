@@ -32,6 +32,7 @@
 #include "tools/economy.hpp"
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
+#include "tools/combiner.hpp"
 #include "tile_change.hpp"
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
@@ -153,6 +154,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
             if (special_punch(event, *world, block, gamePacket.punch, item)) return; // @note fossils & prep station (tools/special_blocks.cpp)
             if (special_tile_punch(event, *world, block, gamePacket.punch, item)) return; // @note a harmonized crystal cluster (tools/special_tiles.cpp)
+            if (combiner_punch(event, *world, block, gamePacket.punch, item)) return; // @note Laboratory, Microwave...: ingredients on it (tools/combiner.cpp)
 
             switch (item.id)
             {
@@ -255,6 +257,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case type::TOGGLEABLE_BLOCK:
                 case type::TOGGLEABLE_ANIMATED_BLOCK:
                 case type::CHEST:
+                case type::CHEMICAL_COMBINER: // @note opened/closed by a punch
                 {
                     block.state[2] ^= S_TOGGLE;
                     if (is_jammer(block.fg)) jammer_toggled(event, *world, block, gamePacket.punch);
