@@ -26,6 +26,7 @@
 #include "onVariant/RequestGazette.hpp"
 #include "tools/sponsor.hpp"
 
+#include "tools/rewards.hpp"
 #include "__dialog_return.hpp"
 
 std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)>> dialog_return_pool
@@ -55,6 +56,7 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"wl_bank", std::bind(&wl_bank_return, std::placeholders::_1, std::placeholders::_2)},
     {"online_status", std::bind(&online_status_return, std::placeholders::_1, std::placeholders::_2)},
     {"sendpm", std::bind(&sendpm_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_redeem", std::bind(&redeem_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_profile", std::bind(&profile_return, std::placeholders::_1, std::placeholders::_2)},
     {"friends", std::bind(&friends_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_friend", std::bind(&friend_request_return, std::placeholders::_1, std::placeholders::_2)},

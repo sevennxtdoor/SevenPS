@@ -42,6 +42,31 @@ void item_activate(ENetEvent& event, ::gamePacket gamePacket)
                 on::ConsoleMessage(event.peer, compressed);
             }
         }
+        else if (item->id == 1796 && item->count >= 100) // @note 100 Diamond Locks -> a Blue Gem Lock
+        {
+            if (modify_item_inventory(event, {7188, 1}) == 0)
+            {
+                modify_item_inventory(event, {1796, -100});
+                const std::string compressed = "You compressed 100 `2Diamond Lock`` into a `2Blue Gem Lock``!";
+                send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, compressed, 0u, 1u });
+                on::ConsoleMessage(event.peer, compressed);
+            }
+        }
+        else if (item->id == 7188 && item->count >= 1) // @note a Blue Gem Lock -> 100 Diamond Locks
+        {
+            auto dl = std::ranges::find(pPeer->slots, 1796, &::slot::id);
+            const bool room = (dl == pPeer->slots.end()) ? (int)pPeer->slots.size() < pPeer->slot_size : dl->count == 0;
+            if (!room)
+            {
+                send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "You need a free slot (and no Diamond Locks) to shatter a `2Blue Gem Lock``.", 0u, 1u });
+                return;
+            }
+            modify_item_inventory(event, {7188, -1});
+            modify_item_inventory(event, {1796, 100});
+            const std::string shattered = "You shattered a `2Blue Gem Lock`` into 100 `2Diamond Lock``!";
+            send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, shattered, 0u, 1u });
+            on::ConsoleMessage(event.peer, shattered);
+        }
         else if (item->id == 1796 && item->count >= 1)
         {
             const u_short nokori = modify_item_inventory(event, {242, 100});

@@ -1,0 +1,15 @@
+# MikeTopia Daily Spin (/spin): one free spin a day per account (resets at midnight server time).
+# prize|item|min|max|weight|name[|rare]   112 = gems, weight = chance among all lines, rare = announced to everyone
+# keep it small: 1 World Lock = 2000 gems is the economy reference (resources/... /economy shows what spins made)
+prize|112|50|150|40|Gems
+prize|112|150|400|20|Gems
+prize|112|1000|1000|2|Gems|rare
+prize|242|1|1|1|World Lock|rare
+prize|611|3|5|8|Magic Egg
+prize|2242|1|1|4|Red Crystal
+prize|2244|1|1|4|Green Crystal
+prize|2246|1|1|4|Blue Crystal
+prize|914|3|5|8|Chemical G
+prize|4132|1|1|4|Fossil Brush
+prize|528|1|1|4|Lucky Clover
+prize|1486|1|1|1|Growtoken|rare

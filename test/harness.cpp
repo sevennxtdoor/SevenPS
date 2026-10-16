@@ -34,6 +34,8 @@
 #include "tools/buffs.hpp"
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
+#include "tools/rewards.hpp"
+#include "gamePacket/item_activate.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1447,6 +1449,88 @@ int main()
         w.is_public = was_public;
         owner->role = owner_role;
         ::hStmt del{ "DELETE FROM world_special_tile WHERE world = 'MTTEST'" }; del.execute();
+    }
+
+    /* ================= Rewards: redeem codes, Daily Spin, Blue Gem Lock ================= */
+    {
+        const auto owner_role = owner->role, visitor_role = visitor->role;
+        auto run = [&](void (*cmd)(ENetEvent&, const std::string_view), ENetEvent &e, const char *text) { outbox.clear(); cmd(e, text); };
+        { ::hStmt d{ "DELETE FROM redeem_code WHERE code LIKE 'MTTEST%'" }; d.execute(); }
+        { ::hStmt d{ "DELETE FROM redeem_used WHERE code LIKE 'MTTEST%'" }; d.execute(); }
+
+        std::puts("\n[R1] only the owner makes codes");
+        visitor->role = PLAYER;
+        run(code_command, ev2, "code create MTTEST1 gems=500 items=242:1 uses=1 days=1");
+        CHECK(said("Only the owner"), "player refused");
+        owner->role = OWNER;
+        run(code_command, ev, "code create MTTEST1 gems=500 items=242:1 uses=1 days=1");
+        CHECK(said("Code `wMTTEST1`` made") && said("500 gems, 1 World Lock"), "owner made MTTEST1");
+        run(code_command, ev, "code create MTTEST1 gems=5");
+        CHECK(said("already exists"), "no duplicates");
+        run(code_command, ev, "code create MTTEST2 items=242:500");
+        CHECK(said("id:count") , "max 200 per item");
+
+        std::puts("\n[R2] a player redeems it once");
+        visitor->slot_size = 60;
+        const int gems_before = visitor->gems, wl_before = held(*visitor, 242);
+        run(redeem_command, ev2, "redeem mttest1");
+        CHECK(said("redeemed") && visitor->gems == gems_before + 500 && held(*visitor, 242) == wl_before + 1, "+500 gems, +1 World Lock (code is case-insensitive)");
+        pset(*visitor, "redeem_try", 0);
+        run(redeem_command, ev2, "redeem MTTEST1");
+        CHECK(said("already redeemed") && visitor->gems == gems_before + 500, "only once");
+        run(redeem_command, ev2, "redeem MTTEST9");
+        CHECK(said("Wait a moment"), "guessing is slowed down");
+        pset(*visitor, "redeem_try", 0);
+        run(redeem_command, ev2, "redeem MTTEST9");
+        CHECK(said("doesn't exist"), "unknown code");
+
+        std::puts("\n[R3] used up / expired / staff");
+        owner->role = OWNER;
+        pset(*owner, "redeem_try", 0);
+        run(redeem_command, ev, "redeem MTTEST1");
+        CHECK(said("used up"), "1 use: gone");
+        run(code_command, ev, "code create MTTEST3 gems=10 uses=5");
+        { ::hStmt u{ "UPDATE redeem_code SET expires = 1 WHERE code = 'MTTEST3'" }; u.execute(); }
+        pset(*owner, "redeem_try", 0);
+        run(redeem_command, ev, "redeem MTTEST3");
+        CHECK(said("expired"), "expired");
+        visitor->role = MODERATOR;
+        pset(*visitor, "redeem_try", 0);
+        run(redeem_command, ev2, "redeem MTTEST3");
+        CHECK(said("Staff accounts"), "moderators can't redeem");
+        visitor->role = PLAYER;
+        run(redeem_command, ev2, "redeem");
+        CHECK(said("mt_redeem") && said("Redeem Code"), "no code: opens the window");
+        outbox.clear(); redeem_return(ev2, ::hPipe("dialog_name|mt_redeem|code|MTTEST1"));
+        CHECK(said("already redeemed") || said("Wait a moment"), "the window redeems too");
+        run(code_command, ev, "code list");
+        CHECK(said("MTTEST1") && said("MTTEST3"), "/code list");
+        run(code_command, ev, "code delete MTTEST3");
+        CHECK(said("deleted"), "/code delete");
+
+        std::puts("\n[R4] Daily Spin once a day");
+        pset(*visitor, "spin_day", 0);
+        const int g0 = visitor->gems;
+        const std::size_t kinds0 = visitor->slots.size();
+        int count0 = 0; for (const ::slot &s : visitor->slots) count0 += s.count;
+        run(spin_command, ev2, "spin");
+        int count1 = 0; for (const ::slot &s : visitor->slots) count1 += s.count;
+        CHECK(said("Lucky Wheel") && (visitor->gems > g0 || count1 > count0 || visitor->slots.size() > kinds0), "won something");
+        run(spin_command, ev2, "spin");
+        CHECK(said("already spun"), "only once a day");
+
+        std::puts("\n[R5] 100 Diamond Locks <-> Blue Gem Lock");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 1796 || s.id == 7188; });
+        visitor->slots.push_back(::slot(1796, 100));
+        outbox.clear(); item_activate(ev2, ::gamePacket{ .id = 1796 });
+        CHECK(held(*visitor, 7188) == 1 && held(*visitor, 1796) == 0, "100 DL -> 1 BGL");
+        outbox.clear(); item_activate(ev2, ::gamePacket{ .id = 7188 });
+        CHECK(held(*visitor, 7188) == 0 && held(*visitor, 1796) == 100, "1 BGL -> 100 DL");
+        std::erase_if(visitor->slots, [](const ::slot &s) { return s.id == 1796 || s.id == 7188 || s.count == 0; });
+
+        owner->role = owner_role, visitor->role = visitor_role;
+        { ::hStmt d{ "DELETE FROM redeem_code WHERE code LIKE 'MTTEST%'" }; d.execute(); }
+        { ::hStmt d{ "DELETE FROM redeem_used WHERE code LIKE 'MTTEST%'" }; d.execute(); }
     }
 
     /* ================= News & rules ================= */

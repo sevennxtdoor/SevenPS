@@ -4,6 +4,7 @@
 #include "onVariant/SetBux.hpp"
 #include "database/shouhin.hpp"
 #include "tools/economy.hpp"
+#include "tools/rewards.hpp"
 #include "buy.hpp"
 
 
@@ -19,6 +20,8 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
     auto growtoken = std::ranges::find(pPeer->slots, 1486, &::slot::id);
 
     const std::string item = hPipe["item"];
+
+    if (item == "redeem_code") return redeem_dialog(event); // @note our own Redeem Code window (tools/rewards.cpp)
 
     u_short tab{};
     if (item == "main") action::store(event, ""); // tab = 0
