@@ -35,6 +35,8 @@
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
 #include "tools/rewards.hpp"
+#include "action/join_request.hpp"
+#include "action/quit_to_exit.hpp"
 #include "tools/rank.hpp"
 #include "tools/cps.hpp"
 #include "gamePacket/item_activate.hpp"
@@ -1633,6 +1635,77 @@ int main()
         CHECK(on_tile(5376) == 5 && on_tile(954) == 0, "Microwave makes 5");
         lb = ::block{};
         std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == lt; });
+        owner->role = owner_role;
+    }
+
+    /* ================= Titles survive leaving a world ================= */
+    {
+        std::puts("\n[T9] Legend, Dr. and Blue Name after leaving and joining a world again");
+        const auto saved_titles = visitor->titles, saved_on = visitor->titles_on;
+        const auto saved_role = visitor->role;
+        const auto saved_rank = visitor->rank_level;
+        visitor->role = PLAYER, visitor->rank_level = 0;
+        visitor->titles = visitor->titles_on = T_LEGEND | T_DOCTOR | T_BLUENAME;
+        w.visitors += 10; // @note leaving must never drop MTTEST from memory (the tests still use it)
+        outbox.clear(); action::quit_to_exit(ev2, "", true);
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(said("OnNameChanged") && said("Dr. MTVISIT of Legend"), "the name with its titles is sent again");
+        CHECK(said("|maxLevel") && said("|doctor"), "blue name and Dr. effects are sent again");
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = ::pos{ 0, 0 } }); // @note anything, then leave/join once more
+        outbox.clear(); action::quit_to_exit(ev2, "", true);
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(said("of Legend") && said("|maxLevel") && said("|doctor"), "and again the next time");
+        w.visitors -= 10;
+        visitor->titles = saved_titles, visitor->titles_on = saved_on, visitor->role = saved_role, visitor->rank_level = saved_rank;
+    }
+
+    /* ================= Every item: place, wrench, punch until it breaks ================= */
+    {
+        std::puts("\n[Z1] every item in items.dat on a tile: no crash, no hang, the world still serializes");
+        const auto owner_role = owner->role;
+        owner->role = PLAYER;
+        owner->pos = ::pos{ 11 * 32.0f, 20 * 32.0f };
+        const bool was_public = w.is_public;
+        w.is_public = false;
+        const ::pos at{ 50, 10 };
+        ::block &b = w.blocks[cord(50, 10)];
+        int placed = 0, broke = 0, tried = 0;
+        std::vector<int> unbreakable{};
+        for (const ::item &it : items)
+        {
+            switch (it.type)
+            {
+                /* @note not placed on a tile: worn, used, or they change the whole world / account */
+                case type::FIST: case type::WRENCH: case type::CONSUMEABLE: case type::CLOTHING: case type::LOCK:
+                case type::MAIN_DOOR: case type::MAGPLANT_REMOTE: case type::GEM: continue;
+            }
+            if (it.id == 0 || it.raw_name.empty() || it.raw_name.starts_with("null_item")) continue;
+            ++tried;
+            if (tried % 1000 == 0) std::printf("  ... %d items (now %d %s)\n", tried, it.id, it.raw_name.c_str());
+            b = ::block{};
+            std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == at; });
+            std::erase_if(owner->slots, [&](const ::slot &s) { return s.id == it.id; });
+            owner->slots.push_back(::slot(it.id, 1));
+            outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = it.id, .pos = owner->pos, .punch = at });
+            if (b.fg == 0 && b.bg == 0) continue;
+            ++placed;
+            outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = at });
+            for (int k = 0; k < 150 && (b.fg != 0 || b.bg != 0); ++k)
+            {
+                outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = at });
+            }
+            if (b.fg == 0 && b.bg == 0) ++broke;
+            else unbreakable.push_back(it.id);
+        }
+        std::printf("  %d tried, %d placed, %d broken, %zu never broke (e.g.", tried, placed, broke, unbreakable.size());
+        for (std::size_t k = 0; k < std::min<std::size_t>(unbreakable.size(), 8); ++k) std::printf(" %d %s,", unbreakable[k], id_to_item(unbreakable[k]).raw_name.c_str());
+        std::puts(")");
+        if (std::FILE *f = std::fopen("build/test/unbreakable.txt", "w")) { for (int id : unbreakable) std::fprintf(f, "%d|%d|%s\n", id, id_to_item(id).type, id_to_item(id).raw_name.c_str()); std::fclose(f); }
+        CHECK(placed > 3000, "thousands of items placed and punched without a crash");
+        b = ::block{};
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == at; });
+        { ::blob wb = w.serialize(); CHECK(wb.size() > 6000 * 8, "the world still serializes"); }
+        w.is_public = was_public;
         owner->role = owner_role;
     }
 

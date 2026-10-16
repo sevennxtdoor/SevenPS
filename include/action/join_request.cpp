@@ -15,6 +15,7 @@
 #include "tools/area_lock.hpp"
 #include "tools/magplant.hpp"
 #include "tools/fishing.hpp"
+#include "commands/titles.hpp"
 
 #include "join_request.hpp"
 
@@ -64,10 +65,10 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         } // @note delete name, first
         on::EmoticonDataChanged(event);
 
-        if (pPeer->user_id == world.owner) 
-            pPeer->display_growid = pPeer->name_as("`2");
-        else if (std::ranges::find(world.access, pPeer->user_id) != world.access.end())
-            pPeer->display_growid = pPeer->name_as("`c");
+        /* @note always rebuilt here: before, only owners/admins got a new name, everyone else kept the last world's one */
+        pPeer->display_growid = pPeer->name_as(
+            (pPeer->user_id == world.owner) ? "`2" :
+            (std::ranges::find(world.access, pPeer->user_id) != world.access.end()) ? "`c" : "`w");
 
         pPeer->rest_pos = world.spawn;
 
@@ -79,7 +80,8 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             if (pOthers->user_id != pPeer->user_id)
             {
                 on::Spawn(*event.peer, pOthers->netid, pOthers->user_id, pOthers->pos, pOthers->display_growid, pOthers->country, pOthers->role, pOthers->role >= DEVELOPER, false);
-                send_varlist(event.peer, { "OnCountryState", on::country_state(*pOthers) }, pOthers->netid); // @note their blue name
+                send_varlist(event.peer, { "OnCountryState", on::country_state(*pOthers) }, pOthers->netid); // @note their blue name / Dr.
+                send_varlist(event.peer, { "OnNameChanged", pOthers->display_growid }, pOthers->netid); // @note their title ("of Legend"...), like a title change does
                 guild_show(*event.peer, *pOthers); // @note their guild flag
                 on::Spawn(peer, pPeer->netid, pPeer->user_id, pPeer->rest_pos, pPeer->display_growid, pPeer->country, pPeer->role, pPeer->role >= DEVELOPER, false);
                 on::SetClothing(peer);
@@ -115,7 +117,8 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         ++world.visitors;
         send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);
-        on::CountryState(event);
+        refresh_display_name(*event.peer); // @note name + title effects (OnNameChanged & OnCountryState) for everyone here, exactly like
+                                           // changing a title: the spawn packet alone lost them after leaving a world
         guild_broadcast(*event.peer); // @note our guild flag for everyone here
         send_area_locks(*event.peer, world); // @note Small/Big/Huge/Builder's Lock areas
         magplant_on_join(event, world); // @note drops the remote from the last world, shows the building machine

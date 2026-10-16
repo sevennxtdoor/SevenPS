@@ -8,7 +8,8 @@ std::string on::country_state(const ::peer &peer)
     /* @todo add |showGuild when we add guild system; also add peer's real country */
     /* @note |maxLevel is what makes the client draw the blue name (level 125), the Blue Name title reuses it */
     const bool blue_name = peer.level[0] == 125 || (peer.titles_on & peer.owned_titles() & T_BLUENAME);
-    return std::format("{}{}{}", peer.country, in_guild(peer.growid) ? "|showGuild" : "", blue_name ? "|maxLevel" : ""); // @note order as GTOS
+    const bool doctor = peer.titles_on & peer.owned_titles() & T_DOCTOR; // @note "|doctor": the client's Dr. title (GTopia GamePlayer::GetCountryData)
+    return std::format("{}{}{}{}", peer.country, in_guild(peer.growid) ? "|showGuild" : "", blue_name ? "|maxLevel" : "", doctor ? "|doctor" : ""); // @note order as GTOS / GTopia
 }
 
 void on::CountryState(ENetEvent& event)
