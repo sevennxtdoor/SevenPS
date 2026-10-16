@@ -1460,15 +1460,27 @@ int main()
 
         std::puts("\n[R1] only the owner makes codes");
         visitor->role = PLAYER;
-        run(code_command, ev2, "code create MTTEST1 gems=500 items=242:1 uses=1 days=1");
+        run(code_command, ev2, "code");
         CHECK(said("Only the owner"), "player refused");
         owner->role = OWNER;
-        run(code_command, ev, "code create MTTEST1 gems=500 items=242:1 uses=1 days=1");
-        CHECK(said("Code `wMTTEST1`` made") && said("500 gems, 1 World Lock"), "owner made MTTEST1");
-        run(code_command, ev, "code create MTTEST1 gems=5");
+        auto code_ui = [&](const std::string &fields) { outbox.clear(); code_return(ev, ::hPipe("dialog_name|mt_code|" + fields)); };
+        run(code_command, ev, "code");
+        CHECK(said("Redeem Codes") && said("Make a new code"), "/code opens the window");
+        code_ui("buttonClicked|new");
+        CHECK(said("New Redeem Code") && said("add_item_picker|additem"), "new code form with an item picker");
+        code_ui("step|new|code|mttest1|gems|500|uses|1|days|1|amount|1|additem|242");
+        CHECK(said("New Redeem Code") && said("500 gems, 1 World Lock"), "picked World Lock x1 is in the prize");
+        code_ui("step|new|code|mttest1|gems|500|uses|1|days|1|amount|1|buttonClicked|create");
+        CHECK(said("Code `wMTTEST1`` made") && said("/redeem MTTEST1"), "owner made MTTEST1");
+        code_ui("buttonClicked|new");
+        code_ui("step|new|code|MTTEST1|gems|5|uses|1|days|1|amount|1|buttonClicked|create");
         CHECK(said("already exists"), "no duplicates");
-        run(code_command, ev, "code create MTTEST2 items=242:500");
-        CHECK(said("id:count") , "max 200 per item");
+        code_ui("buttonClicked|new");
+        code_ui("step|new|code||gems|0|uses|1|days|1|amount|1|buttonClicked|create");
+        CHECK(said("some gems or an item"), "an empty prize is refused");
+        code_ui("step|new|code||gems|10|uses|1|days|1|amount|1|buttonClicked|create");
+        CHECK(said("made!") && said("/redeem "), "empty code = random code");
+        { ::hStmt d{ "DELETE FROM redeem_code WHERE created_by = 'MTOWNER' AND code NOT LIKE 'MTTEST%'" }; d.execute(); }
 
         std::puts("\n[R2] a player redeems it once");
         visitor->slot_size = 60;
@@ -1489,7 +1501,8 @@ int main()
         pset(*owner, "redeem_try", 0);
         run(redeem_command, ev, "redeem MTTEST1");
         CHECK(said("used up"), "1 use: gone");
-        run(code_command, ev, "code create MTTEST3 gems=10 uses=5");
+        code_ui("buttonClicked|new");
+        code_ui("step|new|code|MTTEST3|gems|10|uses|5|days|7|amount|1|buttonClicked|create");
         { ::hStmt u{ "UPDATE redeem_code SET expires = 1 WHERE code = 'MTTEST3'" }; u.execute(); }
         pset(*owner, "redeem_try", 0);
         run(redeem_command, ev, "redeem MTTEST3");
@@ -1503,10 +1516,10 @@ int main()
         CHECK(said("mt_redeem") && said("Redeem Code"), "no code: opens the window");
         outbox.clear(); redeem_return(ev2, ::hPipe("dialog_name|mt_redeem|code|MTTEST1"));
         CHECK(said("already redeemed") || said("Wait a moment"), "the window redeems too");
-        run(code_command, ev, "code list");
-        CHECK(said("MTTEST1") && said("MTTEST3"), "/code list");
-        run(code_command, ev, "code delete MTTEST3");
-        CHECK(said("deleted"), "/code delete");
+        run(code_command, ev, "code");
+        CHECK(said("MTTEST1") && said("MTTEST3") && said("del_MTTEST3"), "the window lists the codes");
+        code_ui("buttonClicked|del_MTTEST3");
+        CHECK(said("deleted") && !said("del_MTTEST3"), "delete button");
 
         std::puts("\n[R4] Daily Spin once a day");
         pset(*visitor, "spin_day", 0);

@@ -57,6 +57,7 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"online_status", std::bind(&online_status_return, std::placeholders::_1, std::placeholders::_2)},
     {"sendpm", std::bind(&sendpm_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_redeem", std::bind(&redeem_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_code", std::bind(&code_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_profile", std::bind(&profile_return, std::placeholders::_1, std::placeholders::_2)},
     {"friends", std::bind(&friends_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_friend", std::bind(&friend_request_return, std::placeholders::_1, std::placeholders::_2)},

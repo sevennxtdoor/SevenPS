@@ -233,36 +233,36 @@ void redeem_return(ENetEvent &event, const ::hPipe &hPipe)
     if (!code.empty()) redeem(event, code);
 }
 
-void code_command(ENetEvent &event, const std::string_view text)
+namespace
 {
-    ::peer &p = me(event);
-    if (p.role < OWNER) return on::ConsoleMessage(event.peer, "`4Only the owner can make redeem codes.``");
-    std::vector<std::string> args{};
-    for (const std::string &a : readch(std::string(text), ' ')) if (!a.empty()) args.emplace_back(a);
-    const std::string what = args.size() > 1 ? args[1] : "";
+    /* @note the owner's half-made code while the /code window is open (user id -> draft) */
+    struct draft { std::string code{}; int gems{}, uses{ 10 }, days{ 7 }, amount{ 1 }; std::vector<gift> items{}; };
+    std::unordered_map<int, draft> drafts{};
 
-    if (what == "create" && args.size() >= 3)
+    std::string random_code()
     {
-        const std::string code = upper(args[2]);
-        if (!valid_code(code)) return on::ConsoleMessage(event.peer, "`4A code is 3-20 letters/numbers.``");
-        int gems = 0, uses = 1, days = 7;
-        std::string items_arg{};
-        for (std::size_t i = 3; i < args.size(); ++i)
-        {
-            const std::size_t eq = args[i].find('=');
-            if (eq == std::string::npos) continue;
-            const std::string key = args[i].substr(0, eq), value = args[i].substr(eq + 1);
-            if (key == "gems") gems = atoi(value.c_str());
-            else if (key == "items") items_arg = value;
-            else if (key == "uses") uses = atoi(value.c_str());
-            else if (key == "days") days = atoi(value.c_str());
-        }
-        std::vector<gift> list{};
-        if (!parse_items(items_arg, list)) return on::ConsoleMessage(event.peer, "`4items= looks like 242:5,611:3 (id:count, max 200 each, max 10 items).``");
-        if (gems < 0 || gems > 1000000 || uses < 1 || uses > 100000 || days < 0 || days > 365)
-            return on::ConsoleMessage(event.peer, "`4gems 0-1000000, uses 1-100000, days 0-365 (0 = never ends).``");
-        if (gems == 0 && list.empty()) return on::ConsoleMessage(event.peer, "`4Give it gems= or items=.``");
-        if (find_code(code)) return on::ConsoleMessage(event.peer, std::format("`4Code `w{}`` already exists.``", code));
+        constexpr std::string_view letters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // @note no 0/O, 1/I
+        std::string code{};
+        for (int i = 0; i < 8; ++i) code += letters[RandomRange(0, static_cast<int>(letters.size()))];
+        return code;
+    }
+
+    std::string prize_text(int gems, const std::vector<gift> &list)
+    {
+        std::string text = items_text(list);
+        if (gems > 0) text = std::format("{} gems{}{}", gems, text.empty() ? "" : ", ", text);
+        return text.empty() ? "nothing yet" : text;
+    }
+
+    /* @return an error, empty when the code was made */
+    std::string create_code(::peer &p, const std::string &code, int gems, const std::vector<gift> &list, int uses, int days)
+    {
+        if (!valid_code(code)) return "A code is 3-20 letters/numbers.";
+        if (gems < 0 || gems > 1000000) return "Gems: 0 - 1,000,000.";
+        if (uses < 1 || uses > 100000) return "Players: 1 - 100,000.";
+        if (days < 0 || days > 365) return "Days: 0 - 365 (0 = forever).";
+        if (gems == 0 && list.empty()) return "Give it some gems or an item.";
+        if (find_code(code)) return std::format("Code {} already exists.", code);
 
         const long long expires = (days == 0) ? 0 : now() + days * 86400LL;
         std::string stored{};
@@ -272,45 +272,148 @@ void code_command(ENetEvent &event, const std::string_view text)
         hStmt.bind_param(params);
         hStmt.execute();
         staff_log(p, "/code create", code, list.empty() ? 0 : list.front().id, gems);
-        return on::ConsoleMessage(event.peer, std::format("`2Code `w{}`` made: `w{}{}{}``, {} use{}, {}.``",
-            code, gems > 0 ? std::format("{} gems", gems) : "", (gems > 0 && !list.empty()) ? ", " : "", items_text(list),
-            uses, uses == 1 ? "" : "s", days == 0 ? "never ends" : std::format("ends in {} day{}", days, days == 1 ? "" : "s")));
+        return "";
     }
-    if (what == "delete" && args.size() >= 3)
+
+    bool delete_code(const std::string &code)
     {
-        const std::string code = upper(args[2]);
         ::hStmt hStmt{ "DELETE FROM redeem_code WHERE code = ?" };
         MYSQL_BIND param = make_bind_in(code);
         hStmt.bind_param(&param);
         hStmt.execute();
-        return on::ConsoleMessage(event.peer, mysql_stmt_affected_rows(hStmt.pStmt) > 0 ? std::format("`2Code `w{}`` deleted.``", code) : std::format("`4No code `w{}``.``", code));
+        return mysql_stmt_affected_rows(hStmt.pStmt) > 0;
     }
-    if (what == "list")
+
+    std::vector<code_row> all_codes()
     {
-        ::hStmt hStmt{ "SELECT code, gems, uses_left, expires FROM redeem_code ORDER BY expires DESC LIMIT 20" };
-        char code[32]{};
-        u_long length{};
-        signed gems{}, uses{};
-        long long expires{};
-        MYSQL_BIND result[4] = { {}, make_bind_out(gems), make_bind_out(uses), make_bind_out(expires) };
-        result[0].buffer_type = MYSQL_TYPE_STRING;
-        result[0].buffer = code;
-        result[0].buffer_length = sizeof(code) - 1;
-        result[0].length = &length;
+        std::vector<code_row> out{};
+        ::hStmt hStmt{ "SELECT code, gems, items, uses_left, expires FROM redeem_code ORDER BY code LIMIT 30" };
+        char code[32]{}, text[256]{};
+        u_long code_length{}, text_length{};
+        code_row row{};
+        MYSQL_BIND result[5] = { {}, make_bind_out(row.gems), {}, make_bind_out(row.uses_left), make_bind_out(row.expires) };
+        const auto string_out = [](MYSQL_BIND &bind, char *buffer, u_long size, u_long &length) {
+            bind.buffer_type = MYSQL_TYPE_STRING, bind.buffer = buffer, bind.buffer_length = size - 1, bind.length = &length;
+        };
+        string_out(result[0], code, sizeof(code), code_length);
+        string_out(result[2], text, sizeof(text), text_length);
         mysql_stmt_bind_result(hStmt.pStmt, result);
         hStmt.execute();
         mysql_stmt_store_result(hStmt.pStmt);
-        int n = 0;
         while (mysql_stmt_fetch(hStmt.pStmt) == 0)
         {
-            ++n;
-            on::ConsoleMessage(event.peer, std::format("`w{}``: {} gems, {} use(s) left, {}", std::string(code, std::min<u_long>(length, sizeof(code) - 1)), gems, uses,
-                expires == 0 ? "never ends" : (now() > expires ? "`4expired``" : std::format("{} h left", (expires - now()) / 3600))));
+            row.code.assign(code, std::min<u_long>(code_length, sizeof(code) - 1));
+            row.items.assign(text, std::min<u_long>(text_length, sizeof(text) - 1));
+            out.emplace_back(row);
         }
-        if (n == 0) on::ConsoleMessage(event.peer, "`oNo redeem codes yet.``");
+        return out;
+    }
+
+    std::string time_text(long long expires)
+    {
+        if (expires == 0) return "forever";
+        if (now() > expires) return "`4expired``";
+        const long long left = expires - now();
+        return (left >= 86400) ? std::format("{}d left", left / 86400) : std::format("{}h left", left / 3600 + 1);
+    }
+
+    void codes_dialog(ENetEvent &event, const std::string &note = "")
+    {
+        std::string body =
+            "set_default_color|`o\n"
+            "add_label_with_icon|big|`wRedeem Codes``|left|1486|\n";
+        if (!note.empty()) body += std::format("add_textbox|{}|left|\n", note);
+        body += "add_button|new|`2+ Make a new code``|noflags|0|0|\n"
+                "add_spacer|small|\n";
+        const std::vector<code_row> codes = all_codes();
+        if (codes.empty()) body += "add_textbox|No codes yet. Players type `w/redeem CODE`` (or Store > Redeem Code).|left|\n";
+        else body += "add_textbox|Players type `w/redeem CODE`` (or Store > Redeem Code). Your codes:|left|\n";
+        for (const code_row &c : codes)
+        {
+            std::vector<gift> list{};
+            parse_items(c.items, list);
+            body += std::format("add_label_with_icon|small|`w{}`` - {} - `w{}`` left - {}|left|1486|\n", c.code, prize_text(c.gems, list), c.uses_left, time_text(c.expires));
+            body += std::format("add_button|del_{0}|`4Delete {0}``|noflags|0|0|\n", c.code);
+        }
+        body += "end_dialog|mt_code|Close||\n";
+        send_varlist(event.peer, { "OnDialogRequest", body });
+    }
+
+    void new_code_dialog(ENetEvent &event, const draft &d, const std::string &note = "")
+    {
+        std::string body = std::format(
+            "set_default_color|`o\n"
+            "add_label_with_icon|big|`wNew Redeem Code``|left|1486|\n"
+            "{}"
+            "add_text_input|code|Code (leave empty = random)|{}|20|\n"
+            "add_text_input|gems|Gems|{}|7|\n"
+            "add_text_input|uses|How many players can use it|{}|6|\n"
+            "add_text_input|days|Days it works (0 = forever)|{}|3|\n"
+            "add_spacer|small|\n"
+            "add_textbox|Prize: `2{}``|left|\n"
+            "add_text_input|amount|Amount of the next item|{}|3|\n"
+            "add_item_picker|additem|`wAdd an item``|Choose an item for the code (you keep yours)!|\n"
+            "{}"
+            "add_spacer|small|\n"
+            "add_button|create|`2Create the code``|noflags|0|0|\n"
+            "add_button|back|Back|noflags|0|0|\n"
+            "embed_data|step|new\n"
+            "end_dialog|mt_code|Cancel||\n",
+            note.empty() ? "" : std::format("add_textbox|`4{}``|left|\n", note),
+            d.code, d.gems, d.uses, d.days, prize_text(d.gems, d.items), d.amount,
+            d.items.empty() ? "" : "add_button|clear|`4Remove the items``|noflags|0|0|\n");
+        send_varlist(event.peer, { "OnDialogRequest", body });
+    }
+}
+
+void code_command(ENetEvent &event, const std::string_view)
+{
+    if (me(event).role < OWNER) return on::ConsoleMessage(event.peer, "`4Only the owner can make redeem codes.``");
+    codes_dialog(event);
+}
+
+void code_return(ENetEvent &event, const ::hPipe &hPipe)
+{
+    ::peer &p = me(event);
+    if (p.role < OWNER) return;
+    const std::string button = hPipe["buttonClicked"];
+
+    if (hPipe["step"] != "new")
+    {
+        if (button == "new") { drafts[p.user_id] = draft{}; return new_code_dialog(event, drafts[p.user_id]); }
+        if (button.starts_with("del_"))
+        {
+            const std::string code = upper(button.substr(4));
+            return codes_dialog(event, delete_code(code) ? std::format("`2Code `w{}`` deleted.``", code) : "");
+        }
         return;
     }
-    on::ConsoleMessage(event.peer, "`oUsage: `w/code create CODE gems=1000 items=242:1,611:5 uses=50 days=7`` | `w/code list`` | `w/code delete CODE``");
+
+    draft &d = drafts[p.user_id];
+    d.code = upper(hPipe["code"]);
+    std::erase(d.code, ' ');
+    d.gems = std::max(0, atoi(hPipe["gems"].c_str()));
+    d.uses = atoi(hPipe["uses"].c_str());
+    d.days = atoi(hPipe["days"].c_str());
+    d.amount = std::clamp(atoi(hPipe["amount"].c_str()), 1, MAX_STACK);
+
+    if (const int picked = atoi(hPipe["additem"].c_str()); picked > 0 && picked < static_cast<int>(items.size()) && picked != GEMS)
+    {
+        if (auto it = std::ranges::find(d.items, static_cast<short>(picked), &gift::id); it != d.items.end()) it->count = d.amount;
+        else if (d.items.size() < 10) d.items.emplace_back(gift{ static_cast<short>(picked), d.amount });
+        return new_code_dialog(event, d);
+    }
+    if (button == "clear") { d.items.clear(); return new_code_dialog(event, d); }
+    if (button == "back") return codes_dialog(event);
+    if (button != "create") return; // @note Cancel
+
+    const std::string code = d.code.empty() ? random_code() : d.code;
+    if (const std::string error = create_code(p, code, d.gems, d.items, d.uses, d.days); !error.empty()) return new_code_dialog(event, d, error);
+    const std::string summary = std::format("`2Code `w{}`` made!`` Prize: `w{}``, {} player{}, {}. Share it: `w/redeem {}``",
+        code, prize_text(d.gems, d.items), d.uses, d.uses == 1 ? "" : "s", time_text(d.days == 0 ? 0 : now() + d.days * 86400LL), code);
+    drafts.erase(p.user_id);
+    on::ConsoleMessage(event.peer, summary);
+    codes_dialog(event, summary);
 }
 
 void spin_command(ENetEvent &event, const std::string_view)
