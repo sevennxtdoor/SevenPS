@@ -1519,7 +1519,11 @@ int main()
         run(code_command, ev, "code");
         CHECK(said("MTTEST1") && said("MTTEST3") && said("del_MTTEST3"), "the window lists the codes");
         code_ui("buttonClicked|del_MTTEST3");
-        CHECK(said("deleted") && !said("del_MTTEST3"), "delete button");
+        CHECK(said("Delete MTTEST3?") && !said("deleted"), "Delete asks first");
+        code_ui("buttonClicked|back");
+        CHECK(said("del_MTTEST3"), "No keeps it");
+        code_ui("buttonClicked|yesdel_MTTEST3");
+        CHECK(said("deleted") && !said("del_MTTEST3"), "Yes deletes it");
 
         std::puts("\n[R4] Daily Spin once a day");
         pset(*visitor, "spin_day", 0);

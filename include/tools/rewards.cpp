@@ -381,11 +381,28 @@ void code_return(ENetEvent &event, const ::hPipe &hPipe)
     if (hPipe["step"] != "new")
     {
         if (button == "new") { drafts[p.user_id] = draft{}; return new_code_dialog(event, drafts[p.user_id]); }
-        if (button.starts_with("del_"))
+        if (button.starts_with("del_")) // @note asks first: a Delete button sits under every code, one stray tap deleted a code
         {
             const std::string code = upper(button.substr(4));
-            return codes_dialog(event, delete_code(code) ? std::format("`2Code `w{}`` deleted.``", code) : "");
+            return send_varlist(event.peer, {
+                "OnDialogRequest",
+                std::format(
+                    "set_default_color|`o\n"
+                    "add_label_with_icon|big|`4Delete {0}?``|left|1486|\n"
+                    "add_textbox|Players won't be able to redeem `w{0}`` anymore.|left|\n"
+                    "add_button|yesdel_{0}|`4Yes, delete it``|noflags|0|0|\n"
+                    "add_button|back|No, keep it|noflags|0|0|\n"
+                    "end_dialog|mt_code|||\n", code)
+            });
         }
+        if (button.starts_with("yesdel_"))
+        {
+            const std::string code = upper(button.substr(7));
+            const bool deleted = delete_code(code);
+            if (deleted) staff_log(p, "/code delete", code, 0, 0);
+            return codes_dialog(event, deleted ? std::format("`2Code `w{}`` deleted.``", code) : "");
+        }
+        if (button == "back") return codes_dialog(event);
         return;
     }
 
