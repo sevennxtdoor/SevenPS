@@ -4,6 +4,7 @@
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/string.hpp"
 #include "tools/system_worlds.hpp"
+#include "tools/auth.hpp"
 
 #include "area_lock.hpp"
 
@@ -151,7 +152,7 @@ bool area_lock_allows(ENetEvent &event, ::world &world, const ::pos &tile, short
         }
         return true;
     }
-    if (action != 32) bubble(event, std::format("`wThat area is owned by {}``", lock->owner_name));
+    if (action != 32) bubble(event, std::format("`wThat area is owned by {}``", owner_display(lock->owner)));
     return false;
 }
 
@@ -181,7 +182,7 @@ std::string area_lock_other_owner(::world &world, int user_id)
 {
     if (auto it = locks.find(world.name); it != locks.end())
         for (const ::area_lock &lock : it->second)
-            if (lock.owner != user_id) return lock.owner_name;
+            if (lock.owner != user_id) return owner_display(lock.owner); // @note staff show as @Name in their role color
     return "";
 }
 
@@ -194,7 +195,7 @@ void area_lock_dialog(ENetEvent &event, ::world &world, const ::pos &pos)
     const ::item &item = id_to_item(lock->item);
     if (pPeer->user_id != lock->owner)
     {
-        bubble(event, std::format("`w{}'s `${}``", lock->owner_name, item.raw_name));
+        bubble(event, std::format("`w{}`w's `${}``", owner_display(lock->owner), item.raw_name));
         return;
     }
 

@@ -123,46 +123,47 @@ std::optional<std::string> account_name(const std::string &growid)
     return std::string(buffer, std::min<u_long>(length, sizeof(buffer)));
 }
 
-namespace
+std::string role_name(const std::string &growid, int role)
 {
-    /* @note the owner's name like the game shows it over their head (green, or the @ tag and color of staff): online it is
-     * exactly their display name, offline it is rebuilt from the database (growid + role) */
-    std::string owner_display(int user_id)
+    switch (role)
     {
-        std::string shown{};
-        peers("", PEER_ALL, [&shown, user_id](ENetPeer &p)
-        {
-            if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr && pPeer->user_id == user_id && !pPeer->growid.empty())
-                shown = pPeer->name_as("`2");
-        });
-        if (!shown.empty()) return shown;
-
-        ::hStmt hStmt{ "SELECT growid, role FROM peer WHERE uid = ? LIMIT 1" };
-        MYSQL_BIND param = make_bind_in(user_id);
-        hStmt.bind_param(&param);
-        char buffer[32]{};
-        u_long length{};
-        signed role{};
-        MYSQL_BIND result[2]{};
-        result[0].buffer_type = MYSQL_TYPE_STRING;
-        result[0].buffer = buffer;
-        result[0].buffer_length = sizeof(buffer);
-        result[0].length = &length;
-        result[1] = make_bind_out(role);
-        mysql_stmt_bind_result(hStmt.pStmt, result);
-        hStmt.execute();
-        mysql_stmt_store_result(hStmt.pStmt);
-        if (mysql_stmt_fetch(hStmt.pStmt) != 0) return "`w(unknown)``";
-
-        const std::string growid(buffer, std::min<u_long>(length, sizeof(buffer)));
-        switch (role)
-        {
-            case OWNER:     return std::format("`9@{}``", growid);
-            case DEVELOPER: return std::format("`6@{}``", growid);
-            case MODERATOR: return std::format("`#@{}``", growid);
-            default:        return std::format("`2{}``", growid);
-        }
+        case OWNER:     return std::format("`9@{}``", growid);
+        case DEVELOPER: return std::format("`6@{}``", growid);
+        case MODERATOR: return std::format("`#@{}``", growid);
+        default:        return std::format("`2{}``", growid);
     }
+}
+
+/* @note the owner's name like the game shows it over their head (green, or the @ tag and color of staff): online it is
+ * exactly their display name, offline it is rebuilt from the database (growid + role) */
+std::string owner_display(int user_id)
+{
+    std::string shown{};
+    peers("", PEER_ALL, [&shown, user_id](ENetPeer &p)
+    {
+        if (::peer *pPeer = static_cast<::peer*>(p.data); pPeer != nullptr && pPeer->user_id == user_id && !pPeer->growid.empty())
+            shown = pPeer->name_as("`2");
+    });
+    if (!shown.empty()) return shown;
+
+    ::hStmt hStmt{ "SELECT growid, role FROM peer WHERE uid = ? LIMIT 1" };
+    MYSQL_BIND param = make_bind_in(user_id);
+    hStmt.bind_param(&param);
+    char buffer[32]{};
+    u_long length{};
+    signed role{};
+    MYSQL_BIND result[2]{};
+    result[0].buffer_type = MYSQL_TYPE_STRING;
+    result[0].buffer = buffer;
+    result[0].buffer_length = sizeof(buffer);
+    result[0].length = &length;
+    result[1] = make_bind_out(role);
+    mysql_stmt_bind_result(hStmt.pStmt, result);
+    hStmt.execute();
+    mysql_stmt_store_result(hStmt.pStmt);
+    if (mysql_stmt_fetch(hStmt.pStmt) != 0) return "`w(unknown)``";
+
+    return role_name(std::string(buffer, std::min<u_long>(length, sizeof(buffer))), role);
 }
 
 std::string world_locked_text(const std::string &world_name, int owner)

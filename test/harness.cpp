@@ -873,6 +873,18 @@ int main()
         CHECK(said("logon_fail") && fourth->growid.empty(), "MTAUTH2's token can't log in as Mike");
         third->loaded = false; // @note never saves
 
+        std::puts("\n[A3b] staff log on as @Name in their role color");
+        CHECK(role_name("Seven", OWNER) == "`9@Seven``" && role_name("Mod", MODERATOR) == "`#@Mod``" && role_name("Dev", DEVELOPER) == "`6@Dev``", "@ tag + role color for staff");
+        CHECK(role_name("Bob", PLAYER) == "`2Bob``", "players: no @");
+        { ::hStmt up{ "UPDATE peer SET role = 1 WHERE growid = 'MTAUTH2'" }; up.execute(); }
+        ::peer *fifth = new ::peer(); lp.data = fifth;
+        outbox.clear(); action::protocol(le, "protocol|225|ltoken|" + tok);
+        CHECK(said("`#@MTAUTH2``"), "SetHasGrowID gives the moderator `#@MTAUTH2 (shown as 'Logging on @MTAUTH2...')");
+        ::peer *sixth = new ::peer(); lp.data = sixth;
+        outbox.clear(); action::tankIDName(le, "tankIDName|`#@MTAUTH2``|tankIDPass|" + tok + "|protocol|225|country|id|" + pad);
+        CHECK(!said("logon_fail") && sixth->growid == "MTAUTH2", "that name comes back as tankIDName: tag taken off, logged in");
+        sixth->loaded = false;
+
         std::puts("\n[A4] forgotten password: reset_password.txt");
         { std::ofstream r("reset_password.txt"); r << "MTAUTH2|newpass1\r\n"; }
         apply_password_reset();

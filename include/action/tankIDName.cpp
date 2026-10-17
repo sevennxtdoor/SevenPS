@@ -29,6 +29,15 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     }
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
+    /* @note protocol.cpp gives staff "`9@Seven``" as their saved name: take off color codes and the @ (GrowIDs are letters and numbers only) */
+    std::string bare{};
+    for (std::size_t i = 0; i < pPeer->growid.size(); ++i)
+    {
+        if (pPeer->growid[i] == '`') { ++i; continue; }
+        if (pPeer->growid[i] != '@') bare += pPeer->growid[i];
+    }
+    pPeer->growid = bare;
+
     /* @note this second connection used to trust tankIDName: a modded client could log in as anyone (even the owner).
      * tankIDPass is the session token we gave in protocol.cpp, it must belong to this very GrowID */
     const std::string owner = session_growid(pPeer->password);

@@ -869,7 +869,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                             std::ranges::rotate(pPeer->my_worlds, pPeer->my_worlds.begin() + 1);
                             pPeer->my_worlds.back() = world->name;
                         }
-                        std::string placed_message = std::format("`5[```w{}`` has been `$World Locked`` by {}`5]``", world->name, pPeer->growid);
+                        std::string placed_message = std::format("`5[```w{}`` has been `$World Locked`` by {}`5]``", world->name, owner_display(pPeer->user_id)); // @note staff: @Name in role color
                         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, placed_message](ENetPeer& peer) 
                         {
                             send_varlist(&peer, { "OnTalkBubble", pPeer->netid, placed_message });

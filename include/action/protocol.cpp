@@ -32,7 +32,10 @@ void action::protocol(ENetEvent& event, const std::string& header)
     pPeer->loaded = false; // @note this first connection only hands over to the game connection: it must never save (stale data over the real session)
 
     /* @note the client keeps these and sends them back as tankIDName/tankIDPass on the next connection (GrowServer) */
-    send_varlist(event.peer, { "SetHasGrowID", 1, pPeer->growid.c_str(), password.c_str() });
+    /* @note the game saves this name and shows it as "Logging on @Seven..." on the next login, so staff get their @ tag
+     * and role color (not while undercover with /nick). it comes back as tankIDName, where the tag is taken off again */
+    const std::string shown = pPeer->nick.empty() ? role_name(pPeer->growid, pPeer->role) : pPeer->growid;
+    send_varlist(event.peer, { "SetHasGrowID", 1, shown.c_str(), password.c_str() });
 
     send_varlist(event.peer, {
         "OnSendToServer", 
