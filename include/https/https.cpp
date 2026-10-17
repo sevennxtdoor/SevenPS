@@ -190,12 +190,19 @@ void https::listener()
     }
 
     /* https://docs.openssl.org/master/man3/SSL_CTX_use_certificate/#return-values */
-    /* @note miketopia.crt is signed by our own CA (installed in Windows, only valid for growtopia1/growtopia2.com), so the
-     * game's login window trusts it. server.crt (Gurotopia's, self-signed) was only accepted for server_data.php.
-     * miketopia.* are git-ignored: the key must never be uploaded */
-    const bool own = std::filesystem::exists("resources/ctx/miketopia.crt") && std::filesystem::exists("resources/ctx/miketopia.key");
-    const char *crt = own ? "resources/ctx/miketopia.crt" : "resources/ctx/server.crt";
-    const char *key = own ? "resources/ctx/miketopia.key" : "resources/ctx/server.key";
+    /* @note sevenps.crt is signed by our own CA "SevenPS Local CA" (installed in Windows, only valid for growtopia1/growtopia2.com),
+     * so the game's login window trusts it. miketopia.crt is the one before the rename (old CA), used until sevenps.* is there.
+     * server.crt (Gurotopia's, self-signed) was only accepted for server_data.php. our keys are git-ignored: never upload them */
+    const char *crt = "resources/ctx/server.crt", *key = "resources/ctx/server.key";
+    for (const char *name : { "sevenps", "miketopia" })
+        if (const std::string c = std::format("resources/ctx/{}.crt", name), k = std::format("resources/ctx/{}.key", name);
+            std::filesystem::exists(c) && std::filesystem::exists(k))
+        {
+            static std::string own_crt, own_key;
+            own_crt = c, own_key = k;
+            crt = own_crt.c_str(), key = own_key.c_str();
+            break;
+        }
     std::printf("[web] certificate: %s\n", crt);
     if (SSL_CTX_use_certificate_file(ctx, crt, SSL_FILETYPE_PEM) != 1 ||
         SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM)  != 1)
