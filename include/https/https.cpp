@@ -170,7 +170,15 @@ namespace
             /* @note an old/expired token (e.g. from the old vercel login): the game shows whatever we answer, so answer
              * with the login page instead of a bare "Unauthorized" */
             if (session_growid(token).empty()) return login_page();
-            return http("200 OK", "text/html", token_json(token));
+            /* @note the game opens this in its login window and only reads the token on /player/growid/login/validate:
+             * answering the JSON here just showed it as a page and the login hung (Bos, logging in again after quitting).
+             * 303 = the window follows it with a GET, the same address a normal login ends on. the token is 64 hex chars */
+            return std::format(
+                "HTTP/1.1 303 See Other\r\n"
+                "Location: /player/growid/login/validate?token={}\r\n"
+                "Content-Length: 0\r\n"
+                "Cache-Control: no-store\r\n"
+                "Connection: close\r\n\r\n", token);
         }
         return http("404 Not Found", "text/plain", "Not Found");
     }
