@@ -37,6 +37,7 @@
 #include "tools/rewards.hpp"
 #include "commands/ghost.hpp"
 #include "action/join_request.hpp"
+#include "action/dialog_return/lock_edit.hpp"
 #include "action/quit_to_exit.hpp"
 #include "tools/rank.hpp"
 #include "tools/cps.hpp"
@@ -119,6 +120,7 @@ int main()
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTTEST'" }; del.execute(); // @note leftover from a crashed run
     }
     decode_items(); std::puts("items ok");
+    max_reach = 1e9f; // @note most tests build far from where the fake players stand; [WL4] tests the reach
     const ::item &mq = id_to_item(1420);
     std::printf("Mannequin 1420 type=%d (MANNEQUIN=%d) name=%s\n", mq.type, type::MANNEQUIN, mq.raw_name.c_str());
     if (mq.type != type::MANNEQUIN) { std::puts("1420 is not TYPE_MANNEQUIN, stop"); return 1; }
@@ -1890,6 +1892,80 @@ int main()
         { ::blob wb = w.serialize(); CHECK(wb.size() > 6000 * 8, "the world still serializes"); }
         w.is_public = was_public;
         owner->role = owner_role;
+    }
+
+    /* ================= World Lock access list, World Level, reach ================= */
+    {
+        const bool was_public = w.is_public;
+        const auto saved_access = w.access;
+        const auto saved_vslots = visitor->slots, saved_oslots = owner->slots;
+        const auto saved_vrole = visitor->role, saved_orole = owner->role;
+        const auto saved_vpos = visitor->pos, saved_opos = owner->pos;
+        visitor->role = PLAYER, owner->role = PLAYER;
+        w.is_public = false; w.access.fill(0);
+        const ::pos lock{ 60, 10 }, spot{ 63, 20 };
+        w.blocks[cord(60, 10)] = ::block{}; w.blocks[cord(60, 10)].fg = 242; // @note World Lock
+        w.blocks[cord(63, 20)] = ::block{};
+        visitor->pos = owner->pos = ::pos{ 61 * 32.0f, 20 * 32.0f };
+        visitor->slots = { ::slot(2, 10) }; owner->slots = { ::slot(2, 10) }; // @note Dirt
+
+        std::puts("\n[WL1] no access: a visitor can't build");
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 2, .pos = visitor->pos, .punch = spot });
+        CHECK(w.blocks[cord(63, 20)].fg == 0, "visitor refused");
+        const std::size_t plain = w.serialize().size();
+
+        std::puts("\n[WL2] owner adds the visitor with the player picker");
+        outbox.clear(); lock_edit(ev, ::hPipe("dialog_name|lock_edit|tilex|60|tiley|10|playerNetID|2|checkbox_public|0|checkbox_disable_music|0|minimum_entry_level|1"));
+        CHECK(std::ranges::count(w.access, 2) == 1, "visitor on the access list");
+        CHECK(said("now has access"), "owner told");
+        CHECK(w.serialize().size() == plain + 4, "the lock sends the user id (4 bytes)");
+        outbox.clear(); lock_edit(ev, ::hPipe("dialog_name|lock_edit|tilex|60|tiley|10|access_2|1|playerNetID|2|checkbox_public|0|checkbox_disable_music|0|minimum_entry_level|1"));
+        CHECK(std::ranges::count(w.access, 2) == 1, "never twice");
+        outbox.clear(); lock_edit(ev2, ::hPipe("dialog_name|lock_edit|tilex|60|tiley|10|playerNetID|1|checkbox_public|1|checkbox_disable_music|0|minimum_entry_level|1"));
+        CHECK(!w.is_public, "access is not ownership: the visitor can't edit the lock");
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 2, .pos = visitor->pos, .punch = spot });
+        CHECK(w.blocks[cord(63, 20)].fg == 2, "visitor with access builds");
+
+        std::puts("\n[WL3] saved and loaded with the world, unticking removes");
+        w.save();
+        CHECK(w.mysql_select<std::string>("access") == "2", "access saved");
+        outbox.clear(); lock_edit(ev, ::hPipe("dialog_name|lock_edit|tilex|60|tiley|10|access_2|0|checkbox_public|0|checkbox_disable_music|0|minimum_entry_level|5"));
+        CHECK(std::ranges::count(w.access, 2) == 0, "unticked = removed");
+        CHECK(w.minimum_entry_level == 5, "World Level 5");
+        w.save();
+        CHECK(w.mysql_select<std::string>("access").empty() && w.mysql_select<int>("min_level") == 5, "removal and level saved");
+
+        std::puts("\n[WL4] World Level keeps lower players out");
+        visitor->level[0] = 3;
+        w.visitors += 10;
+        outbox.clear(); action::quit_to_exit(ev2, "", true);
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(said("OnFailedToEnterWorld") && said("lower than level"), "level 3 refused from a level 5 world");
+        visitor->level[0] = 5;
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(!said("OnFailedToEnterWorld"), "level 5 enters");
+        w.access[0] = 2, visitor->level[0] = 1;
+        outbox.clear(); action::quit_to_exit(ev2, "", true);
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(!said("OnFailedToEnterWorld"), "access list always enters");
+        w.visitors -= 10;
+        w.minimum_entry_level = 1; w.access.fill(0);
+
+        std::puts("\n[WL5] reach: no building across the world");
+        max_reach = 7.0f;
+        owner->pos = ::pos{ 61 * 32.0f, 20 * 32.0f };
+        w.blocks[cord(90, 20)] = ::block{}; w.blocks[cord(64, 20)] = ::block{};
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 2, .pos = owner->pos, .punch = ::pos{ 90, 20 } });
+        CHECK(w.blocks[cord(90, 20)].fg == 0, "29 tiles away refused");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 2, .pos = owner->pos, .punch = ::pos{ 64, 20 } });
+        CHECK(w.blocks[cord(64, 20)].fg == 2, "3 tiles away placed");
+        max_reach = 1e9f;
+
+        w.blocks[cord(60, 10)] = ::block{}; w.blocks[cord(63, 20)] = ::block{}; w.blocks[cord(64, 20)] = ::block{};
+        w.is_public = was_public; w.access = saved_access;
+        visitor->slots = saved_vslots, owner->slots = saved_oslots;
+        visitor->role = saved_vrole, owner->role = saved_orole;
+        visitor->pos = saved_vpos, owner->pos = saved_opos;
     }
 
     /* ================= News & rules ================= */

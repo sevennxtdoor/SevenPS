@@ -54,6 +54,10 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             it = worlds.emplace(worlds.end(), name);
             
         ::world &world = *it;
+        /* @note World Lock -> World Level: owner, access list and staff may always enter */
+        if (pPeer->role < MODERATOR && world.owner != 0 && pPeer->user_id != world.owner && pPeer->level[0] < world.minimum_entry_level &&
+            std::ranges::find(world.access, pPeer->user_id) == world.access.end())
+            throw std::runtime_error(std::format("Players lower than level `w{}`` can't enter `w{}``.", world.minimum_entry_level, world.name));
         {
             ::blob blob = compress_state(::gamePacket{ .type = 0x04, /*PACKET_SEND_MAP_DATA*/ .state = state::S_EXTENDED });
             blob.push_back(world.serialize());
@@ -77,6 +81,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             (std::ranges::find(world.access, pPeer->user_id) != world.access.end()) ? "`c" : "`w");
 
         pPeer->rest_pos = world.spawn;
+        pPeer->pos = world.spawn; // @note the reach check (tile_change) used the last world's spot until the first move
 
         pPeer->netid = ++world.netid_counter;
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, &world](ENetPeer& peer/*send to everyone in world*/) 

@@ -2,6 +2,7 @@
 #include "tools/area_lock.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/economy.hpp"
+#include "commands/titles.hpp"
 
 #include "lock_edit.hpp"
 
@@ -17,7 +18,35 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     pos.x = atoi(hPipe["tilex"].c_str());
     pos.y = atoi(hPipe["tiley"].c_str());
     if (!in_world(*world, pos.x_int(), pos.y_int())) return;
-    
+
+    /* @note access list: unticked names are removed, the player picker adds someone in this world (like Small/Big/Huge Locks) */
+    std::vector<int> changed{};
+    for (int &uid : world->access)
+        if (uid > 0 && hPipe[std::format("access_{}", uid)] == "0") changed.push_back(uid), uid = 0;
+    if (const std::string picked = hPipe["playerNetID"]; !picked.empty())
+    {
+        const int netid = atoi(picked.c_str());
+        for (ENetPeer *p : peers(world->name, PEER_SAME_WORLD))
+        {
+            ::peer *other = static_cast<::peer*>(p->data);
+            if (other->netid != netid) continue;
+            if (other->user_id == world->owner || std::ranges::find(world->access, other->user_id) != world->access.end()) break;
+            auto empty = std::ranges::find(world->access, 0);
+            if (empty == world->access.end())
+            {
+                on::ConsoleMessage(event.peer, std::format("The access list is full ({} players).", world->access.size()));
+                break;
+            }
+            *empty = other->user_id;
+            changed.push_back(other->user_id);
+            on::ConsoleMessage(event.peer, std::format("`w{}`` now has access to `w{}``.", other->growid, world->name));
+            on::ConsoleMessage(p, std::format("`w{}`` gave you access to `w{}``.", pPeer->growid, world->name));
+            break;
+        }
+    }
+    for (ENetPeer *p : peers(world->name, PEER_SAME_WORLD)) // @note cyan name on/off for the ones added/removed
+        if (std::ranges::find(changed, static_cast<::peer*>(p->data)->user_id) != changed.end()) refresh_display_name(*p);
+
     world->is_public = atoi(hPipe["checkbox_public"].c_str());
     if (world->is_public && staff_locked(*pPeer)) // @note players would break the blocks a MOD/DEV spawned
     {

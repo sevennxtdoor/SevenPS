@@ -100,6 +100,9 @@ void create_table_if_not_exist()
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }
     if (mysql_query(db, query_world_size.c_str())) std::fprintf(stderr, "%s\n", mysql_error(db)); // @note after CREATE: the table must exist
+    /* @note World Lock: the access list, World Level and music setting were never saved (lost on every restart) */
+    if (mysql_query(db, "ALTER TABLE world ADD COLUMN IF NOT EXISTS access VARCHAR(255) DEFAULT '', ADD COLUMN IF NOT EXISTS min_level INT DEFAULT 1, ADD COLUMN IF NOT EXISTS lock_state INT DEFAULT 0"))
+        std::fprintf(stderr, "%s\n", mysql_error(db));
 }
 
 void mysql_connect()

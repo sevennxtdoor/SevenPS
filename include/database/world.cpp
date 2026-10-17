@@ -160,7 +160,7 @@ static void tree_extra(::blob &blob, const ::world &world, const ::pos &pos, boo
                 blob.u8(area ? 0x00 : this->lock_state);
                 blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : this->owner); // @note an area lock shows its own owner
                 blob.i32(is_tile_lock(block.fg) ? 0 : access);
-                /* @todo access list */
+                if (!is_tile_lock(block.fg)) for (int uid : this->access) if (uid > 0) blob.i32(uid); // @note the client reads {count} user ids
             }
             else if (type == '\x04'/*seed*/)
             {
@@ -278,6 +278,19 @@ void world::mysql_select_all()
     this->name = this->mysql_select<std::string>("name");
     this->owner = this->mysql_select<int>("owner");
     {
+        this->access.fill(0);
+        const std::string list = this->mysql_select<std::string>("access"); // @note "12,34,56" (user ids)
+        std::size_t n{};
+        for (std::size_t start = 0; start < list.size() && n < this->access.size();)
+        {
+            const std::size_t comma = std::min(list.find(',', start), list.size());
+            if (const int uid = atoi(list.substr(start, comma - start).c_str()); uid > 0) this->access[n++] = uid;
+            start = comma + 1;
+        }
+        this->minimum_entry_level = static_cast<u_char>(std::clamp(this->mysql_select<int>("min_level"), 1, 125));
+        this->lock_state = static_cast<u_char>(this->mysql_select<int>("lock_state"));
+    }
+    {
         this->trees.clear();
         ::blob blob = this->mysql_select<::blob>("blocks");
         if (blob.size() < cord(0, 60) * 8) // @note never saved (e.g. the server crashed), the caller generates it again
@@ -373,6 +386,13 @@ void world::save()
 {
     if (this->name.empty() || this->blocks.empty()) return; // @note an empty (moved-from) copy has nothing to save
     this->mysql_update("owner", this->owner);
+    {
+        std::string list{};
+        for (int uid : this->access) if (uid > 0) list += std::format("{}{}", list.empty() ? "" : ",", uid);
+        this->mysql_update("access", list);
+        this->mysql_update("min_level", static_cast<signed>(this->minimum_entry_level));
+        this->mysql_update("lock_state", static_cast<signed>(this->lock_state));
+    }
     if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this), save_special_tiles(*this);
     {
         ::blob blob;
@@ -570,6 +590,7 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
             blob.u8(area ? 0x00 : world.lock_state);
             blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : world.owner); // @note an area lock shows its own owner
             blob.i32(is_tile_lock(block.fg) ? 0 : access);
+            if (!is_tile_lock(block.fg)) for (int uid : world.access) if (uid > 0) blob.i32(uid); // @note the client reads {count} user ids
             break;
         }
         case type::SEED:

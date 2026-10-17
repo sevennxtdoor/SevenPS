@@ -36,6 +36,8 @@
 #include "tools/auth.hpp"
 #include "tile_change.hpp"
 
+float max_reach = 7.0f;
+
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
@@ -59,6 +61,13 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             if (slot == pPeer->slots.end() || slot->count < 1) return;
         }
         if (fishing_tile_change(event, *world, gamePacket)) return; // @note casting bait / reeling in, before the lock checks: fishing doesn't change the world
+
+        /* @note reach: a hacked client punched/built anywhere in the world. the game reaches a few tiles; 7 leaves room for lag & range items */
+        if (pPeer->role < MODERATOR && gamePacket.id != 32)
+        {
+            const ::pos me = pPeer->pos.by_32(true);
+            if (std::abs(me.x - gamePacket.punch.x) > max_reach || std::abs(me.y - gamePacket.punch.y) > max_reach) return;
+        }
 
         const ::item &item = id_to_item((gamePacket.id != 32 && gamePacket.id != 18) ? gamePacket.id : (block.fg != 0) ? block.fg : block.bg);
         if (item.id == 0) return;
@@ -345,6 +354,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 on::NameChanged(event);
                 
                 world->owner = 0; // @todo have a seperate thing for 'range_lock'
+                world->access.fill(0), world->minimum_entry_level = 1; // @note the next owner starts with a clean lock
                 if (auto mine = std::ranges::find(pPeer->my_worlds, world->name); mine != pPeer->my_worlds.end()) mine->clear(); // @note unlocked: not in "My Worlds" anymore
             }
 
@@ -611,6 +621,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
                     if (pPeer->user_id == world->owner)
                     {
+                        std::string access_list{};
+                        for (int uid : world->access)
+                            if (uid > 0) access_list += std::format("add_checkbox|access_{}|{}|1\n", uid, growid_of(uid));
+                        if (access_list.empty()) access_list = "add_label|small|Currently, you're the only one with access.``|left\n";
                         send_varlist(event.peer, {
                             "OnDialogRequest",
                             std::format(
@@ -621,7 +635,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 "embed_data|tilex|{}\n"
                                 "embed_data|tiley|{}\n"
                                 "add_spacer|small|\n"
-                                "add_label|small|Currently, you're the only one with access.``|left\n"
+                                "{}"
                                 "add_spacer|small|\n"
                                 "add_player_picker|playerNetID|`wAdd``|\n"
                                 "add_checkbox|checkbox_public|Allow anyone to Build and Break|{}\n"
@@ -636,7 +650,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 "add_button|changecat|`wCategory: None``|noflags|0|0|\n"
                                 "add_button|getKey|Get World Key|noflags|0|0|\n"
                                 "end_dialog|lock_edit|Cancel|OK|\n",
-                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0", world->minimum_entry_level
+                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, access_list, to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0", world->minimum_entry_level
                             )
                         });
                     }
