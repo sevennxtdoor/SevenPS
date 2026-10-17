@@ -1,4 +1,4 @@
-# MikeTopia Lucky Box (/luckybox or /gacha): players pay gems for a random prize. it takes gems out of the economy,
+# SevenPS Lucky Box (/luckybox or /gacha): players pay gems for a random prize. it takes gems out of the economy,
 # so on average a box should give LESS than its price (1 World Lock = 2000 gems is the reference). Super VIP+ ranks
 # get a discount (resources/ranks.txt gachaN). read again when the file changes, no restart needed.
 # price|gems

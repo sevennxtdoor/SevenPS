@@ -443,7 +443,7 @@ bool special_tile_punch(ENetEvent &event, ::world &world, ::block &block, const 
         if (t == nullptr || now() - t->planted < item.tick) return false; // @note not ready: it takes damage like any block
         ::peer &p = me(event);
         if (!provider_prize(event, world, tile, item, p.clothing[clothing::HAND] == SHEEP_SHEARS ? WOOL : 0))
-            bubble(event, std::format("`wThe {} is ready, but MikeTopia doesn't know its prizes yet.``", item.raw_name));
+            bubble(event, std::format("`wThe {} is ready, but SevenPS doesn't know its prizes yet.``", item.raw_name));
         t->planted = now();
         p.add_xp(event, 1);
         add_stat(event, "provided");

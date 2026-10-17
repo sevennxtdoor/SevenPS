@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note MikeTopia's own worlds: START (the hub) and PARKOUR are built with a ready-made design the first time
+/* @note SevenPS's own worlds: START (the hub) and PARKOUR are built with a ready-made design the first time
  * they are opened, only staff can edit them, and /rebuild puts the design back. */
 
 extern bool is_system_world(std::string_view name);

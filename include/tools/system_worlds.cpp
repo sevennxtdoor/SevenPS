@@ -102,6 +102,9 @@ static void letter(::world &w, int left, int top, char c, short item)
         { 'O', { ".XXX.", "X...X", "X...X", "X...X", "X...X", "X...X", ".XXX." } },
         { 'P', { "XXXX.", "X...X", "X...X", "XXXX.", "X....", "X....", "X...." } },
         { 'A', { ".XXX.", "X...X", "X...X", "XXXXX", "X...X", "X...X", "X...X" } },
+        { 'S', { ".XXXX", "X....", "X....", ".XXX.", "....X", "....X", "XXXX." } },
+        { 'V', { "X...X", "X...X", "X...X", "X...X", "X...X", ".X.X.", "..X.." } },
+        { 'N', { "X...X", "XX..X", "X.X.X", "X..XX", "X...X", "X...X", "X...X" } },
     };
     auto it = font.find(c);
     if (it == font.end()) return;
@@ -116,9 +119,9 @@ static void build_start(::world &w)
 {
     clear_world(w);
 
-    /* @note "MIKETOPIA" in the sky with a glowing line under it */
-    constexpr std::string_view title{ "MIKETOPIA" };
-    for (std::size_t i = 0; i < title.size(); ++i) letter(w, 24 + static_cast<int>(i) * 6, 6, title[i], id::RAINBOW_BLOCK);
+    /* @note "SEVENPS" in the sky with a glowing line under it */
+    constexpr std::string_view title{ "SEVENPS" };
+    for (std::size_t i = 0; i < title.size(); ++i) letter(w, 50 - (static_cast<int>(title.size()) * 6 - 1) / 2 + static_cast<int>(i) * 6, 6, title[i], id::RAINBOW_BLOCK);
     for (int x = 22; x <= 78; ++x) fg(w, x, 15, id::GLOWY_BLOCK);
 
     /* @note the hall: golden roof, pillars (with a gap to walk through), royal wallpaper, marble floor */
@@ -133,7 +136,7 @@ static void build_start(::world &w)
 
     main_door(w, 50);
 
-    put_sign(w, 48, GROUND - 1, "`9Welcome to MikeTopia!`` Type `$/help`` for all commands. Have fun and be nice!");
+    put_sign(w, 48, GROUND - 1, "`9Welcome to SevenPS!`` Type `$/help`` for all commands. Have fun and be nice!");
     put_sign(w, 52, GROUND - 1, std::string{ GET_STARTED });
     put_sign(w, 43, GROUND - 1, "`4Rules:`` no scamming, no spamming, no bad words. Staff decisions are final. Scammed? Report with wrench > Report.");
     put_sign(w, 57, GROUND - 1, "`5Daily:`` wrench yourself for Grow Pass, Goals & Quests and Achievements. Online 30 minutes = free gems!");
@@ -157,7 +160,7 @@ static void build_start(::world &w)
     for (int x = 72; x <= 98; ++x)
         if (w.blocks[cord(x, GROUND - 1)].fg == 0 && x % 3 == 0) fg(w, x, GROUND - 1, (x % 2) ? id::ROSE : id::DAISY);
     for (int x = 98; x <= 99; ++x) fg(w, x, GROUND - 1, id::PICKET_FENCE);
-    put_sign(w, 79, GROUND - 1, "`9Secret:`` climb the platforms up to the MikeTopia sign... if you can!");
+    put_sign(w, 79, GROUND - 1, "`9Secret:`` climb the platforms up to the SevenPS sign... if you can!");
 
     constexpr std::array<std::pair<int, int>, 10> climb{ { { 68, 34 }, { 71, 32 }, { 74, 30 }, { 71, 28 }, { 68, 26 },
                                                            { 71, 24 }, { 74, 22 }, { 77, 20 }, { 80, 18 }, { 82, 16 } } };

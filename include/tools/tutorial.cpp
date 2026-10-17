@@ -87,7 +87,7 @@ void tutorial_command(ENetEvent &event, const std::string_view text)
     }
     send_varlist(event.peer, { "OnDialogRequest", std::format(
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`wMikeTopia Tutorial``|left|242|\n"
+        "add_label_with_icon|big|`wSevenPS Tutorial``|left|242|\n"
         "add_textbox|{}|left|\n"
         "add_spacer|small|\n"
         "{}"

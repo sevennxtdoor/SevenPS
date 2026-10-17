@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note commands MikeTopia took from GTOS' list (our own code):
+/* @note commands SevenPS took from GTOS' list (our own code):
  * players: /pay /go /rules /mods /radio /info /status
  * moderator+: /warpto /mute /unmute /curse /uncurse /warn, developer+: /kickall */
 

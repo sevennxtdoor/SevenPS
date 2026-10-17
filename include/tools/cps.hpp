@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note things that make MikeTopia feel alive, inspired by CreativePS (our own code, not copied):
+/* @note things that make SevenPS feel alive, inspired by CreativePS (our own code, not copied):
  * automatic events, rotating broadcasts, join announcements, /top leaderboards, /start and /event,
  * and CreativePS' /find rule: most items are free, shop & special items are not */
 

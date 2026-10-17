@@ -97,7 +97,7 @@ void rules(ENetEvent &event, const std::string_view text)
 {
     send_varlist(event.peer, { "OnDialogRequest",
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`wMikeTopia Rules``|left|242|\n"
+        "add_label_with_icon|big|`wSevenPS Rules``|left|242|\n"
         "add_spacer|small|\n"
         "add_textbox|`w1. No scamming.`` Always trade with the `2trade window``, never \"drop first\". Real Roulette Wheel results only come from a real spin, never from chat.|left|\n"
         "add_textbox|`w2. Keep your password safe.`` Never share it with anyone. Staff will `4never`` ask for it.|left|\n"

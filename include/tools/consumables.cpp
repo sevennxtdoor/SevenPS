@@ -43,7 +43,7 @@ namespace
         "Today is a good day to build something new.",
         "The best world lock is a good friend.",
         "Luck favors the ones who keep punching.",
-        "Someone in MikeTopia thinks you are awesome.",
+        "Someone in SevenPS thinks you are awesome.",
         "Do not trade with strangers in a hurry.",
         "Big things come from small seeds.",
         "Your next drop will make you smile.",

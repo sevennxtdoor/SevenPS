@@ -1,4 +1,4 @@
-# MikeTopia fossils (Growassic Park) and the Mystery Pinata. The server reads this file again when it changes.
+# SevenPS fossils (Growassic Park) and the Mystery Pinata. The server reads this file again when it changes.
 # How it works (Growtopia wiki: Fossil Rock, Rock Hammer, Rock Chisel, Fossil, Fossil Prep Station):
 #   1. a loaded world can turn one of its rocks into a fossil rock
 #   2. tap the fossil rock with a Rock Hammer until "I unearthed a fossil!" (hit it again with the hammer = smashed)
@@ -8,10 +8,10 @@
 #   5. use a Fossil or Polished Fossil on a Fossil Prep Station, wait, then punch it for a prize
 #
 # rock|fossil rock id|normal rock id|name
-# spawn|N            N% chance that a world gets a fossil rock when it loads (MikeTopia's pick)
-# hammer|N           N% chance that one hammer tap unearths the fossil (MikeTopia's pick, the wiki says "slight")
+# spawn|N            N% chance that a world gets a fossil rock when it loads (SevenPS's pick)
+# hammer|N           N% chance that one hammer tap unearths the fossil (SevenPS's pick, the wiki says "slight")
 # prep_time|min|max  seconds in the prep station (wiki: an hour to a day)
-# prep|item id|weight Fossil|weight Polished Fossil|name   prizes (wiki list, weights are MikeTopia's pick, 0 = never)
+# prep|item id|weight Fossil|weight Polished Fossil|name   prizes (wiki list, weights are SevenPS's pick, 0 = never)
 # pinata|item id|becomes id|name   an item lying under a Mystery Pinata when it breaks changes into another (wiki)
 
 spawn|10

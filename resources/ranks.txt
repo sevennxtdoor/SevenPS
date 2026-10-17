@@ -1,4 +1,4 @@
-# MikeTopia ranks (like CreativePS): bought with gems using /rank. Restart the server after editing.
+# SevenPS ranks (like CreativePS): bought with gems using /rank. Restart the server after editing.
 # level|name|color|price in gems|% extra gems|% extra XP|extra backpack slots|perks (sbfree, titles, nick, spinN = N Daily Spins a day, gachaN = N% off the Lucky Box - comma separated)
 # colors: `2 green, `! bright cyan, `5 pink, `3 cyan, `4 red, `9 gold, `6 orange, `$ yellow
 1|VIP|`2|50000|10|10|10|sbfree

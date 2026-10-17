@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MikeTopia Login</title>
-<!-- MikeTopia's own login page, served by our server (include/https/https.cpp). The password is only sent to
+<title>Seven Private Server Login</title>
+<!-- SevenPS's own login page, served by our server (include/https/https.cpp). The password is only sent to
      /player/login/validate on this same server; the game itself only receives a random session token. -->
 <style>
   :root { --bg1: #0b1d3a; --bg2: #1d4f8c; --card: #102a52; --line: #2c5a96; --text: #eef5ff; --muted: #9fb7d9;
@@ -40,7 +40,7 @@
 <body>
   <main class="card">
     <div class="logo">
-      <h1>MikeTopia</h1>
+      <h1>Seven Private Server</h1>
       <p>Private Growtopia Server</p>
     </div>
 
@@ -67,7 +67,7 @@
       <div class="msg" id="msg" role="status"></div>
     </form>
 
-    <div class="safe">Your password is only checked by the MikeTopia server.<br>Staff will never ask for it.</div>
+    <div class="safe">Your password is only checked by the SevenPS server.<br>Staff will never ask for it.</div>
   </main>
 
 <script>
@@ -112,7 +112,7 @@
       body: body
     }).then(function (r) { return r.json(); }).then(function (data) {
       if (data.status === 'success' && data.token) {
-        say('Welcome to MikeTopia!', 'good');
+        say('Welcome to SevenPS!', 'good');
         /* the game reads the token from this page's answer */
         window.location.href = '/player/growid/login/validate?token=' + encodeURIComponent(data.token);
       } else {

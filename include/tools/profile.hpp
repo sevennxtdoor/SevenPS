@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note MikeTopia's profile systems behind the wrench menu buttons:
+/* @note SevenPS's profile systems behind the wrench menu buttons:
  * stats & achievements, daily goals, grow pass (daily bonus), marvelous missions, personalize profile,
  * wardrobe, card battle license, battle pets, wrench customization and growmojis.
  * everything is kept in peer::profile (key=value;...) and saved in the `profile` column */

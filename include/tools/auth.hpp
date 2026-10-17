@@ -22,5 +22,5 @@ extern std::optional<std::string> account_name(const std::string &growid);
 /* @return the GrowID of a user id (online first, else the database), "(unknown)" if gone */
 extern std::string growid_of(int user_id);
 
-/* @return "[WORLD World Locked by @Mike]" (the owner's name in their own color / staff @ tag), what the game shows on entering, punching or building in someone else's world */
+/* @return "[WORLD World Locked by @Seven]" (the owner's name in their own color / staff @ tag), what the game shows on entering, punching or building in someone else's world */
 extern std::string world_locked_text(const std::string &world_name, int owner);

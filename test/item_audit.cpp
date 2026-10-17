@@ -1,4 +1,4 @@
-// MikeTopia item audit: reads items.dat with the real parser and prints how many items there are per type,
+// SevenPS item audit: reads items.dat with the real parser and prints how many items there are per type,
 // with a few example names. run: test/item_audit.sh (after make). output: build/test/item_audit.txt
 #include "pch.hpp"
 #include <cstdio>

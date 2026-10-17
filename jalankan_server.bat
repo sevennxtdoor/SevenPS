@@ -1,5 +1,5 @@
 @echo off
-title MikeTopia GTPS
+title SevenPS - Seven Private Server
 cd /d "%~dp0"
 set PATH=%PATH%;C:\msys64\ucrt64\bin;C:\msys64\usr\bin
 

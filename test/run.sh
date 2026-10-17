@@ -1,5 +1,5 @@
 #!/bin/bash
-# MikeTopia offline tests: real server code, fake network, local MariaDB (world MTTEST is made then deleted).
+# SevenPS offline tests: real server code, fake network, local MariaDB (world MTTEST is made then deleted).
 # run from MSYS2: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash /c/Users/acer/Belajar/GTPS/Gurotopia/test/run.sh"
 # build the server first (make binary=main_new.exe) so build/include/*.o are fresh.
 export OS=Windows_NT

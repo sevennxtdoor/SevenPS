@@ -1,4 +1,4 @@
-# MikeTopia Harmonic Crystals (Red 2242, Green 2244, Blue 2246, White 2248, Black 2250)
+# SevenPS Harmonic Crystals (Red 2242, Green 2244, Blue 2246, White 2248, Black 2250)
 # stack 5 crystals on one tile, surround it with the right Chi (resources/chi.txt), then punch it once.
 # recipes from GTopia (MIT, keichira) HarmonicCrystal.cpp, checked against the Growtopia wiki crystal pages.
 #

@@ -108,7 +108,7 @@ void rank_command(ENetEvent &event, const std::string_view text)
     }
     send_varlist(event.peer, { "OnDialogRequest", std::format(
         "set_default_color|`o\n"
-        "add_label|big|`9MikeTopia Ranks``|left|\n"
+        "add_label|big|`9SevenPS Ranks``|left|\n"
         "add_spacer|small|\n"
         "add_textbox|Your rank: {} - you have `w{}`` gems.|left|\n"
         "add_smalltext|Buying a higher rank replaces your current one. Ranks are permanent.|left|\n"

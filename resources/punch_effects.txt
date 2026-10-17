@@ -1,8 +1,8 @@
-# MikeTopia punch effects: what your punch looks like when you wear an item. One item per line:
+# SevenPS punch effects: what your punch looks like when you wear an item. One item per line:
 #   item id|punch effect id|item name (just for reading)
 # The server reads this file again whenever it changes, no restart needed.
 # Try an effect in game with /punch {id} (staff), then fix a line here if an item looks wrong.
-# Sources: MikeTopia's old list (GTOS + the Growtopia wiki "Mods" pages) and GrowServer (MIT, (c) JadlionHD).
+# Sources: SevenPS's old list (GTOS + the Growtopia wiki "Mods" pages) and GrowServer (MIT, (c) JadlionHD).
 
 138|1|Cyclopean Visor
 366|2|Heartbow

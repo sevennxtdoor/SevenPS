@@ -21,7 +21,7 @@ void action::protocol(ENetEvent& event, const std::string& header)
     if (growid.empty())
     {
         std::printf("[login] refused: no valid login token (old or made-up)\n");
-        send_action(*event.peer, "log", "msg|`4Please log in again`` on the MikeTopia login page.");
+        send_action(*event.peer, "log", "msg|`4Please log in again`` on the SevenPS login page.");
         send_action(*event.peer, "logon_fail", "");
         return;
     }

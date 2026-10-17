@@ -1,11 +1,11 @@
-# MikeTopia loot blocks: what a block drops when it breaks, instead of its normal gems/seed/block.
+# SevenPS loot blocks: what a block drops when it breaks, instead of its normal gems/seed/block.
 #   =block id|picks|name                 starts a block. picks = how many prizes one break gives
 #   item id|min|max|weight|flags|name    one prize. item 112 = gems
 # weight: bigger = more often, compared with the other prizes of the same block.
 #         %N = a separate N% chance on every break (not one of the picks)
 # flags:  rare = everyone online sees "<player> found <item>!"
 # The prize lists come from the Growtopia wiki (growtopia.fandom.com, each block's page). The wiki has no
-# chances, so the weights are MikeTopia's pick: change them freely. The server reads this file again when it changes.
+# chances, so the weights are SevenPS's pick: change them freely. The server reads this file again when it changes.
 # Pinata and Mystery Pinata are not here: you put items under them, Mystery Pinata changes some (fossils.txt "pinata").
 
 =120|1|Mystery Block

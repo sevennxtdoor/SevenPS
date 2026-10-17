@@ -1,4 +1,4 @@
-# MikeTopia Daily Spin (/spin): one free spin a day per account (resets at midnight server time).
+# SevenPS Daily Spin (/spin): one free spin a day per account (resets at midnight server time).
 # prize|item|min|max|weight|name[|rare]   112 = gems, weight = chance among all lines, rare = announced to everyone
 # keep it small: 1 World Lock = 2000 gems is the economy reference (resources/... /economy shows what spins made)
 prize|112|50|150|40|Gems

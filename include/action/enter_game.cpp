@@ -19,7 +19,7 @@ void action::enter_game(ENetEvent& event, const std::string& header)
     on::ConsoleMessage(event.peer, (friends == 0) ?
         std::format("Welcome back, {}. No friends are online.", pPeer->display_growid) :
         std::format("Welcome back, {}. `w{}`` friend{} online.", pPeer->display_growid, friends, (friends == 1) ? " is" : "s are"));
-    on::ConsoleMessage(event.peer, "`o>> Welcome to `2MikeTopia``!");
+    on::ConsoleMessage(event.peer, "`o>> Welcome to `2Seven Private Server``!");
     on::ConsoleMessage(event.peer, holiday_greeting().second);
     on::ConsoleMessage(event.peer, "`5Personal Settings active:`` `#Can customize profile``");
     announce_join(event);

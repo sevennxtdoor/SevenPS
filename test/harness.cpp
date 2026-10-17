@@ -1,4 +1,4 @@
-// MikeTopia offline test harness: links the real server objects, replaces DB + network with fakes.
+// SevenPS offline test harness: links the real server objects, replaces DB + network with fakes.
 // run: test/run.sh (Mannequin, Password Door, Magplant). add a section per new feature.
 #include "pch.hpp"
 #include "gamePacket/tile_change.hpp"
@@ -761,7 +761,7 @@ int main()
 
         for (short id : { 3132, 2168, 5020, 604 })
             std::printf("  %d = %s (type %d, cloth %d) info='%s'\n", id, id_to_item(id).raw_name.c_str(), id_to_item(id).type, id_to_item(id).cloth_type, id_to_item(id).info.c_str());
-        CHECK(id_to_item(3132).raw_name == "MikeTopia Crown" && id_to_item(604).raw_name == "Mike's Blade", "names changed");
+        CHECK(id_to_item(3132).raw_name == "SevenPS Crown" && id_to_item(604).raw_name == "Seven's Blade", "names changed");
         CHECK(id_to_item(2168).info.find("sponsor item") != std::string::npos, "description changed");
         CHECK(items.size() == count, "every item still parses after the rewrite");
         CHECK(items_hash != file_hash, "new hash, so games download the new data");
@@ -794,12 +794,12 @@ int main()
         }
         CHECK(same && differ == 4, "only the 4 sponsor items differ, all other fields identical");
         items.clear(); decode_items(); // @note back to the sponsored data
-        CHECK(id_to_item(3132).raw_name == "MikeTopia Crown", "sponsored again");
+        CHECK(id_to_item(3132).raw_name == "SevenPS Crown", "sponsored again");
 
         std::puts("\n[I2] /sponsor shop");
         owner->role = 0; owner->gems = 100000; owner->slot_size = 60;
         outbox.clear(); sponsor_command(ev, "sponsor");
-        CHECK(said("add_button|buy_3132|") && said("MikeTopia Crown"), "shop lists the items with buy buttons");
+        CHECK(said("add_button|buy_3132|") && said("SevenPS Crown"), "shop lists the items with buy buttons");
         outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_2"));
         CHECK(held(*owner, 2) >= 0 && owner->gems == 100000, "fake button for a non-sponsor item ignored");
         outbox.clear(); sponsor_return(ev, ::hPipe("dialog_name|mt_sponsor|buttonClicked|buy_5020"));
@@ -1004,7 +1004,7 @@ int main()
         CHECK(outbox.empty(), "punching/placing before login: ignored");
     }
 
-    std::puts("\n[W1] MikeTopia's own login page");
+    std::puts("\n[W1] SevenPS's own login page");
     {
         { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTWEB','MTWEB2')" }; del.execute(); }
         auto token_of = [](const std::string &json) { const std::size_t at = json.find("\"token\":\""); return at == std::string::npos ? std::string{} : json.substr(at + 9, 64); };
@@ -1971,7 +1971,7 @@ int main()
     /* ================= News & rules ================= */
     std::puts("\n[N1] gazette in English with a rules button");
     outbox.clear(); on::RequestGazette(ev);
-    CHECK(said("The MikeTopia Gazette") && said("Latest Updates"), "English gazette");
+    CHECK(said("The SevenPS Gazette") && said("Latest Updates"), "English gazette");
     {
         constexpr std::array<std::string_view, 12> month{ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         std::tm t = localtime();
@@ -1980,7 +1980,7 @@ int main()
     CHECK(said("add_button|mt_rules|`wServer Rules"), "Server Rules button");
     CHECK(!said("/find"), "no more 'free /find' (it's staff only now)");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|mt_rules"));
-    CHECK(said("MikeTopia Rules") && said("I Understand"), "button opens the rules");
+    CHECK(said("SevenPS Rules") && said("I Understand"), "button opens the rules");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|"));
     CHECK(outbox.empty(), "OK button does nothing");
 

@@ -1,4 +1,4 @@
-# MikeTopia providers: punch a ready provider to harvest it, it starts growing again.
+# SevenPS providers: punch a ready provider to harvest it, it starts growing again.
 # the grow time is the item's own (items.dat), the prizes come from the Growtopia wiki provider pages.
 # same format as resources/loot.txt:
 #   =provider|picks|name             then the prizes it can give:

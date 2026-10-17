@@ -511,7 +511,7 @@ static void send_growmojis(ENetEvent &event)
     std::ranges::sort(keys);
 
     std::string body = "add_label|big|`wGrowmojis``|left|\nadd_spacer|small|\n"
-        "add_textbox|Type these in chat to send a Growmoji. All of them are unlocked on MikeTopia!|left|\nadd_spacer|small|\n";
+        "add_textbox|Type these in chat to send a Growmoji. All of them are unlocked on SevenPS!|left|\nadd_spacer|small|\n";
     std::string line{};
     for (std::size_t i = 0; i < keys.size(); ++i)
     {

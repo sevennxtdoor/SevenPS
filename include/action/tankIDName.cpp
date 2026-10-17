@@ -35,7 +35,7 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     if (owner.empty() || !std::ranges::equal(owner, pPeer->growid, [](char a, char b) { return std::tolower(static_cast<u_char>(a)) == std::tolower(static_cast<u_char>(b)); }))
     {
         std::printf("[login] %s refused: no valid login token\n", pPeer->growid.c_str());
-        send_action(*event.peer, "log", "msg|`4Please log in again`` on the MikeTopia login page.");
+        send_action(*event.peer, "log", "msg|`4Please log in again`` on the SevenPS login page.");
         send_action(*event.peer, "logon_fail", "");
         pPeer->growid.clear();
         return;
@@ -59,7 +59,7 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     pPeer->load(pPeer->growid, pPeer->password); // @note the ACTUAL loading. the one in protocol.cpp must be removed for performance...
     if (pPeer->banned)
     {
-        send_action(*event.peer, "log", "msg|`4Sorry, this account has been banned from MikeTopia.``");
+        send_action(*event.peer, "log", "msg|`4Sorry, this account has been banned from SevenPS.``");
         send_action(*event.peer, "logon_fail", ""); // @note triggers action|quit on client.
         return;
     }

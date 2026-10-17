@@ -4,7 +4,7 @@
  * - loot blocks (resources/loot.txt): Mystery Block, Pot O' Gold, treasure hoards, Locke's box, Summer Surprise, pinatas...
  * - fossils (resources/fossils.txt): fossil rocks, Rock Hammer & Rock Chisel, Fossil Brush, Fossil Prep Station
  * - Mystery Pinata: items lying under it change into festive ones when it breaks (resources/fossils.txt "pinata")
- * prize lists from the Growtopia wiki, chances are MikeTopia's own (the wiki has none) */
+ * prize lists from the Growtopia wiki, chances are SevenPS's own (the wiki has none) */
 
 /* @note punched, before it takes damage. @return true if handled (no damage), throws std::runtime_error for a talk bubble */
 extern bool special_punch(ENetEvent &event, ::world &world, ::block &block, const ::pos &tile, const ::item &item);

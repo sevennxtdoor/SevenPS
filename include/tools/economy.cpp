@@ -58,7 +58,7 @@ void economy_command(ENetEvent &event, const std::string_view text)
 
     send_varlist(event.peer, { "OnDialogRequest", std::format(
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`wMikeTopia Economy``|left|242|\n"
+        "add_label_with_icon|big|`wSevenPS Economy``|left|242|\n"
         "add_spacer|small|\n"
         "add_textbox|Gems owned by all players: `w{}`` (= `w{}`` World Locks at {} gems)|left|\n"
         "add_textbox|Today: made `2{}``, spent `4{}``, net `w{}{}``|left|\n"

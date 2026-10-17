@@ -1,4 +1,4 @@
-# MikeTopia Chemical Combiners (Laboratory, E-Z Cook Oven, Microwave, Barbecue Grill, Vehicle Replicator):
+# SevenPS Chemical Combiners (Laboratory, E-Z Cook Oven, Microwave, Barbecue Grill, Vehicle Replicator):
 # drop the three ingredients on an open combiner and punch it. 406 recipes from the Growtopia wiki "Guide:Combining".
 # recipe|result|count|item1|amount1|item2|amount2|item3|amount3|flags|name = what it takes
 # flags: microwave = only in a Microwave. read again when the file changes, no restart needed.

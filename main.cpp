@@ -111,7 +111,7 @@ int main()
 
     if (restarting)
     {
-        puts("restarting MikeTopia...");
+        puts("restarting SevenPS...");
         return 2; // @note jalankan_server.bat starts the server again on exit code 2
     }
     puts("killed gurotopia! [EXIT_SUCCESS]");

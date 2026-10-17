@@ -14,7 +14,7 @@ mysql_login.txt
 # Zed - once i fully understand how use it i'll publish tasks.json and debug.json
 .zed/
 
-# MikeTopia build leftovers
+# SevenPS build leftovers
 build.log
 main_new.exe
 main_old.exe

@@ -1,4 +1,4 @@
-# MikeTopia Bunny Egg (610): plant a Magic Egg (611) on an empty tile, add more Magic Eggs to grow it (0.1% each),
+# SevenPS Bunny Egg (610): plant a Magic Egg (611) on an empty tile, add more Magic Eggs to grow it (0.1% each),
 # break it for a prize that depends on how many eggs went in. table from the Growtopia wiki "Magic Egg" page.
 # when several lines fit the egg count, one is picked by weight. above 1000 eggs every new egg may burst it.
 #

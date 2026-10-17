@@ -113,12 +113,12 @@ void ban(ENetEvent& event, const std::string_view text)
     if (target)
     {
         static_cast<::peer*>(target->data)->banned = true;
-        on::ConsoleMessage(target, "`4Your account has been banned from MikeTopia.``");
+        on::ConsoleMessage(target, "`4Your account has been banned from SevenPS.``");
         enet_peer_disconnect_later(target, 0);
     }
     peers("", PEER_ALL, [&growid](ENetPeer &p)
     {
-        on::ConsoleMessage(&p, std::format("`4** `w{}`` `4has been banned from MikeTopia **``", growid));
+        on::ConsoleMessage(&p, std::format("`4** `w{}`` `4has been banned from SevenPS **``", growid));
     });
 }
 

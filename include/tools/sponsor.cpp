@@ -51,8 +51,8 @@ void sponsor_command(ENetEvent &event, const std::string_view text)
     if (rows.empty()) rows = "add_textbox|No sponsor items right now. Check back later!|left|\n";
     send_varlist(event.peer, { "OnDialogRequest", std::format(
         "set_default_color|`o\n"
-        "add_label_with_icon|big|`9MikeTopia Sponsor Items``|left|242|\n"
-        "add_textbox|Exclusive MikeTopia items with special powers. You have `${}`` gems.|left|\n"
+        "add_label_with_icon|big|`9SevenPS Sponsor Items``|left|242|\n"
+        "add_textbox|Exclusive SevenPS items with special powers. You have `${}`` gems.|left|\n"
         "add_spacer|small|\n"
         "{}"
         "end_dialog|mt_sponsor||Close|\n", pPeer->gems, rows) });

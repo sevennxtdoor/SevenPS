@@ -1,4 +1,4 @@
-# MikeTopia consumables with a timed mod (buff). One item per line:
+# SevenPS consumables with a timed mod (buff). One item per line:
 #   item id|target|seconds|mod name|effects|added message|removed message
 # target:  self = use it on yourself, player = on any player (also you), other = on another player
 # effects (comma separated):
@@ -9,7 +9,7 @@
 #   curse   sent to HELL, can't leave until it ends     kill    the player dies right away (no mod)
 #   burp    a loud BURRRPPP bubble
 # The server reads this file again whenever it changes. Durations and messages come from the Growtopia wiki
-# (growtopia.fandom.com, "Mods" and the item pages); skin colors are MikeTopia's pick (the wiki only names them).
+# (growtopia.fandom.com, "Mods" and the item pages); skin colors are SevenPS's pick (the wiki only names them).
 
 # --- on yourself ---
 196|self|3600|Feelin' Blue|skin=0000FF|A blueberry slides down your throat!|The effects of the blueberry have worn off.
@@ -35,7 +35,7 @@
 368|player|3|Muddy|skin=5A3C1E,speed=150,gravity=1400|You've been splattered with mud!|Clean again!
 3728|player|6|Slimed!|speed=150,gravity=1400|You're covered in ectoplasm!|You got cleaned up.
 2002|player|86400|Doctor Repulsion|repel|Doctors won't come near you!|You no longer repel doctors.
-# Perfume: the wiki doesn't say how long it lasts, 10 minutes is MikeTopia's pick
+# Perfume: the wiki doesn't say how long it lasts, 10 minutes is SevenPS's pick
 388|player|600|Stinky|stinky|You really really smell.|The air clears.
 
 # --- on another player ---

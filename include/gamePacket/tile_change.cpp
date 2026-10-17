@@ -81,7 +81,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
         if (is_system_world(world->name) && pPeer->role < DEVELOPER) // @note START & PARKOUR: only staff can build or break
         {
-            if (gamePacket.id == 18) send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThis world is protected by MikeTopia.``", 0u, 1u });
+            if (gamePacket.id == 18) send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThis world is protected by SevenPS.``", 0u, 1u });
             return;
         }
         if (!(item.cat & CAT_PUBLIC) && gamePacket.id != 32) // @note if block is public skip validating if peer is owner or access. wrenching is checked by each dialog

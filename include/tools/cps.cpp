@@ -283,13 +283,13 @@ void cps_tick()
     {
         next_broadcast = now + BROADCAST_GAP;
         if (const std::vector<std::string> list = broadcasts(); !list.empty())
-            to_all(std::format("`9[MikeTopia]`` {}", fill(list[broadcast_index++ % list.size()])));
+            to_all(std::format("`9[SevenPS]`` {}", fill(list[broadcast_index++ % list.size()])));
     }
     if (now >= next_stats)
     {
         next_stats = now + 60 * 60;
         if (const int online = online_count(); online > 0)
-            to_all(std::format("`9[MikeTopia]`` `wServer stats:`` `2{}`` online, `2{}`` players registered, `2{}`` worlds open. Thanks for playing!", online, registered_count(), worlds.size()));
+            to_all(std::format("`9[SevenPS]`` `wServer stats:`` `2{}`` online, `2{}`` players registered, `2{}`` worlds open. Thanks for playing!", online, registered_count(), worlds.size()));
     }
 }
 
@@ -318,12 +318,12 @@ void announce_join(ENetEvent &event)
         on::ConsoleMessage(event.peer, std::format("`9** Event running: {} `9({} minutes left) ``{}", event_name(current),
             (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));
 
-    std::string joined = std::format("`5** ``{} `5joined MikeTopia! (`w{}`` `5online)``", pPeer->display_growid, online);
+    std::string joined = std::format("`5** ``{} `5joined SevenPS! (`w{}`` `5online)``", pPeer->display_growid, online);
     if (!pget(*pPeer, "welcomed")) // @note first time ever
     {
         pset(*pPeer, "welcomed", 1);
         joined = std::format("`2** Welcome our new player ``{}`2! Say hi and help them out! (`w{}`` `2online)``", pPeer->display_growid, online);
-        on::ConsoleMessage(event.peer, "`2Welcome to MikeTopia!`` Start in the `wSTART`` world, read the signs and try the `wPARKOUR``.");
+        on::ConsoleMessage(event.peer, "`2Welcome to SevenPS!`` Start in the `wSTART`` world, read the signs and try the `wPARKOUR``.");
         /* @note starter pack: a lock for your first world and farmable seeds, so earning your first World Lock isn't a grind */
         for (const auto &[id, count] : { std::pair<short, short>{ 9640, 1 }, { 4585, 20 }, { 5667, 10 }, { 202, 2 } })
             modify_item_inventory(event, ::slot(id, count));
@@ -343,7 +343,7 @@ std::string find_blocked(const ::peer &p, short id)
 {
     /* @note like real Growtopia, items aren't free: farm them, buy them in the store or trade. only staff can /find */
     if (p.role >= DEVELOPER) return ""; // @note moderators moderate, they don't spawn items
-    return "Items aren't free on MikeTopia! Farm them, buy them in the `2Store`` or trade with other players.";
+    return "Items aren't free on SevenPS! Farm them, buy them in the `2Store`` or trade with other players.";
 }
 
 /* ---------- commands ---------- */
@@ -400,8 +400,8 @@ namespace
     {
         send_varlist(event.peer, { "OnDialogRequest",
             "set_default_color|`o\n"
-            "add_label_with_icon|big|`wMikeTopia Leaderboards``|left|1458|\n"
-            "add_textbox|Who's the best on MikeTopia? Pick a list.|left|\n"
+            "add_label_with_icon|big|`wSevenPS Leaderboards``|left|1458|\n"
+            "add_textbox|Who's the best on SevenPS? Pick a list.|left|\n"
             "add_spacer|small|\n" + board_buttons() +
             "end_dialog|mt_top|Close||\n" });
     }

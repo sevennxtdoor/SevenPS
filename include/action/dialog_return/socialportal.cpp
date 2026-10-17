@@ -13,7 +13,7 @@ void socialportal(ENetEvent& event, const ::hPipe &hPipe)
             "set_default_color|`o\n"
             "add_label|big|`wSocial Portal``|left|\n"
             "add_spacer|small|\n"
-            "add_textbox|Guilds, apprentices and the community hub are not on `9MikeTopia`` yet.|left|\n"
+            "add_textbox|Guilds, apprentices and the community hub are not on `9SevenPS`` yet.|left|\n"
             "end_dialog|popup||OK|\n" });
     }
 }

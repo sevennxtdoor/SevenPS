@@ -1,4 +1,4 @@
-# MikeTopia playmods: what a worn item does to your account. One item per line:
+# SevenPS playmods: what a worn item does to your account. One item per line:
 #   item id|speed|gravity|name|extra
 # Normal speed is 250 (higher = faster, lower = slower), normal gravity is 1000 (lower = higher jumps).
 # Use 0 to leave speed or gravity unchanged. You can edit this file while the server runs.
@@ -79,8 +79,8 @@
 1830|130|0|Slow (Harvester)
 1966|130|0|Slow (Harvester Of Sorrows)
 
-# MikeTopia sponsor items (resources/sponsor.txt)
-3132|0|0|Double Jump (MikeTopia Crown)|dj
-2168|320|0|Speedy (Cape of Mike)
-5020|0|750|High Jump (MikeTopia Aura)
-604|0|0|Enhanced Digging (Mike's Blade)|dig
+# SevenPS sponsor items (resources/sponsor.txt)
+3132|0|0|Double Jump (SevenPS Crown)|dj
+2168|320|0|Speedy (Cape of Seven)
+5020|0|750|High Jump (SevenPS Aura)
+604|0|0|Enhanced Digging (Seven's Blade)|dig
