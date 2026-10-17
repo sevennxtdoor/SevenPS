@@ -25,5 +25,5 @@ void _connect(ENetEvent& event, int status)
     event.peer->data = new peer();
 
     memcpy(packet->data, &status, sizeof(status));
-    if (enet_peer_send(event.peer, 0, packet)) enet_packet_destroy(packet);
+    if (send_packet(event.peer, packet)) enet_packet_destroy(packet);
 }

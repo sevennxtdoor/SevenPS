@@ -205,6 +205,9 @@ public:
 };
 
 extern ENetHost* host;
+/* @note enet_peer_send() refuses packets over host->maximumPacketSize (64 KB, so a fake client can't make us allocate
+ * a lot). that limit is meant for what we receive: the items.dat (5.7 MB) and big worlds were never sent. use this to send */
+extern int send_packet(ENetPeer *peer, ENetPacket *packet);
 
 enum peer_condition
 {

@@ -107,7 +107,7 @@ static void send_visual(ENetPeer &peer, const ::area_lock &lock)
     for (u_short tile : lock.tiles) blob.i16(static_cast<short>(tile));
 
     ENetPacket *packet = enet_packet_create(blob.data().data(), blob.size(), ENET_PACKET_FLAG_RELIABLE);
-    if (enet_peer_send(&peer, 0, packet)) enet_packet_destroy(packet);
+    if (send_packet(&peer, packet)) enet_packet_destroy(packet);
 }
 
 void send_area_locks(ENetPeer &peer, ::world &world)

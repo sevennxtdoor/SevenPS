@@ -356,6 +356,15 @@ void peer::update_effects()
 
 ENetHost *host;
 
+int send_packet(ENetPeer *peer, ENetPacket *packet)
+{
+    const std::size_t limit = host->maximumPacketSize;
+    host->maximumPacketSize = ENET_HOST_DEFAULT_MAXIMUM_PACKET_SIZE; // @note the check is only done here, the packet is split right away
+    const int result = enet_peer_send(peer, 0, packet);
+    host->maximumPacketSize = limit;
+    return result;
+}
+
 std::vector<ENetPeer*> peers(const std::string &world, peer_condition condition, std::function<void(ENetPeer&)> fun)
 {
     std::vector<ENetPeer*> _peers{};
@@ -457,5 +466,5 @@ void send_inventory_state(ENetEvent &event)
     blob.push_back(pPeer->serialize_inventory());
 
     ENetPacket *packet = enet_packet_create(blob.data().data(), blob.size(), ENET_PACKET_FLAG_RELIABLE);
-	if (enet_peer_send(event.peer, 0, packet)) enet_packet_destroy(packet);
+	if (send_packet(event.peer, packet)) enet_packet_destroy(packet);
 }

@@ -448,7 +448,7 @@ void send_action(ENetPeer& p, const std::string &action, const std::string &str)
     }
     
     ENetPacket *packet = enet_packet_create(data.data(), data.size(), ENET_PACKET_FLAG_RELIABLE);
-    if (enet_peer_send(&p, 0, packet)) enet_packet_destroy(packet);
+    if (send_packet(&p, packet)) enet_packet_destroy(packet);
 
 }
 
@@ -457,7 +457,7 @@ void send_data(ENetPeer &peer, const ::blob &blob)
     ENetPacket *packet = enet_packet_create(blob.data().data(), blob.size(), ENET_PACKET_FLAG_RELIABLE);
     if (packet == nullptr || packet->dataLength < sizeof(::gamePacket)) return;
 
-    if (enet_peer_send(&peer, 0, packet)) enet_packet_destroy(packet);
+    if (send_packet(&peer, packet)) enet_packet_destroy(packet);
 }
 
 void state_visuals(ENetPeer &peer, ::gamePacket &&gamePacket) 

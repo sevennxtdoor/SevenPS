@@ -63,7 +63,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             blob.push_back(world.serialize());
 
             ENetPacket *packet = enet_packet_create(blob.data().data(), blob.size(), ENET_PACKET_FLAG_RELIABLE);
-            if (enet_peer_send(event.peer, 0, packet)) enet_packet_destroy(packet);
+            if (send_packet(event.peer, packet)) enet_packet_destroy(packet);
         } // @note delete blob
         {
             std::string *this_world = std::ranges::find(pPeer->recent_worlds, world.name);
