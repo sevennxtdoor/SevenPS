@@ -7,6 +7,7 @@
 #include "automate/holiday.hpp"
 #include "tools/cps.hpp"
 #include "tools/social.hpp"
+#include "action/join_request.hpp"
 
 #include "enter_game.hpp"
 
@@ -22,7 +23,7 @@ void action::enter_game(ENetEvent& event, const std::string& header)
     on::ConsoleMessage(event.peer, "`o>> Welcome to `2Seven Private Server``!");
     on::ConsoleMessage(event.peer, holiday_greeting().second);
     on::ConsoleMessage(event.peer, "`5Personal Settings active:`` `#Can customize profile``");
-    announce_join(event);
+    const bool new_player = announce_join(event);
     if (pPeer->role >= MODERATOR)
         on::ConsoleMessage(event.peer, "`5Super Supporter`` status active! Perks: `$/nick {name}``, all titles (wrench yourself > `wTitle``)");
     
@@ -50,4 +51,5 @@ void action::enter_game(ENetEvent& event, const std::string& header)
         "OnSetFeatureEnableFlags",
         "EA8DEAcGAgEOBQgKCQ0MEQQ=" // @todo Dw0JEQQMEAMPAgYBDgUICg==
     });
+    if (new_player) action::join_request(event, "", "START"); // @note a new player lands in the hub right away instead of the world menu
 }

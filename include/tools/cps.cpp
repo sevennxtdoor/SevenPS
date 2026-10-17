@@ -304,7 +304,7 @@ void announce_achievement(const ::peer &p, std::string_view name)
     to_all(std::format("`9** ``{} `9unlocked the achievement `w{}``!``", p.display_growid, name));
 }
 
-void announce_join(ENetEvent &event)
+bool announce_join(ENetEvent &event)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
     pset(*pPeer, "online_mark", static_cast<int>(std::time(nullptr))); // @note online reward timer starts now
@@ -319,11 +319,12 @@ void announce_join(ENetEvent &event)
             (event_ends - std::time(nullptr) + 59) / 60, event_description(current)));
 
     std::string joined = std::format("`5** ``{} `5joined SevenPS! (`w{}`` `5online)``", pPeer->display_growid, online);
-    if (!pget(*pPeer, "welcomed")) // @note first time ever
+    const bool first = !pget(*pPeer, "welcomed");
+    if (first) // @note first time ever
     {
         pset(*pPeer, "welcomed", 1);
         joined = std::format("`2** Welcome our new player ``{}`2! Say hi and help them out! (`w{}`` `2online)``", pPeer->display_growid, online);
-        on::ConsoleMessage(event.peer, "`2Welcome to SevenPS!`` Start in the `wSTART`` world, read the signs and try the `wPARKOUR``.");
+        on::ConsoleMessage(event.peer, "`2Welcome to SevenPS!`` You start in the `wSTART`` world: read the signs and try the `wPARKOUR``.");
         /* @note starter pack: a lock for your first world and farmable seeds, so earning your first World Lock isn't a grind */
         for (const auto &[id, count] : { std::pair<short, short>{ 9640, 1 }, { 4585, 20 }, { 5667, 10 }, { 202, 2 } })
             modify_item_inventory(event, ::slot(id, count));
@@ -335,6 +336,7 @@ void announce_join(ENetEvent &event)
         ::peer *pp = static_cast<::peer*>(p.data);
         if (pp && !pp->growid.empty() && pp != pPeer) on::ConsoleMessage(&p, joined);
     });
+    return first;
 }
 
 /* ---------- /find rule ---------- */
