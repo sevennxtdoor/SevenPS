@@ -7,7 +7,6 @@
 #include "automate/holiday.hpp"
 #include "tools/cps.hpp"
 #include "tools/social.hpp"
-#include "action/join_request.hpp"
 
 #include "enter_game.hpp"
 
@@ -51,5 +50,5 @@ void action::enter_game(ENetEvent& event, const std::string& header)
         "OnSetFeatureEnableFlags",
         "EA8DEAcGAgEOBQgKCQ0MEQQ=" // @todo Dw0JEQQMEAMPAgYBDgUICg==
     });
-    if (new_player) action::join_request(event, "", "START"); // @note a new player lands in the hub right away instead of the world menu
+    if (new_player) queue_start_join(*event.peer); // @note a new player lands in the hub instead of the world menu (joining right here lost to the menu)
 }

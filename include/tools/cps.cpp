@@ -12,6 +12,7 @@
 #include "tools/rank.hpp"
 #include "tools/wrench_menu.hpp"
 #include "tools/economy.hpp"
+#include "action/join_request.hpp"
 
 #include "cps.hpp"
 
@@ -250,8 +251,40 @@ static void online_rewards(std::time_t now)
     }
 }
 
+namespace
+{
+    constexpr auto START_JOIN_DELAY = std::chrono::milliseconds(1500);
+
+    struct start_join { ENetPeer *peer; int user_id; std::chrono::steady_clock::time_point at; };
+    std::vector<start_join> start_joins;
+
+    void start_join_tick()
+    {
+        const auto now = std::chrono::steady_clock::now();
+        std::erase_if(start_joins, [&](const start_join &j)
+        {
+            if (now < j.at) return false;
+            /* @note still the same player, still connected and not already in a world they picked themselves */
+            ::peer *pp = static_cast<::peer*>(j.peer->data);
+            if (j.peer->state == ENET_PEER_STATE_CONNECTED && pp && pp->user_id == j.user_id && pp->netid == 0)
+            {
+                ENetEvent e{ .peer = j.peer };
+                action::join_request(e, "", "START");
+            }
+            return true;
+        });
+    }
+}
+
+void queue_start_join(ENetPeer &p)
+{
+    if (::peer *pp = static_cast<::peer*>(p.data); pp)
+        start_joins.push_back({ &p, pp->user_id, std::chrono::steady_clock::now() + START_JOIN_DELAY });
+}
+
 void cps_tick()
 {
+    start_join_tick();
     const std::time_t now = std::time(nullptr);
 
     if (!quiz_answer.empty() && now >= quiz_ends)
