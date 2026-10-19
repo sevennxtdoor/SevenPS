@@ -253,17 +253,18 @@ static void online_rewards(std::time_t now)
 
 namespace
 {
-    constexpr auto START_JOIN_DELAY = std::chrono::milliseconds(1500);
+    constexpr auto START_JOIN_DELAY = std::chrono::milliseconds(1500); // @note fallback, normally the ping reply comes first
 
     struct start_join { ENetPeer *peer; int user_id; std::chrono::steady_clock::time_point at; };
     std::vector<start_join> start_joins;
 
-    void start_join_tick()
+    /* @note only = join that player now (their ping reply came), else everyone whose fallback time is up */
+    void start_join_tick(const ENetPeer *only = nullptr)
     {
         const auto now = std::chrono::steady_clock::now();
         std::erase_if(start_joins, [&](const start_join &j)
         {
-            if (now < j.at) return false;
+            if (only ? j.peer != only : now < j.at) return false;
             /* @note still the same player, still connected and not already in a world they picked themselves */
             ::peer *pp = static_cast<::peer*>(j.peer->data);
             if (j.peer->state == ENET_PEER_STATE_CONNECTED && pp && pp->user_id == j.user_id && pp->netid == 0)
@@ -280,6 +281,11 @@ void queue_start_join(ENetPeer &p)
 {
     if (::peer *pp = static_cast<::peer*>(p.data); pp)
         start_joins.push_back({ &p, pp->user_id, std::chrono::steady_clock::now() + START_JOIN_DELAY });
+}
+
+void start_join_ready(ENetPeer &p)
+{
+    start_join_tick(&p);
 }
 
 void cps_tick()

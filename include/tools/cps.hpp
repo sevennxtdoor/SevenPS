@@ -17,6 +17,7 @@ extern void announce_achievement(const ::peer &p, std::string_view name); // @no
 extern void cps_tick(); // @note main loop, about once a second: events & broadcasts
 extern bool announce_join(ENetEvent &event); // @note welcome + "X joined" + current event, called on enter_game. true = a new player (first login ever)
 extern void queue_start_join(ENetPeer &p);   // @note sends the player to START a moment later, once the client has shown the world menu
+extern void start_join_ready(ENetPeer &p);   // @note ping reply: the client is past the world menu, join START now
 
 /* @note /find rule. @return empty if the item can be found, else the reason it can't */
 extern std::string find_blocked(const ::peer &p, short id);
