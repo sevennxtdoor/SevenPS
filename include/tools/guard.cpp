@@ -78,8 +78,11 @@ std::string guard_login_blocked(const std::string &ip)
     if (local(ip)) return {};
     const std::time_t now = std::time(nullptr);
     const ip_state &s = ips[ip];
-    if (s.login_blocked_until > now)
-        return std::format("Too many wrong passwords from your connection. Try again in {} minutes.", (s.login_blocked_until - now + 59) / 60);
+    if (s.login_blocked_until > now) // @note m:ss, not rounded minutes: the login page counts it down (resources/login.html)
+    {
+        const long long left = s.login_blocked_until - now;
+        return std::format("Too many wrong passwords from your connection. Try again in {}:{:02}.", left / 60, left % 60);
+    }
     return {};
 }
 

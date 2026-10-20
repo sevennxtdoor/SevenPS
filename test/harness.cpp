@@ -943,6 +943,10 @@ int main()
         CHECK(guard_login_blocked("10.0.0.9").empty(), "9 wrong passwords from one IP: still allowed");
         guard_login_failed("10.0.0.9");
         CHECK(!guard_login_blocked("10.0.0.9").empty(), "10th: that IP can't log in for 15 minutes");
+        {
+            const std::string wait = guard_login_blocked("10.0.0.9");
+            CHECK(wait.ends_with("Try again in 15:00.") || wait.ends_with("Try again in 14:59."), "the wait is m:ss, so the login page can count it down");
+        }
         CHECK(authenticate("Mike", "anything", false, "10.0.0.9").starts_with("Too many wrong passwords from your connection"), "authenticate refuses it before even hashing");
         for (int k = 0; k < 20; ++k) guard_login_failed("127.0.0.1");
         CHECK(guard_login_blocked("127.0.0.1").empty(), "this computer never gets an IP login block");

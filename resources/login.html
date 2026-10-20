@@ -82,12 +82,40 @@
     document.getElementById('password').autocomplete = m === 'register' ? 'new-password' : 'current-password';
     document.getElementById('go').textContent = m === 'register' ? 'Create account' : 'Log in';
     say('', '');
+    document.getElementById('go').disabled = false; // @note say() stopped a countdown: don't leave the button off
   }
 
+  var timer = null; // @note the "Try again in N seconds" countdown
+
   function say(text, kind) {
+    if (timer) { clearInterval(timer); timer = null; }
     var el = document.getElementById('msg');
     el.textContent = text;
     el.className = 'msg ' + kind;
+  }
+
+  /* @note the server says the wait once; count it down here and keep the button off until it's over */
+  function wait_out(text) {
+    /* "Try again in 24 seconds." (one account) or "Try again in 4:47." (your connection) */
+    var m = /^(.*Try again in )(?:(\d+) seconds?|(\d+):(\d\d))\.$/.exec(text);
+    if (!m) return false;
+    var clock = m[3] !== undefined;
+    var left = clock ? parseInt(m[3], 10) * 60 + parseInt(m[4], 10) : parseInt(m[2], 10);
+    var go = document.getElementById('go');
+    var show = function () {
+      document.getElementById('msg').textContent = m[1] + (clock ?
+        Math.floor(left / 60) + ':' + ('0' + left % 60).slice(-2) + '.' :
+        left + (left === 1 ? ' second.' : ' seconds.'));
+    };
+    say(text, 'bad');
+    go.disabled = true;
+    show();
+    timer = setInterval(function () {
+      if (--left > 0) return show();
+      say('You can try again now.', '');
+      go.disabled = false;
+    }, 1000);
+    return true;
   }
 
   function send(e) {
@@ -115,7 +143,7 @@
         say('Welcome to SevenPS!', 'good');
         /* the game reads the token from this page's answer */
         window.location.href = '/player/growid/login/validate?token=' + encodeURIComponent(data.token);
-      } else {
+      } else if (!wait_out(data.message || '')) {
         say(data.message || 'Something went wrong.', 'bad');
         go.disabled = false;
       }
