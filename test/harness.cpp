@@ -58,6 +58,7 @@
 #include "automate/holiday.hpp"
 #include "tools/vending.hpp"
 #include "commands/gtos.hpp"
+#include "commands/me.hpp"
 #include <cstdio>
 #include <fstream>
 #include <windows.h>
@@ -891,9 +892,12 @@ int main()
         sixth->loaded = false;
 
         std::puts("\n[A4] forgotten password: reset_password.txt");
-        { std::ofstream r("reset_password.txt"); r << "MTAUTH2|newpass1\r\n"; }
+        const std::string old_tok = session_new("MTAUTH2"), other_tok = session_new("MTAUTH");
+        { std::ofstream r("reset_password.txt"); r << "mtauth2|newpass1\r\n"; } // @note other spelling than the account
         apply_password_reset();
         CHECK(!std::filesystem::exists("reset_password.txt"), "file deleted right away");
+        CHECK(session_growid(old_tok).empty(), "saved logins of that account stop working (a stolen token too)");
+        CHECK(session_growid(other_tok) == "MTAUTH", "other accounts keep theirs");
         CHECK(authenticate("MTAUTH2", "newpass1", false, "127.0.0.1").empty() && authenticate("MTAUTH2", "plainpw", false, "127.0.0.1") == "Wrong password.", "new password works, old one doesn't");
         { ::hStmt del{ "DELETE FROM peer WHERE growid IN ('MTAUTH','MTAUTH2')" }; del.execute(); }
     }
@@ -2124,6 +2128,12 @@ int main()
         outbox.clear(); pay(ev, "pay MTVISIT 10");
         CHECK(owner->gems == 990 && visitor->gems == std::numeric_limits<int>::max(), "pay up to exactly the max works");
         owner->growid = og; visitor->growid = vg; owner->gems = oge; visitor->gems = vge;
+    }
+
+    std::puts("\n[AF3b] /me is cut at 120 characters like chat");
+    {
+        outbox.clear(); me(ev, "me " + std::string(5000, 'a') + "|x");
+        CHECK(said(std::string(120, 'a')) && !said(std::string(121, 'a')), "5000 characters sent, 120 reach the world");
     }
 
     std::puts("\n[AF4] public blocks (Public Lava) can't be placed in someone else's locked world");

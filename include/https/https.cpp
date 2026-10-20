@@ -5,6 +5,9 @@
 #include "automate/holiday.hpp" // @note localtime()
 #include <fstream>
 #include <filesystem>
+#include <mutex>
+#include <chrono>
+#include <thread>
 
 #include <openssl/err.h>
 
@@ -18,6 +21,8 @@
     #include <netinet/in.h>
     #include <netinet/tcp.h> // @note TCP_DEFER_ACCEPT
     #include <sys/socket.h>
+    #include <sys/select.h>
+    #include <fcntl.h>
 
     #define SOCKET int
     #define INVALID_SOCKET	(SOCKET)(~0)
@@ -53,10 +58,23 @@ namespace
 {
     struct request { std::string method, path, query, body, line, headers; };
 
+    /* @note each connection has its own thread (see listener): a slow or silent client only holds its own one */
+    constexpr int MAX_CONNECTIONS = 32, MAX_PER_IP = 4;
+    constexpr auto REQUEST_TIME = std::chrono::seconds(10); // @note handshake + whole request, however slowly it trickles in
+    std::mutex connection_mutex;
+    int connections{};
+    std::unordered_map<std::string, int> connections_by_ip{};
+
+    constexpr std::uintmax_t WEB_LOG_MAX = 5 * 1024 * 1024; // @note then web.log becomes web.log.old: 404 spam can't fill the disk
+    std::mutex log_mutex;
+
     /* @note web.log: every request line + answer code (never the body, which can hold a password). headers only for
      * unknown addresses, to see what the game asked for */
     void log_web(const std::string &ip, const request &req, const std::string &reply)
     {
+        std::lock_guard lock(log_mutex);
+        if (std::error_code ec; std::filesystem::file_size("web.log", ec) > WEB_LOG_MAX && !ec)
+            std::filesystem::rename("web.log", "web.log.old", ec); // @note replaces the older one
         std::ofstream log("web.log", std::ios::app);
         const std::tm t = localtime();
         const std::string code = reply.size() > 12 ? reply.substr(9, 3) : "?";
@@ -64,17 +82,43 @@ namespace
         if (code == "404") log << req.headers << "\n\n";
     }
 
+    /* @note the socket is non-blocking: after an SSL call wants more data (or room to write), wait for it until the deadline.
+     * a blocking read restarted its timeout on every byte, so a client sending one byte every few seconds never timed out */
+    bool wait_ready(SSL *ssl, int ret, std::chrono::steady_clock::time_point deadline)
+    {
+        const int err = SSL_get_error(ssl, ret);
+        if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) return false;
+        const auto left = std::chrono::duration_cast<std::chrono::microseconds>(deadline - std::chrono::steady_clock::now()).count();
+        if (left <= 0) return false;
+        const SOCKET fd = static_cast<SOCKET>(SSL_get_fd(ssl));
+        fd_set set;
+        FD_ZERO(&set);
+        FD_SET(fd, &set);
+        timeval tv{ static_cast<long>(left / 1000000), static_cast<long>(left % 1000000) };
+        return select(static_cast<int>(fd) + 1, err == SSL_ERROR_WANT_READ ? &set : nullptr, err == SSL_ERROR_WANT_WRITE ? &set : nullptr, nullptr, &tv) > 0;
+    }
+
+    /* @return bytes read, or <= 0 when the connection ended, broke or ran out of time */
+    int read_some(SSL *ssl, char *buf, int size, std::chrono::steady_clock::time_point deadline)
+    {
+        for (;;)
+        {
+            const int n = SSL_read(ssl, buf, size);
+            if (n > 0 || !wait_ready(ssl, n, deadline)) return n;
+        }
+    }
+
     /* @note reads one HTTP request: headers up to 8 KB, a body up to 8 KB (Content-Length). anything bigger or broken is dropped.
      * the old code read exactly 213 bytes and printed them without an ending 0 (read past the buffer) */
-    std::optional<request> read_request(SSL *ssl)
+    std::optional<request> read_request(SSL *ssl, std::chrono::steady_clock::time_point deadline)
     {
         std::string raw{};
         char buf[2048];
         std::size_t header_end{};
         while ((header_end = raw.find("\r\n\r\n")) == std::string::npos)
         {
-            if (raw.size() > 8 * 1024) return std::nullopt;
-            const int n = SSL_read(ssl, buf, sizeof(buf));
+            if (raw.size() > 8 * 1024 || std::chrono::steady_clock::now() > deadline) return std::nullopt; // @note one byte every few seconds kept a connection for hours
+            const int n = read_some(ssl, buf, sizeof(buf), deadline);
             if (n <= 0) return std::nullopt;
             raw.append(buf, n);
         }
@@ -103,7 +147,8 @@ namespace
         req.body = raw.substr(header_end + 4);
         while (req.body.size() < length)
         {
-            const int n = SSL_read(ssl, buf, sizeof(buf));
+            if (std::chrono::steady_clock::now() > deadline) return std::nullopt;
+            const int n = read_some(ssl, buf, sizeof(buf), deadline);
             if (n <= 0) return std::nullopt;
             req.body.append(buf, n);
         }
@@ -184,6 +229,43 @@ namespace
     }
 }
 
+/* @note one connection, on its own thread: TLS handshake, one request, the answer. everything must finish within REQUEST_TIME */
+static void serve(SSL_CTX *ctx, SOCKET fd, const std::string &ip)
+{
+#ifdef _WIN32
+    u_long non_blocking = 1;
+    ioctlsocket(fd, FIONBIO, &non_blocking);
+#else
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+#endif
+    const auto deadline = std::chrono::steady_clock::now() + REQUEST_TIME;
+
+    /* https://docs.openssl.org/3.0/man3/SSL_new/#return-values */
+    SSL *ssl = SSL_new(ctx);
+    if (!ssl) { cross_close(fd); return; } // @note SSL_up_ref() here added a second reference that was never freed (leaked every request)
+
+    /* https://docs.openssl.org/3.0/man3/SSL_set_fd/#return-values */
+    /* https://docs.openssl.org/3.0/man3/SSL_accept/#return-values */
+    bool ready = SSL_set_fd(ssl, static_cast<int>(fd)) == 1;
+    for (int ret{}; ready && (ret = SSL_accept(ssl)) <= 0; )
+        ready = wait_ready(ssl, ret, deadline); // @note a handshake sent one byte at a time ends at the deadline too
+    if (!ready) ERR_print_errors_fp(stderr);
+    else if (std::optional<request> req = read_request(ssl, deadline); req)
+    {
+        const std::string reply = route(*req, ip);
+        log_web(ip, *req, reply);
+        const auto write_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5); // @note after route(): a login can wait up to 15 s for the main loop
+        for (int ret{}; (ret = SSL_write(ssl, reply.data(), static_cast<int>(reply.size()))) <= 0; ) // @note a non-blocking write is retried with the same data
+            if (!wait_ready(ssl, ret, write_deadline)) { ERR_print_errors_fp(stderr); break; }
+    }
+
+    /* "It can also occur when not all data was read using SSL_read()." */
+    SSL_shutdown(ssl); // @note non-blocking: a client that doesn't answer the close is fine
+    SSL_free(ssl);
+    shutdown(fd, 2);
+    cross_close(fd);
+}
+
 void https::listener()
 {
     OpenSSL_add_all_algorithms();
@@ -260,42 +342,28 @@ void https::listener()
         SOCKET fd = accept(socket, reinterpret_cast<sockaddr*>(&addr), &addrlen);
         if (fd == INVALID_SOCKET) continue;
 
-        /* @note one request at a time: a client that connects and sends nothing used to block every login forever */
-#ifdef _WIN32
-        const DWORD timeout = 5000; // @note ms
-#else
-        const timeval timeout{ .tv_sec = 5, .tv_usec = 0 };
-#endif
-        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
-        setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
         const u_char *ip4 = reinterpret_cast<const u_char*>(&addr.sin_addr);
         const std::string ip = std::format("{}.{}.{}.{}", ip4[0], ip4[1], ip4[2], ip4[3]);
 
-        /* https://docs.openssl.org/3.0/man3/SSL_new/#return-values */
-        SSL *ssl = SSL_new(ctx);
-        if (!ssl) { cross_close(fd); continue; } // @note SSL_up_ref() here added a second reference that was never freed (leaked every request)
-        /* https://docs.openssl.org/3.0/man3/SSL_set_fd/#return-values */
-        /* https://docs.openssl.org/3.0/man3/SSL_accept/#return-values */
-        else if (SSL_set_fd(ssl, fd) != 1 || SSL_accept(ssl) <= 0) {
-            //int ret = SSL_get_error(ssl, 3);
-            ERR_print_errors_fp(stderr);
-        }
-        else if (std::optional<request> req = read_request(ssl); req)
+        /* @note one request at a time let a single client that sends nothing (or one byte now and then) block every login.
+         * now each connection gets its own thread, at most MAX_PER_IP from one address and MAX_CONNECTIONS in all */
         {
-            const std::string reply = route(*req, ip);
-            log_web(ip, *req, reply);
-            if (SSL_write(ssl, reply.data(), static_cast<int>(reply.size())) <= 0) ERR_print_errors_fp(stderr);
+            std::lock_guard lock(connection_mutex);
+            if (connections >= MAX_CONNECTIONS || connections_by_ip[ip] >= MAX_PER_IP)
+            {
+                if (connections_by_ip[ip] == 0) connections_by_ip.erase(ip);
+                cross_close(fd);
+                continue;
+            }
+            ++connections, ++connections_by_ip[ip];
         }
-
-        /* "It can also occur when not all data was read using SSL_read()." */
-        if (SSL_shutdown(ssl) <0) 
+        std::thread([ctx, fd, ip]()
         {
-            //int ret = SSL_get_error(ssl, 3);
-            ERR_print_errors_fp(stderr);
-        }
-        SSL_free(ssl);
-        if (shutdown(fd, 2) == SOCKET_ERROR) cross_log("failed to shutdown socket"); // @todo unsure if WSA can handle this.
-        cross_close(fd);
+            serve(ctx, fd, ip);
+            std::lock_guard lock(connection_mutex);
+            --connections;
+            if (--connections_by_ip[ip] <= 0) connections_by_ip.erase(ip);
+        }).detach();
     }
 }
 

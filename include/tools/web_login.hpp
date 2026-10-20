@@ -25,6 +25,9 @@ extern std::string session_new(const std::string &growid);
 /* @return the account this token belongs to, empty if unknown/expired. any thread */
 extern std::string session_growid(const std::string &token);
 
+/* @note new password: every saved login of this account stops working (a stolen token too). any thread */
+extern void session_drop(const std::string &growid);
+
 /* @return the JSON the client expects when a token is good */
 extern std::string token_json(const std::string &token);
 

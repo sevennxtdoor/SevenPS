@@ -6,6 +6,7 @@
 #include <openssl/rand.h>
 
 #include "guard.hpp"
+#include "web_login.hpp" // @note session_drop()
 #include "auth.hpp"
 
 namespace
@@ -212,6 +213,7 @@ void apply_password_reset()
     if (!stored_password(growid) || password.size() < 4) return (void)std::printf("[login] reset_password.txt: unknown GrowID or password under 4 characters\n");
     store_password(growid, hash_password(password));
     failed.erase(lower(growid));
+    session_drop(growid); // @note whoever had a saved login (maybe the one who took the account) must log in again
     std::printf("[login] password of %s was reset\n", growid.c_str());
 }
 

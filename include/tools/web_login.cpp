@@ -121,6 +121,13 @@ std::string session_growid(const std::string &token)
     return it->second.growid;
 }
 
+void session_drop(const std::string &growid)
+{
+    const auto lower = [](std::string s) { for (char &c : s) c = static_cast<char>(std::tolower(static_cast<u_char>(c))); return s; };
+    std::lock_guard lock(session_mutex);
+    std::erase_if(sessions, [&](const auto &s) { return lower(s.second.growid) == lower(growid); }); // @note reset_password.txt may spell it differently
+}
+
 std::string token_json(const std::string &token)
 {
     return std::format("{{\"status\":\"success\",\"message\":\"Account Validated.\",\"token\":\"{}\",\"url\":\"\",\"accountType\":\"growtopia\"}}", json_text(token));
