@@ -23,10 +23,6 @@ main_old.exe
 backup/
 reset_password.txt
 web.log
-resources/ctx/miketopia.key
-resources/ctx/miketopia.crt
-resources/ctx/miketopia-ca.crt
-resources/ctx/sevenps.key
-resources/ctx/sevenps.crt
-resources/ctx/sevenps-ca.crt
+resources/ctx/*.key
+resources/ctx/*.crt
 resources/ctx/pending/

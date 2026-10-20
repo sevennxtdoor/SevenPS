@@ -1,7 +1,7 @@
 #pragma once
 
 /* @note SevenPS's own login page (resources/login.html), served by https/https.cpp on www.growtopia1.com:443.
- * before, loginurl was login-gurotopia.vercel.app: the password was typed on someone else's website and travelled back
+ * before, loginurl was an external login site: the password was typed on someone else's website and travelled back
  * to us inside the token (base64 of "growId=..&password=.."), so that site could read every password.
  * now: the page posts the GrowID + password to our own server, we check it here and hand out a session token
  * (64 random hex characters). the game only ever sees that token (ltoken, then tankIDPass), never the password.

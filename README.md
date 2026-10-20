@@ -1,10 +1,9 @@
 # SevenPS
 
-**Seven Private Server**: a Growtopia private server written in C++20, based on
-[Gurotopia](https://github.com/gurotopia/Gurotopia) (Apache-2.0).
+**Seven Private Server**: a Growtopia private server written in C++20, made by @Seven.
 
 Everything SevenPS adds or changes (roles, trade, vending, surgery, ranks, guilds, events, login security,
-backups...) is listed in [`NOTICE-MIKETOPIA.md`](NOTICE-MIKETOPIA.md).
+backups...) is listed in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
 
 ## Requirements
 
@@ -100,4 +99,4 @@ MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash '$PWD/test/run.sh'"
 ## License
 
 Apache License 2.0, see [`LICENSE`](LICENSE). SevenPS is a modified version of Gurotopia
-(© gurotopia, 2024); the changes and other credits are in [`NOTICE-MIKETOPIA.md`](NOTICE-MIKETOPIA.md).
+(© gurotopia, 2024); the changes and other credits are in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).

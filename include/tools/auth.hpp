@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note login security. Gurotopia never checked passwords (any password opened any account) and kept them as plain text.
+/* @note login security. the original code never checked passwords (any password opened any account) and kept them as plain text.
  * now: passwords are stored as PBKDF2-SHA256 (100000 rounds, random 16 byte salt) "pbkdf2$rounds$salt$hash", checked on
  * both login steps (ltoken and tankIDName/tankIDPass, like GrowServer), compared in constant time, and 5 wrong tries lock
  * the account for 30 seconds. old plain text passwords still work once and are upgraded to a hash on that login */

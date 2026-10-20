@@ -626,7 +626,7 @@ int main()
     std::puts("\n[B1] /backup: owner only, real dump into backup/");
     {
         namespace fs = std::filesystem;
-        auto newest = []() { fs::path best; std::error_code ec; for (auto &f : fs::directory_iterator(std::getenv("MIKETOPIA_BACKUP_DIR"), ec)) if (f.path().extension() == ".sql" && f.path() > best) best = f.path(); return best; };
+        auto newest = []() { fs::path best; std::error_code ec; for (auto &f : fs::directory_iterator(std::getenv("SEVENPS_BACKUP_DIR"), ec)) if (f.path().extension() == ".sql" && f.path() > best) best = f.path(); return best; };
         const fs::path before = newest();
         visitor->role = 0;
         outbox.clear(); backup_command(ev2, "backup now");
@@ -778,7 +778,7 @@ int main()
         std::filesystem::rename("resources/sponsor.txt.off", "resources/sponsor.txt");
         const std::size_t header = im_data.size() - file.size();
         {
-            /* @note decode_items() already zeroes the .mp3 audio fields (old Gurotopia code), so only zeroed bytes may differ */
+            /* @note decode_items() already zeroes the .mp3 audio fields (old base code), so only zeroed bytes may differ */
             bool only_mp3 = im_data.size() == header + file.size();
             int changed = 0;
             for (std::size_t i = 0; only_mp3 && i < file.size(); ++i)

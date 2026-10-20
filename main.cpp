@@ -1,5 +1,6 @@
 /*
-    @copyright gurotopia (c) 2024-05-25
+    @copyright SevenPS (c) 2026 @Seven
+    @copyright gurotopia (c) 2024-05-25, Apache-2.0 (see LICENSE & NOTICE-SEVENPS.md)
     @version parent SHA: 8f2b5977fd057b99e2e2a6f0e65170145decc159 2026-9-30
 */
 #include "include/pch.hpp"

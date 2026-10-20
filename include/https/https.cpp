@@ -281,10 +281,10 @@ void https::listener()
 
     /* https://docs.openssl.org/master/man3/SSL_CTX_use_certificate/#return-values */
     /* @note sevenps.crt is signed by our own CA "SevenPS Local CA" (installed in Windows, only valid for growtopia1/growtopia2.com),
-     * so the game's login window trusts it. miketopia.crt is the one before the rename (old CA), used until sevenps.* is there.
-     * server.crt (Gurotopia's, self-signed) was only accepted for server_data.php. our keys are git-ignored: never upload them */
+     * so the game's login window trusts it. without sevenps.* it falls back to server.crt (old, self-signed),
+     * which was only accepted for server_data.php. our keys are git-ignored: never upload them */
     const char *crt = "resources/ctx/server.crt", *key = "resources/ctx/server.key";
-    for (const char *name : { "sevenps", "miketopia" })
+    for (const char *name : { "sevenps" })
         if (const std::string c = std::format("resources/ctx/{}.crt", name), k = std::format("resources/ctx/{}.key", name);
             std::filesystem::exists(c) && std::filesystem::exists(k))
         {

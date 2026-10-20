@@ -21,8 +21,8 @@ namespace
 
     constexpr int BACKUP_GAP = 24 * 60 * 60;
     constexpr std::size_t KEEP = 7;
-    /* @note the test harness sets MIKETOPIA_BACKUP_DIR: its test backups used to rotate the real ones out of backup/ */
-    const fs::path FOLDER = std::getenv("MIKETOPIA_BACKUP_DIR") ? std::getenv("MIKETOPIA_BACKUP_DIR") : "backup";
+    /* @note the test harness sets SEVENPS_BACKUP_DIR: its test backups used to rotate the real ones out of backup/ */
+    const fs::path FOLDER = std::getenv("SEVENPS_BACKUP_DIR") ? std::getenv("SEVENPS_BACKUP_DIR") : "backup";
 
     std::atomic<bool> busy{};
     std::mutex result_mutex;

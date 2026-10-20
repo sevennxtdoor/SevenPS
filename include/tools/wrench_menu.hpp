@@ -1,6 +1,6 @@
 #pragma once
 
-/* @note the buttons in the wrench menu (yourself & others) that Gurotopia left empty.
+/* @note the buttons in the wrench menu (yourself & others) that the original code left empty.
  * notebook, world lock bank, online status, view worn clothes, send message. the rest say "not available yet" */
 
 /* @return true if `buttonClicked` was a wrench menu button handled here (called from popup) */
