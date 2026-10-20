@@ -9,7 +9,7 @@ public:
     u_char type2{1};
     std::string maint{"Server under maintenance. Please try again later."};
     std::string loginurl{"www.growtopia1.com"}; // @note our own login page (https.cpp + resources/login.html), was login-gurotopia.vercel.app
-    std::string meta{"gurotopia"};
+    std::string meta{"SevenPS"};
 
     void init();
 };

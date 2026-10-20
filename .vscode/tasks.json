@@ -2,7 +2,7 @@
     "version":"2.0.0",
     "tasks": [
         {
-            "label": "Build Gurotopia",
+            "label": "Build SevenPS",
             "type": "cppbuild",
             "command": "c:/msys64/usr/bin/bash.exe",
             "args": [
@@ -15,7 +15,7 @@
             }
         },
         {
-            "label": "Clean Gurotopia",
+            "label": "Clean SevenPS",
             "type": "cppbuild",
             "command": "c:/msys64/usr/bin/bash.exe",
             "args": [

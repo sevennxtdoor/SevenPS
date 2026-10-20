@@ -54,7 +54,7 @@ namespace
         std::error_code ec;
         std::vector<fs::path> files{};
         for (const fs::directory_entry &f : fs::directory_iterator(FOLDER, ec))
-            if (f.path().filename().string().starts_with("gurotopia_") && f.path().extension() == ".sql") files.push_back(f.path());
+            if (f.path().filename().string().starts_with("sevenps_") && f.path().extension() == ".sql") files.push_back(f.path());
         std::ranges::sort(files); // @note the date is in the name, so oldest first
         while (files.size() > KEEP) { fs::remove(files.front(), ec); files.erase(files.begin()); }
     }
@@ -90,7 +90,7 @@ namespace
         const std::time_t now = std::time(nullptr);
         std::tm tm{}; localtime_s(&tm, &now);
         char stamp[32]; std::strftime(stamp, sizeof(stamp), "%Y-%m-%d_%H%M", &tm);
-        const fs::path out = FOLDER / std::format("gurotopia_{}.sql", stamp);
+        const fs::path out = FOLDER / std::format("sevenps_{}.sql", stamp);
 
         SECURITY_ATTRIBUTES sa{ sizeof(sa), nullptr, TRUE }; // @note the child writes straight into the file
         HANDLE file = CreateFileW(out.c_str(), GENERIC_WRITE, 0, &sa, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -104,7 +104,7 @@ namespace
         PROCESS_INFORMATION pi{};
 
         /* @note no password here: command lines are visible to every program on the PC */
-        std::string cmd = std::format("\"{}\" --host={} --user={} --single-transaction --routines --databases gurotopia", tool.string(), host, user);
+        std::string cmd = std::format("\"{}\" --host={} --user={} --single-transaction --routines --databases sevenps", tool.string(), host, user);
         std::vector<char> env = child_environment(password);
         const BOOL ok = CreateProcessA(nullptr, cmd.data(), nullptr, nullptr, TRUE, CREATE_NO_WINDOW, env.data(), nullptr, &si, &pi);
         std::fill(env.begin(), env.end(), '\0'); // @note don't leave the password lying around in memory longer than needed

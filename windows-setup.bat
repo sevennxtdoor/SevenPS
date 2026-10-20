@@ -1,5 +1,5 @@
 @echo off
-echo Gurotopia installer 2026-1-30 sha-132b1ac99f164b499de2b84f6cb9dc14a7fa7534
+echo SevenPS installer (based on the Gurotopia installer) 2026-1-30 sha-132b1ac99f164b499de2b84f6cb9dc14a7fa7534
 
 if not exist "%USERPROFILE%\AppData\Local\Programs\Microsoft VS Code\Code.exe" (
 	powershell -Command "Start-BitsTransfer -Source 'https://code.visualstudio.com/sha/download?build=stable&os=win32-x64-user' -Destination 'vscode.exe'"
@@ -21,5 +21,5 @@ if not exist "C:\msys64\usr\bin\bash.exe" (
 
 C:\msys64\usr\bin\bash.exe -lc "pacman -S --needed --noconfirm mingw-w64-ucrt-x86_64-{gcc,openssl} make"
 
-:: open Gurotopia in vscode @todo automatically build Gurotopia.
+:: open SevenPS in vscode @todo automatically build SevenPS.
 code . main.cpp

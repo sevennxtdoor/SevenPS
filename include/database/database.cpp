@@ -115,8 +115,8 @@ void mysql_connect()
     }
     else printf("connected to MariaDB server on %s:%d\n", db->host, db->port);
 
-    mysql_query(db, "CREATE DATABASE IF NOT EXISTS gurotopia");
-    mysql_select_db(db, "gurotopia");
+    mysql_query(db, "CREATE DATABASE IF NOT EXISTS sevenps");
+    mysql_select_db(db, "sevenps");
 
     create_table_if_not_exist();
 }

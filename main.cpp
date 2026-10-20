@@ -114,6 +114,6 @@ int main()
         puts("restarting SevenPS...");
         return 2; // @note jalankan_server.bat starts the server again on exit code 2
     }
-    puts("killed gurotopia! [EXIT_SUCCESS]");
+    puts("killed SevenPS! [EXIT_SUCCESS]");
     return EXIT_SUCCESS;
 }
