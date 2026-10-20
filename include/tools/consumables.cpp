@@ -220,11 +220,10 @@ static void seed_pack(ENetEvent &event, ::world &world, const ::item &item)
 static void surgery_gatcha(ENetEvent &event, ::world &world, const ::item &item)
 {
     take(event, item.id);
-    for (short tool : { 1258, 1260, 1262, 1264, 1266, 1268, 4308, 4310, 4312, 4314, 4316, 4318 }) give(event, world, tool, 5);
-    give(event, world, 1270, 1); // @note stitches
+    for (short tool : { 1258, 1260, 1262, 1264, 1266, 1268, 1270, 4308, 4310, 4312, 4314, 4316, 4318 }) give(event, world, tool, 5); // @note 5 stitches too: 1 can't close 2-3 incisions
     give(event, world, 4296, 1); // @note Surg-E
     bubble(event, "You received a full set of `wSurgical Tools`` and a `wSurg-E``!");
-    on::ConsoleMessage(event.peer, "You received 5 of every surgical tool, 1 Surgical Stitches and 1 Surg-E from the Surgery Gatcha.");
+    on::ConsoleMessage(event.peer, "You received 5 of every surgical tool and 1 Surg-E from the Surgery Gatcha.");
     effect(event, "audio/cash_register.wav");
 }
 

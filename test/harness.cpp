@@ -51,6 +51,9 @@
 #include "action/itemfavourite.hpp"
 #include "action/info.hpp"
 #include "action/store.hpp"
+#include "tools/surgery.hpp"
+#include "action/buy.hpp"
+#include "database/shouhin.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
 #include <cstdio>
@@ -1978,6 +1981,90 @@ int main()
         visitor->slots = saved_vslots, owner->slots = saved_oslots;
         visitor->role = saved_vrole, owner->role = saved_orole;
         visitor->pos = saved_vpos, owner->pos = saved_opos;
+    }
+
+    /* ================= Surgery (Surg-E) ================= */
+    {
+        const auto saved_slots = owner->slots;
+        const ::pos st{ 30, 40 };
+        constexpr short tools[]{ 1258, 1260, 1262, 1264, 1266, 1268, 1270, 4308, 4310, 4312, 4314, 4316, 4318 };
+        auto surg = [&](const std::string &clicked) { outbox.clear(); surgery_return(ev, ::hPipe("dialog_name|surge|buttonClicked|" + clicked)); };
+        auto dialog = [&]() { const std::string s = all_text(); const auto at = s.rfind("OnDialogRequest"); return at == std::string::npos ? std::string{} : s.substr(at); };
+        auto has = [](const std::string &d, std::string_view n) { return d.find(n) != std::string::npos; };
+
+        std::puts("\n[SG1] wrench a Surg-E -> 'are you sure?' with a low supply warning");
+        w.blocks[cord(st.x_int(), st.y_int())] = ::block{}; w.blocks[cord(st.x_int(), st.y_int())].fg = 4296;
+        owner->slots.clear(); owner->malpractice = 0;
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = st });
+        CHECK(said("Surg-E Anatomical Dummy") && said("end_dialog|surge|Cancel|Okay!|"), "confirm dialog");
+        CHECK(said("Low Supply Warning"), "warns about missing tools");
+
+        std::puts("\n[SG2] Okay! with no tools -> operating dialog with an empty tray, Give up! = malpractice");
+        surg("");
+        CHECK(said("is performing surgery on Surg-E") && said("Empty Surgery Tray"), "started, empty tray");
+        surg("cancel");
+        CHECK(said("couldn't save them") && owner->malpractice > std::time(nullptr), "gave up = malpractice");
+        CHECK(w.blocks[cord(st.x_int(), st.y_int())].fg == 0, "Surg-E destroyed");
+        w.blocks[cord(st.x_int(), st.y_int())].fg = 4296;
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = st });
+        CHECK(said("malpractice issues"), "malpractice blocks the next surgery");
+
+        std::puts("\n[SG0] Surgery Pack in the store: Surg-E + 5 of every tool");
+        if (shouhin_tachi.empty()) parse_store();
+        owner->slots.clear(); owner->gems = 2500;
+        outbox.clear(); action::buy(ev, "action|buy|item|surgery_pack", "");
+        if (owner->gems != 500) std::printf("  store said: %s\n", all_text().c_str());
+        CHECK(owner->gems == 500 && held(*owner, 4296) == 1, "bought: Surg-E, 2000 gems");
+        CHECK(std::ranges::all_of(tools, [&](short id) { return held(*owner, id) == 5; }), "5 of all 13 tools (Stitches too)");
+        owner->slots.clear(); owner->gems = 0;
+
+        std::puts("\n[SG3] 30 surgeries played by the hints: they can be won");
+        int won = 0, lost = 0, stuck = 0;
+        for (int n = 0; n < 30; ++n)
+        {
+            owner->slots.clear(); owner->malpractice = 0;
+            for (short id : tools) owner->slots.push_back(::slot(id, 200));
+            w.blocks[cord(st.x_int(), st.y_int())] = ::block{}; w.blocks[cord(st.x_int(), st.y_int())].fg = 4296;
+            outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = st });
+            surg("");
+            bool lab = false, fixed = false, done = false;
+            for (int turn = 0; turn < 80 && !done; ++turn)
+            {
+                const std::string d = dialog();
+                const auto ip = d.find("Incisions: ");
+                const int cuts = (ip == std::string::npos) ? 0 : d[ip + 13] - '0';
+                const int need = has(d, "3 incisions") ? 3 : 2;
+                const bool flu = has(d, "Flu``") || has(d, "Chicken Feet");
+                if (has(d, "is cured") || has(d, "Now stitch up") || has(d, "set in a splint")) fixed = true;
+                if (has(d, "bacteria found")) lab = true;
+                std::string t;
+                if (has(d, "Heart Stopped")) t = "Surgical Defibrillator";
+                else if (has(d, "Extremely Weak") || has(d, "Pulse: `3Weak")) t = "Surgical Transfusion";
+                else if (has(d, "losing blood")) t = "Surgical Clamp";
+                else if (has(d, "hard to see")) t = "Surgical Sponge";
+                else if (has(d, "not been diagnosed")) t = has(d, "try a lab test") ? "Surgical Lab Kit" : "Surgical Ultrasound";
+                else if (flu || has(d, "Temp: `4") || (has(d, "Infected") && has(d, "Temp: `3"))) t = lab ? "Surgical Antibiotics" : "Surgical Lab Kit";
+                else if (has(d, "Broken Arm``")) t = "Surgical Splint";
+                else if (fixed) t = "Surgical Stitches";
+                else if (!has(d, "Sanitized")) t = "Surgical Antiseptic";
+                else if (has(d, "Status: `4Awake")) t = "Surgical Anesthetic";
+                else if (cuts < need) t = "Surgical Scalpel";
+                else if (has(d, "Shattered Leg")) t = "Surgical Pins";
+                else if (has(d, "|Fix It!|")) t = "Fix It!";
+                else t = "Surgical Anesthetic";
+                surg(t);
+                if (said("You saved the patient")) { ++won; done = true; }
+                else if (said("couldn't save them")) { ++lost; done = true; }
+            }
+            if (!done) { ++stuck; surg("cancel"); }
+        }
+        std::printf("  won %d, lost %d, stuck %d\n", won, lost, stuck);
+        CHECK(won >= 15, "most surgeries can be won");
+        CHECK(stuck == 0, "no surgery gets stuck");
+        CHECK(held(*owner, 4298) >= 1, "Caduceus for a win");
+        owner->slots = saved_slots; owner->malpractice = 0;
+        w.blocks[cord(st.x_int(), st.y_int())] = ::block{};
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == st; });
     }
 
     /* ================= News & rules ================= */

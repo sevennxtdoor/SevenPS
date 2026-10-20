@@ -29,7 +29,7 @@ Made by @Seven, for local/private use.
 - Social (`include/tools/social.cpp`): friends (`friends` table), ignore (chat & PM), reports to staff (`reports` table), Trade-Scan history (`trade_log` table)
 - Wrench menu (`include/tools/wrench_menu.cpp`): Notebook, World Lock Bank, online status, view worn clothes, send message; real surgeon level, play time and account age
 - Weather machines: SFX/sprite machines (Heatwave, Stuff...) work, only one machine runs at a time, `/weather` is saved (`world_weather` table)
-- Surgery on Surg-E (`include/tools/surgery.cpp`): 6 diagnoses, all 13 surgical tools, surgeon skill and malpractice saved to the database
+- Surgery on Surg-E (`include/tools/surgery.cpp`): 6 diagnoses, all 13 surgical tools, surgeon skill and malpractice saved to the database; Store (Item Packs) sells the Surgery Pack (Surg-E + 5 of every tool), Surgical Supplies and a single Surg-E
 - 76 more punch effects, double jump from back items, bedrock breakable by developers
 - System worlds (`include/tools/system_worlds.cpp`): START (hub with the SevenPS sky title, hall, signs, doors to PARKOUR/TRADE, garden, platform climb) and PARKOUR (jump course with checkpoints, daily 2500 gems at the finish) are built with a design when first opened; only staff can edit them; `/rebuild {START|PARKOUR}` (owner), `/parkour`
 - Jammers (`include/tools/jammer.cpp`): Signal, Punch, Zombie, Balloon Jammer and Antigravity Generator turn on/off by punching (tile update + message); Signal Jammer hides the world from Top Worlds, /sb and friend lists (staff still see it); "World X [JAMMED, NOPUNCH...] entered" tags
