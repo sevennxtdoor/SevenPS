@@ -102,11 +102,12 @@ static void update_tile(ENetEvent &event, ::world &world, const ::pos &pos)
     send_tile_update(event, gamePacket, world.blocks[cord(pos.x_int(), pos.y_int())], world);
 }
 
-/* @note the World Lock owner, or the area lock owner when the machine stands in one. no lock at all = anyone (like before) */
+/* @note the World Lock owner, or the area lock owner when the machine stands in one.
+ * no lock at all = nobody: "anyone" let every visitor empty the machine and take the World Locks it earned */
 static bool is_owner(const ::peer &p, ::world &world, const ::pos &pos)
 {
     const int owner = tile_owner(world, pos);
-    return owner == 0 || owner == p.user_id || p.role >= DEVELOPER;
+    return (owner != 0 && owner == p.user_id) || p.role >= DEVELOPER;
 }
 
 static std::string sale_text(const ::vending &v)
@@ -152,6 +153,11 @@ void send_vending_dialog(ENetEvent &event, ::world &world, const ::pos &pos)
     }
 
     /* @note buyer */
+    if (tile_owner(world, pos) == 0)
+    {
+        send_varlist(event.peer, { "OnDialogRequest", header + tile + "add_textbox|This machine only works in a locked area (World Lock or Small/Big/Huge Lock).|left|\nend_dialog|vending|Close||\n" });
+        return;
+    }
     if (v.item == 0 || v.stock <= 0 || v.price <= 0 || (v.per_lock && v.stock < v.price))
     {
         send_varlist(event.peer, { "OnDialogRequest", header + tile + "add_textbox|This machine is out of order.|left|\nend_dialog|vending|Close||\n" });
@@ -163,6 +169,7 @@ void send_vending_dialog(ENetEvent &event, ::world &world, const ::pos &pos)
         sale_text(v) +
         std::format("add_spacer|small|\nadd_textbox|You have `w{}`` World Locks.|left|\n", locks) +
         std::format("add_text_input|buycount|How many {} would you like to buy?|0|5|\n", v.per_lock ? std::format("(multiple of {})", v.price) : "") +
+        std::format("embed_data|expectitem|{}\nembed_data|expectprice|{}\nembed_data|expectperlock|{}\n", v.item, v.price, v.per_lock ? 1 : 0) + // @note the deal the buyer saw, checked on Buy
         "end_dialog|vending|Close|Buy|\n" });
 }
 
@@ -217,7 +224,7 @@ void vending_return(ENetEvent &event, const ::hPipe &hPipe)
         {
             const short id = static_cast<short>(atoi(stockitem.c_str()));
             const short have = owned(*pPeer, id);
-            if (id == 18 || id == 32 || id == WORLD_LOCK || id == DIAMOND_LOCK || have <= 0)
+            if (id == 18 || id == 32 || id == WORLD_LOCK || id == DIAMOND_LOCK || have <= 0 || (id_to_item(id).cat & CAT_UNTRADEABLE))
                 return on::ConsoleMessage(event.peer, "`4You can't put that in a vending machine.``");
             modify_item_inventory(event, ::slot{ id, static_cast<short>(-have) });
             v.item = id; v.stock = have; v.price = 0; v.per_lock = false;
@@ -255,7 +262,10 @@ void vending_return(ENetEvent &event, const ::hPipe &hPipe)
 
     /* @note buyer pressed Buy */
     const int count = atoi(hPipe["buycount"].c_str());
-    if (count <= 0 || v.item == 0 || v.price <= 0) return;
+    if (count <= 0 || v.item == 0 || v.price <= 0 || tile_owner(*world, pos) == 0) return; // @note no lock: the earnings would belong to nobody
+    /* @note the owner could change the price (or item) while the buyer's window was open, and the buyer paid the new price */
+    if (atoi(hPipe["expectitem"].c_str()) != v.item || atoi(hPipe["expectprice"].c_str()) != v.price || (hPipe["expectperlock"] == "1") != v.per_lock)
+        return on::ConsoleMessage(event.peer, "`4The price has changed!`` Wrench the machine again to see the new deal.");
     if (count > v.stock) return on::ConsoleMessage(event.peer, "`4The machine doesn't have that many.``");
     if (v.per_lock && count % v.price != 0)
         return on::ConsoleMessage(event.peer, std::format("`4You must buy in multiples of `w{}``.``", v.price));

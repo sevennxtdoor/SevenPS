@@ -56,6 +56,8 @@
 #include "database/shouhin.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
+#include "tools/vending.hpp"
+#include "commands/gtos.hpp"
 #include <cstdio>
 #include <fstream>
 #include <windows.h>
@@ -2065,6 +2067,101 @@ int main()
         owner->slots = saved_slots; owner->malpractice = 0;
         w.blocks[cord(st.x_int(), st.y_int())] = ::block{};
         std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == st; });
+    }
+
+    /* ================= Audit fixes: untradeables, vending price, /pay ================= */
+    std::puts("\n[AF1] untradeables can't be traded or sold in a vending machine");
+    {
+        const auto saved_owner = owner->slots, saved_visitor = visitor->slots;
+        owner->slots = { ::slot(hat1, 10), ::slot(untrade, 1) };
+        owner->trade_items.clear();
+        outbox.clear(); trade_add(ev, ::hPipe(std::format("dialog_name|trade_add|itemID|{}|count|1", untrade)));
+        CHECK(owner->trade_items.empty(), "faked trade_add with an untradeable: refused");
+        outbox.clear(); action::mod_trade(ev, std::format("action|mod_trade\nitemID|{}", untrade));
+        CHECK(owner->trade_items.empty() && said("sorry if you lost"), "mod_trade with an untradeable: refused");
+        outbox.clear(); trade_add(ev, ::hPipe(std::format("dialog_name|trade_add|itemID|{}|count|3", hat1)));
+        CHECK(owner->trade_items.size() == 1 && owner->trade_items[0].count == 3, "tradeable item still goes in");
+        owner->trade_items.clear();
+
+        const ::pos vt{ 30, 20 };
+        w.blocks[cord(vt.x_int(), vt.y_int())].fg = 2978;
+        const std::string vat = std::format("|tilex|{}|tiley|{}", vt.x_int(), vt.y_int());
+        outbox.clear(); vending_return(ev, ::hPipe(std::format("dialog_name|vending|stockitem|{}{}", untrade, vat)));
+        CHECK(held(*owner, untrade) == 1 && said("can't put that"), "untradeable refused by the vending machine");
+
+        std::puts("\n[AF2] vending: the buyer pays the price they saw, not a new one");
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|stockitem|{}{}", hat1, vat)));
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|setprice|2|chk_peritem|1{}", vat)));
+        CHECK(held(*owner, hat1) == 0 && find_vending(w, vt) && find_vending(w, vt)->price == 2, "owner stocked 10 at 2 WL each");
+        visitor->slots = { ::slot(242, 50) };
+        outbox.clear(); send_vending_dialog(ev2, w, vt);
+        CHECK(said("embed_data|expectprice|2"), "buy dialog carries the price");
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|setprice|5|chk_peritem|1{}", vat))); // @note owner raises it while the window is open
+        outbox.clear(); vending_return(ev2, ::hPipe(std::format("dialog_name|vending|buycount|3|expectitem|{}|expectprice|2|expectperlock|0{}", hat1, vat)));
+        CHECK(held(*visitor, 242) == 50 && held(*visitor, hat1) == 0 && said("price has changed"), "old price: nothing bought, no locks taken");
+        outbox.clear(); vending_return(ev2, ::hPipe(std::format("dialog_name|vending|buycount|3{}", vat)));
+        CHECK(held(*visitor, 242) == 50, "no expected price at all (proxy): refused");
+        outbox.clear(); vending_return(ev2, ::hPipe(std::format("dialog_name|vending|buycount|3|expectitem|{}|expectprice|5|expectperlock|0{}", hat1, vat)));
+        CHECK(held(*visitor, 242) == 35 && held(*visitor, hat1) == 3, "current price: bought 3 for 15 WL");
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|buttonClicked|pullstock{}", vat)));
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|buttonClicked|withdraw{}", vat)));
+        w.blocks[cord(vt.x_int(), vt.y_int())] = ::block{};
+        owner->slots = saved_owner; visitor->slots = saved_visitor;
+    }
+
+    std::puts("\n[AF3] /pay can't push someone's gems past the int max");
+    {
+        const std::string og = owner->growid, vg = visitor->growid;
+        const signed oge = owner->gems, vge = visitor->gems;
+        owner->growid = "MTOWNER"; visitor->growid = "MTVISIT";
+        owner->gems = 1000; visitor->gems = std::numeric_limits<int>::max() - 10;
+        outbox.clear(); pay(ev, "pay MTVISIT 100");
+        CHECK(owner->gems == 1000 && visitor->gems == std::numeric_limits<int>::max() - 10 && said("can't hold"), "overflowing pay refused");
+        outbox.clear(); pay(ev, "pay MTVISIT 10");
+        CHECK(owner->gems == 990 && visitor->gems == std::numeric_limits<int>::max(), "pay up to exactly the max works");
+        owner->growid = og; visitor->growid = vg; owner->gems = oge; visitor->gems = vge;
+    }
+
+    std::puts("\n[AF4] public blocks (Public Lava) can't be placed in someone else's locked world");
+    {
+        const auto so = owner->slots, sv = visitor->slots; const bool pub = w.is_public; const auto acc = w.access;
+        w.is_public = false; w.access.fill(0);
+        owner->slots = { ::slot(1000, 5) }; visitor->slots = { ::slot(1000, 5) };
+        const ::pos pt{ 40, 20 };
+        w.blocks[cord(pt.x_int(), pt.y_int())] = ::block{};
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 1000, .pos = visitor->pos, .punch = pt });
+        CHECK(w.blocks[cord(pt.x_int(), pt.y_int())].fg == 0 && held(*visitor, 1000) == 5, "visitor's Public Lava refused");
+        tile_change(ev, ::gamePacket{ .type = 3, .id = 1000, .pos = owner->pos, .punch = pt });
+        CHECK(w.blocks[cord(pt.x_int(), pt.y_int())].fg == 1000 && held(*owner, 1000) == 4, "owner can still place it");
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = pt });
+        CHECK(!said("World Locked"), "visitor may still punch a public block");
+        w.blocks[cord(pt.x_int(), pt.y_int())] = ::block{};
+        owner->slots = so; visitor->slots = sv; w.is_public = pub; w.access = acc;
+    }
+
+    std::puts("\n[AF5] vending machine in an unlocked world: nobody can empty it or buy");
+    {
+        const auto so = owner->slots, sv = visitor->slots; const int wo = w.owner;
+        const ::pos vt{ 32, 20 };
+        const std::string vat = std::format("|tilex|{}|tiley|{}", vt.x_int(), vt.y_int());
+        w.blocks[cord(vt.x_int(), vt.y_int())].fg = 2978;
+        owner->slots = { ::slot(hat1, 10) };
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|stockitem|{}{}", hat1, vat)));
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|setprice|1|chk_peritem|1{}", vat)));
+        CHECK(find_vending(w, vt) && find_vending(w, vt)->stock == 10, "stocked while the world was locked");
+        w.owner = 0; // @note the World Lock is gone
+        visitor->slots = { ::slot(242, 50) };
+        outbox.clear(); send_vending_dialog(ev2, w, vt);
+        CHECK(said("only works in a locked area") && !said("pullstock"), "visitor gets no owner menu");
+        outbox.clear(); vending_return(ev2, ::hPipe(std::format("dialog_name|vending|buttonClicked|pullstock{}", vat)));
+        CHECK(find_vending(w, vt)->stock == 10 && held(*visitor, hat1) == 0, "visitor can't empty it");
+        outbox.clear(); vending_return(ev2, ::hPipe(std::format("dialog_name|vending|buycount|1|expectitem|{}|expectprice|1|expectperlock|0{}", hat1, vat)));
+        CHECK(held(*visitor, 242) == 50 && held(*visitor, hat1) == 0, "no buying without a lock");
+        w.owner = wo;
+        vending_return(ev, ::hPipe(std::format("dialog_name|vending|buttonClicked|pullstock{}", vat)));
+        CHECK(held(*owner, hat1) == 10, "owner gets it back once locked again");
+        w.blocks[cord(vt.x_int(), vt.y_int())] = ::block{};
+        owner->slots = so; visitor->slots = sv;
     }
 
     /* ================= News & rules ================= */

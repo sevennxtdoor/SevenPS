@@ -75,6 +75,8 @@ void pay(ENetEvent &event, const std::string_view text)
     if (target == nullptr) return on::ConsoleMessage(event.peer, "`4That player is offline.``");
     ::peer &t = *static_cast<::peer*>(target->data);
     if (&t == &p) return on::ConsoleMessage(event.peer, "`4You can't pay yourself.``");
+    if (static_cast<long long>(t.gems) + amount > std::numeric_limits<int>::max()) // @note gems is an int: going past the max wrapped it negative
+        return on::ConsoleMessage(event.peer, "`4That player can't hold that many gems.``");
 
     p.gems -= static_cast<int>(amount);
     t.gems += static_cast<int>(amount);

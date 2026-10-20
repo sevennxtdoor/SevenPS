@@ -84,7 +84,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             if (gamePacket.id == 18) send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, "`wThis world is protected by SevenPS.``", 0u, 1u });
             return;
         }
-        if (!(item.cat & CAT_PUBLIC) && gamePacket.id != 32) // @note if block is public skip validating if peer is owner or access. wrenching is checked by each dialog
+        if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC)) && gamePacket.id != 32) // @note anyone may punch a public block, but not place one (Public Lava in a locked world). wrenching is checked by each dialog
             if ((world->owner && !world->is_public && !pPeer->role) &&
                 (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end()))
             {

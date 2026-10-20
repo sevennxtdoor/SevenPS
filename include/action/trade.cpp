@@ -199,7 +199,7 @@ void action::mod_trade(ENetEvent& event, const std::string& header)
 
     if (staff_locked(*pPeer)) return;
     const short have = owned(*pPeer, id);
-    if (id == 18 || id == 32 || have <= 0) // @note fist & wrench
+    if (id == 18 || id == 32 || have <= 0 || (id_to_item(id).cat & CAT_UNTRADEABLE)) // @note fist & wrench, untradeables
     {
         overlay(*event.peer, "You'd be sorry if you lost that!");
         sfx(*event.peer, "audio/cant_place_tile.wav");
@@ -237,7 +237,7 @@ void trade_add(ENetEvent& event, const ::hPipe &hPipe)
     const short id = static_cast<short>(atoi(hPipe["itemID"].c_str()));
     if (staff_locked(*pPeer)) return;
     const int count = std::clamp(atoi(hPipe["count"].c_str()), 0, (int)owned(*pPeer, id));
-    if (id == 18 || id == 32 || count <= 0) return;
+    if (id == 18 || id == 32 || count <= 0 || (id_to_item(id).cat & CAT_UNTRADEABLE)) return; // @note a faked dialog skips mod_trade's check
     if (pPeer->trade_items.size() >= 4 && std::ranges::find(pPeer->trade_items, id, &::slot::id) == pPeer->trade_items.end()) return;
 
     std::erase_if(pPeer->trade_items, [id](const ::slot &s) { return s.id == id; });
