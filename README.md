@@ -1,133 +1,103 @@
-<div align="center">
+# SevenPS
 
-**グロートピア** *(Gurotopia)* : Lightweight & Maintained GTPS written in C/C++
+**Seven Private Server**: a Growtopia private server written in C++20, based on
+[Gurotopia](https://github.com/gurotopia/Gurotopia) (Apache-2.0).
 
-[![](https://github.com/GT-api/GT.api/actions/workflows/make.yml/badge.svg)](https://github.com/GT-api/GT.api/actions/workflows/make.yml)
-[![Dockerfile](https://github.com/gurotopia/Gurotopia/actions/workflows/docker.yml/badge.svg)](https://github.com/gurotopia/Gurotopia/actions/workflows/docker.yml)
-[![](https://app.codacy.com/project/badge/Grade/fa8603d6ec2b4485b8e24817ef23ca21)](https://app.codacy.com/gh/gurotopia/Gurotopia/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![](https://dcbadge.limes.pink/api/server/zzWHgzaF7J?style=flat)](https://discord.gg/zzWHgzaF7J)
+Everything SevenPS adds or changes (roles, trade, vending, surgery, ranks, guilds, events, login security,
+backups...) is listed in [`NOTICE-MIKETOPIA.md`](NOTICE-MIKETOPIA.md).
 
-</div>
+## Requirements
 
----
-# <img width="250" height="53" alt="image" src="https://github.com/user-attachments/assets/0a3bee67-ad6c-4e4c-bd0e-aed89d9b5c09" />
+- [MSYS2](https://www.msys2.org/) (Windows) with the UCRT64 toolchain:
+  ```bash
+  pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,openssl} make
+  ```
+- [MariaDB Server](https://mariadb.org/download/) (the server stores players and worlds in it)
+- Linux instead: `build-essential libssl-dev libmariadb-dev` (Debian/Ubuntu) or `base-devel openssl mariadb-libs` (Arch)
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/archive.svg) 1. Requirements
-   - [**MSYS2**](https://www.msys2.org/)
-   - [**Visual Studio Code**](https://code.visualstudio.com/): install [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) for VSCode
-   - [**MariaDB Server**](https://mariadb.org/download/?t=mariadb&p=mariadb&r=12.2.2&os=windows&cpu=x86_64&pkg=msi&mirror=accretive)
+## Database
 
-### 2. Setup MSYS2
-   - Locate your MSYS2 folder at `C:\msys64`, open `ucrt64.exe`, and run the following command:
-   
-     ```bash
-     pacman -S --needed mingw-w64-ucrt-x86_64-{gcc,openssl} make
-     ```
+Give the server its own MariaDB user, never `root`:
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/build.svg) 3. Compile
-   - Open the project folder in Visual Studio Code.
-   - Press **`Ctrl + Shift + B`** to start the build process.
+```sql
+CREATE USER 'sevenps'@'localhost' IDENTIFIED BY 'a-long-random-password';
+CREATE USER 'sevenps'@'127.0.0.1' IDENTIFIED BY 'a-long-random-password';
+GRANT ALL PRIVILEGES ON sevenps.* TO 'sevenps'@'localhost';
+GRANT ALL PRIVILEGES ON sevenps.* TO 'sevenps'@'127.0.0.1';
+FLUSH PRIVILEGES;
+```
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/debug-alt-small.svg) 4. Run
-   - After compiling, press **`F5`** to run the server!
+Then put the login in `mysql_login.txt` next to the server (the password may not contain `|`):
 
-# <img src="https://github.com/user-attachments/assets/fecde323-04c5-4b82-a08d-badcb184be6a" width="30" /> Linux
+```
+host|127.0.0.1
+user|sevenps
+password|a-long-random-password
+```
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/archive.svg) 1. Install Dependencies
+The server makes the `sevenps` database and its tables on the first start. Keep MariaDB on
+`bind-address=127.0.0.1` so it can't be reached from the internet.
 
-- Enter command associated with your distribution into the terminal to install nessesary tools.
-   <details><summary><img width="22" height="22" src="https://github.com/user-attachments/assets/8359ba6e-a9b2-4500-893f-61eaf40e2478" /> Arch</summary>
-   <p>
-      
-   ```bash
-   sudo pacman -S base-devel openssl mariadb-libs
-   ```
-   </p>
-   </details> 
-   <details><summary><img width="22" height="22" src="https://github.com/user-attachments/assets/742f35c4-3e69-450e-8095-9fabe9ecd0d8" /> Debian <img width="18" height="18" src="https://github.com/user-attachments/assets/46f0770e-f4ed-480b-851d-c90b05fae52f" /> Ubuntu</summary>
-   <p>
-      
-   ```bash
-   sudo apt-get update && sudo apt-get install build-essential libssl-dev libmariadb-dev
-   ```
-        
-   </p>
-   </details> 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/build.svg) 2. Compile
-   - Navigate to the project's root directory in your terminal and run the `make` command:
-   
-     ```bash
-     make -j$(nproc)
-     ```
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/debug-alt-small.svg) 3. Run
-   - Execute the compiled binary located in the `main` directory:
-   
-     ```bash
-     ./main.out
-     ```
-# macOS
+## Build
 
-> [!NOTE]
-> macOS builds are only tested on Intel (`x86_64`). Apple Silicon is not tested yet.
-> `include/enet/lib/libenet_macos.a` is a universal (`x86_64` + `arm64`) archive, so it should still link on Apple Silicon.
+**Windows** (from the project folder, in any bash):
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/archive.svg) 1. Install Dependencies
+```bash
+MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "cd '$PWD' && make -j\$(nproc) OS=Windows_NT binary=main_new.exe"
+```
 
-- Install [Homebrew](https://brew.sh/) or [MacPorts](https://www.macports.org/install.php), then run the matching command. Mixing is fine: MacPorts GCC with Homebrew OpenSSL and MariaDB uses the Homebrew compile command.
-   <details><summary>Homebrew</summary>
-   <p>
-      
-   ```bash
-   brew install gcc make openssl@3 mariadb-connector-c
-   ```
-   </p>
-   </details>
-   <details><summary>MacPorts</summary>
-   <p>
-      
-   ```bash
-   sudo port install gcc15 gmake openssl3 mariadb-11.4
-   ```
-   </p>
-   </details>
+`OS=Windows_NT` is needed when the shell doesn't set it, or the Makefile links the Linux ENet library.
+Building `main_new.exe` works while `main.exe` is running. In VS Code, **Ctrl+Shift+B** runs "Build SevenPS".
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/build.svg) 2. Compile
+**Linux**: `make -j$(nproc)` builds `main.out`.
 
-- Apple's SDK does not include OpenSSL headers. Pass Homebrew or MacPorts paths on the `make` line. A plain `make` fails with `openssl/ssl.h: No such file or directory`. Use `-lenet_macos`; the default `-lenet` is a Linux library.
-   <details><summary>Homebrew</summary>
-   <p>
-      
-   ```bash
-   make -j$(sysctl -n hw.ncpu) \
-     includes="-Iinclude -Ibuild/include -I$(brew --prefix openssl@3)/include" \
-     libraries="-L$(brew --prefix openssl@3)/lib -L$(brew --prefix mariadb-connector-c)/lib -L./include/enet/lib -L./include/mysql/lib -lssl -lcrypto -lmariadb -lenet_macos"
-   ```
-   </p>
-   </details>
-   <details><summary>MacPorts</summary>
-   <p>
-      
-   ```bash
-   gmake -j$(sysctl -n hw.ncpu) \
-     includes="-Iinclude -Ibuild/include -I/opt/local/libexec/openssl3/include" \
-     libraries="-L/opt/local/libexec/openssl3/lib -L/opt/local/lib/mariadb-11.4/mysql -L./include/enet/lib -L./include/mysql/lib -lssl -lcrypto -lmariadb -lenet_macos"
-   ```
-   </p>
-   </details>
+## Run
 
-### ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/debug-alt-small.svg) 3. Run
-   - Execute the compiled binary:
-   
-     ```bash
-     ./main.out
-     ```
-# ![](https://raw.githubusercontent.com/microsoft/vscode-icons/main/icons/dark/settings.svg) Local Server Configuration
+- **Windows**: `jalankan_server.bat`. It installs a fresh `main_new.exe` as `main.exe`, starts it,
+  and starts it again after an in-game `/restart`.
+- **Linux**: `./main.out`
 
-> [!NOTE]
-> To connect to your local server, you must modify your system's **hosts** file.
-> - **Windows**: `C:\Windows\System32\drivers\etc\hosts`
-> - **Linux/macOS**: `/etc/hosts`
-> ```
-> 127.0.0.1 www.growtopia1.com
-> 127.0.0.1 www.growtopia2.com
-> ```
+Ports: **UDP 17091** for the game (ENet; the `port` in `server_data.php`) and **TCP 443** for the login server.
+
+To play on your own PC, point the game's server addresses at it in the **hosts** file
+(`C:\Windows\System32\drivers\etc\hosts`, or `/etc/hosts`):
+
+```
+127.0.0.1 www.growtopia1.com
+127.0.0.1 www.growtopia2.com
+```
+
+## Files next to the server
+
+| File | What it is |
+|---|---|
+| `mysql_login.txt` | MariaDB login (see above). Secret, git-ignored |
+| `server_data.php` | Address, port, maintenance text and login page the game gets. Made on the first start |
+| `items.dat` | The game's item list |
+| `resources/` | Login page, store, ranks, prize tables, punch effects and other data the server reads |
+| `resources/ctx/` | TLS certificate and key for the login server. The keys are git-ignored, never upload them |
+| `reset_password.txt` | Forgotten password: write `growid|new password` in it and start the server. It is deleted after use |
+| `backup/` | Automatic database dumps (`sevenps_*.sql`, newest 7 kept). Git-ignored: they hold password hashes |
+
+Passwords are stored as PBKDF2-SHA256 hashes and can't be read back, not even by the owner; use
+`reset_password.txt` instead.
+
+The Owner role is only given in the database:
+`UPDATE peer SET role = 3 WHERE growid = 'YourName';` (1 = Moderator, 2 = Developer, 3 = Owner).
+Owners and Developers can then use `/setrole` in game.
+
+## Tests
+
+An offline harness runs the real server code with a fake network against the local MariaDB
+(it makes a test world `MTTEST` and deletes it again). Build the server first, then:
+
+```bash
+MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash '$PWD/test/run.sh'"
+```
+
+`test/item_audit.sh` lists the items in `items.dat` per type.
+
+## License
+
+Apache License 2.0, see [`LICENSE`](LICENSE). SevenPS is a modified version of Gurotopia
+(© gurotopia, 2024); the changes and other credits are in [`NOTICE-MIKETOPIA.md`](NOTICE-MIKETOPIA.md).

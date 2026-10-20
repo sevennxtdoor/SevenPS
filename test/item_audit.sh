@@ -1,6 +1,6 @@
 #!/bin/bash
 # item audit: items per type in items.dat. build the server first (make binary=main_new.exe).
-# run from MSYS2: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash /c/Users/acer/Belajar/GTPS/Gurotopia/test/item_audit.sh"
+# run from the project folder: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash '$PWD/test/item_audit.sh'"
 export OS=Windows_NT
 G=$(cd "$(dirname "$0")/.." && pwd)
 O="$G/build/test"

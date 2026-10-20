@@ -1,6 +1,6 @@
 #!/bin/bash
 # SevenPS offline tests: real server code, fake network, local MariaDB (world MTTEST is made then deleted).
-# run from MSYS2: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash /c/Users/acer/Belajar/GTPS/Gurotopia/test/run.sh"
+# run from the project folder: MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash '$PWD/test/run.sh'"
 # build the server first (make binary=main_new.exe) so build/include/*.o are fresh.
 export OS=Windows_NT
 export MIKETOPIA_BACKUP_DIR=build/test/backup # @note never touch the real backup/ folder
