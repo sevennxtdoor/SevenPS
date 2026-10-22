@@ -554,6 +554,7 @@ void msg_command(ENetEvent &event, const std::string_view text)
         {
             on::ConsoleMessage(p, std::format("`c>> (Message from ``{}`c) {}``", pPeer->display_growid, message));
             send_action(*p, "play_sfx", "file|audio/pay_time.wav\ndelayMS|0\n");
+            got_private_message(*pp, *pPeer); // @note /rgo
         }
         on::ConsoleMessage(event.peer, std::format("`6>> (Sent to ``{}`6) {}``", pp->display_growid, message));
         return;

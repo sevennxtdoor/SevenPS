@@ -227,7 +227,7 @@ void system_checkpoint(ENetEvent &event, ::world &world, const ::pos &tile)
     on::SetBux(event);
     send_action(*event.peer, "play_sfx", "file|audio/cash_register.wav\ndelayMS|0\n");
     send_varlist(event.peer, { "OnTextOverlay", std::format("`2Parkour finished! ``+{} gems", gems) });
-    system_broadcast(std::format("`2** ``{} `2finished the `wPARKOUR`` `2and won `w{}`` gems! Type `$/warp parkour`` to try it.``", pPeer->display_growid, gems));
+    system_broadcast(std::format("`2** ``{} `2finished the `wPARKOUR`` `2and won `w{}`` gems! Type `$/parkour`` to try it.``", pPeer->display_growid, gems));
 }
 
 /* ---------- /rebuild ---------- */

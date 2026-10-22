@@ -10,6 +10,7 @@
 #include "tools/love_loot.hpp"
 #include "tools/world_key.hpp"
 #include "tools/home.hpp"
+#include "commands/warp.hpp"
 #include "commands/titles.hpp"
 #include "database/database_config.hpp"
 #include "gamePacket/tile_activate.hpp"
@@ -2356,6 +2357,29 @@ int main()
         outbox.clear(); sethome_command(ev, "sethome");
         CHECK(home_world(*owner) == "MTTEST", "/sethome saves the world you're in");
         pset_str(*owner, "home", "");
+    }
+
+    std::puts("\n[GT7] /warp for Super Supporters with a 15 second cooldown, /rgo follows a private message");
+    {
+        const auto ro = owner->role, rv = visitor->role; const auto no = owner->netid, nv = visitor->netid;
+        owner->role = PLAYER, visitor->role = PLAYER;
+        w.visitors += 10; // @note leaving must never drop MTTEST from memory
+        outbox.clear(); warp_command(ev, "warp MTTEST");
+        CHECK(said("Super Supporter") && !said("Magically warping"), "a player can't /warp");
+        owner->role = MODERATOR;
+        outbox.clear(); warp_command(ev, "warp MTTEST");
+        CHECK(said("Magically warping"), "a Super Supporter (staff) can");
+        outbox.clear(); warp_command(ev, "warp MTTEST");
+        CHECK(said("Wait") && !said("Magically warping"), "again right away: wait 15 seconds");
+        owner->role = PLAYER;
+        outbox.clear(); rgo(ev2, "rgo");
+        CHECK(said("No private message"), "/rgo without a message");
+        outbox.clear(); msg_command(ev, "msg MTVISIT hi");
+        CHECK(visitor->last_pm_world == "MTTEST", "a /msg remembers where it came from");
+        outbox.clear(); rgo(ev2, "rgo");
+        CHECK(said("Magically warping to world `5MTTEST"), "/rgo goes there (any player)");
+        w.visitors -= 10;
+        owner->role = ro, visitor->role = rv, owner->netid = no, visitor->netid = nv;
     }
 
     /* ================= News & rules ================= */

@@ -3,6 +3,7 @@
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
 #include "tools/duct_tape.hpp"
+#include "commands/warp.hpp" // @note got_private_message()
 
 #include "wrench_menu.hpp"
 
@@ -210,6 +211,7 @@ void sendpm_return(ENetEvent &event, const ::hPipe &hPipe)
 
         on::ConsoleMessage(p, std::format("`c>> (Message from ``{}`c) {}``", pPeer->display_growid, message));
         sfx(*p, "audio/pay_time.wav");
+        got_private_message(*pOthers, *pPeer); // @note /rgo
         on::ConsoleMessage(event.peer, std::format("`6>> (Sent to ``{}`6) {}``", pOthers->display_growid, message));
         return;
     }

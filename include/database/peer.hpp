@@ -170,6 +170,7 @@ public:
     
     std::deque<u_int> messages; // @note last 5 que messages sent time, this is used to check for spamming
     u_int last_new_world{}; // @note in memory only: when this player last made a brand new world (join_request)
+    std::string last_pm_world{}; // @note in memory only: where the last private message came from (/rgo)
 
     u_short fires_removed{};
     u_short gbc_pity{}; // @note GBC pity; for each 100 will receive super GBC
