@@ -66,7 +66,17 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         /* @note World Lock -> World Level: owner, access list and staff may always enter */
         if (pPeer->role < MODERATOR && world.owner != 0 && pPeer->user_id != world.owner && pPeer->level[0] < world.minimum_entry_level &&
             std::ranges::find(world.access, pPeer->user_id) == world.access.end())
-            throw std::runtime_error(std::format("Players lower than level `w{}`` can't enter `w{}``.", world.minimum_entry_level, world.name));
+        {
+            const std::string why = std::format("Players lower than level `w{}`` can't enter `w{}``.", world.minimum_entry_level, world.name);
+            /* @note nobody inside: it was only loaded for this refused join and stayed in memory until a restart.
+             * unloaded like quit_to_exit does (moved to the back, so its destructor saves it) */
+            if (world.visitors <= 0)
+            {
+                std::iter_swap(it, std::prev(worlds.end()));
+                worlds.pop_back();
+            }
+            throw std::runtime_error(why);
+        }
         {
             ::blob blob = compress_state(::gamePacket{ .type = 0x04, /*PACKET_SEND_MAP_DATA*/ .state = state::S_EXTENDED });
             blob.push_back(world.serialize());

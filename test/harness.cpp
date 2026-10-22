@@ -10,6 +10,7 @@
 #include "tools/love_loot.hpp"
 #include "tools/world_key.hpp"
 #include "tools/home.hpp"
+#include "action/dialog_return/billboard_edit.hpp"
 #include "commands/warp.hpp"
 #include "commands/titles.hpp"
 #include "database/database_config.hpp"
@@ -2385,6 +2386,32 @@ int main()
         CHECK(said("Magically warping to world `5MTTEST"), "/rgo goes there (any player)");
         w.visitors -= 10;
         owner->role = ro, visitor->role = rv, owner->netid = no, visitor->netid = nv;
+    }
+
+    std::puts("\n[AU1] a refused join doesn't leave the world in memory");
+    {
+        const auto rv = visitor->role; const auto lv = visitor->level; const auto nv = visitor->netid;
+        visitor->role = PLAYER; visitor->level[0] = 1;
+        w.visitors += 10; // @note leaving must never drop MTTEST from memory
+        ::world &locked = worlds.emplace_back("MTLEVEL");
+        locked.owner = owner->user_id; locked.minimum_entry_level = 100; locked.visitors = 0;
+        outbox.clear(); action::join_request(ev2, "", "MTLEVEL");
+        CHECK(said("Players lower than level"), "level too low: refused");
+        CHECK(std::ranges::find(worlds, "MTLEVEL", &::world::name) == worlds.end(), "and the empty world is unloaded");
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        w.visitors -= 10;
+        visitor->role = rv, visitor->level = lv, visitor->netid = nv;
+    }
+
+    std::puts("\n[AU2] billboard: only an item you have, price 0-99999");
+    {
+        const auto so = owner->slots; const auto bb = owner->billboard;
+        owner->slots = { ::slot(2, 5) };
+        billboard_edit(ev, ::hPipe("dialog_name|billboard_edit|billboard_item|1458|billboard_toggle|1|setprice|5"));
+        CHECK(owner->billboard.id == bb.id, "an item you don't have: ignored");
+        billboard_edit(ev, ::hPipe("dialog_name|billboard_edit|billboard_item|2|billboard_toggle|1|setprice|-50"));
+        CHECK(owner->billboard.id == 2 && owner->billboard.price == 0, "your own item; a negative price becomes 0");
+        owner->slots = so, owner->billboard = bb;
     }
 
     /* ================= News & rules ================= */
