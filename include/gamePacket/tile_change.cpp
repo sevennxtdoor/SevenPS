@@ -37,7 +37,7 @@
 #include "tools/anticheat.hpp"
 #include "tile_change.hpp"
 
-float max_reach = 7.0f;
+float max_reach = 4.0f; // @note Growtopia reaches 3 tiles (wiki: Fist), +1 for lag. playmods ('pr+N'/'br+N') add on top
 
 void tile_change(ENetEvent& event, ::gamePacket gamePacket) 
 {
@@ -63,11 +63,12 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         if (fishing_tile_change(event, *world, gamePacket)) return; // @note casting bait / reeling in, before the lock checks: fishing doesn't change the world
 
-        /* @note reach: a hacked client punched/built anywhere in the world. the game reaches a few tiles; 7 leaves room for lag & range items */
+        /* @note reach: a hacked client punched/built anywhere in the world */
         if (pPeer->role < MODERATOR && gamePacket.id != 32)
         {
             const ::pos me = pPeer->pos.by_32(true);
-            if (std::abs(me.x - gamePacket.punch.x) > max_reach || std::abs(me.y - gamePacket.punch.y) > max_reach) return;
+            const float reach = max_reach + playmod_range(*pPeer, gamePacket.id == 18); // @note Punch/Build Range items
+            if (std::abs(me.x - gamePacket.punch.x) > reach || std::abs(me.y - gamePacket.punch.y) > reach) return;
         }
 
         const ::item &item = id_to_item((gamePacket.id != 32 && gamePacket.id != 18) ? gamePacket.id : (block.fg != 0) ? block.fg : block.bg);

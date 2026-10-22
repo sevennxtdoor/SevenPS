@@ -2048,11 +2048,13 @@ int main()
         w.minimum_entry_level = 1; w.access.fill(0);
 
         std::puts("\n[WL5] reach: no building across the world");
-        max_reach = 7.0f;
+        max_reach = 4.0f; // @note the real default
         owner->pos = ::pos{ 61 * 32.0f, 20 * 32.0f };
-        w.blocks[cord(90, 20)] = ::block{}; w.blocks[cord(64, 20)] = ::block{};
+        w.blocks[cord(90, 20)] = ::block{}; w.blocks[cord(64, 20)] = ::block{}; w.blocks[cord(66, 20)] = ::block{};
         outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 2, .pos = owner->pos, .punch = ::pos{ 90, 20 } });
         CHECK(w.blocks[cord(90, 20)].fg == 0, "29 tiles away refused");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 2, .pos = owner->pos, .punch = ::pos{ 66, 20 } });
+        CHECK(w.blocks[cord(66, 20)].fg == 0, "5 tiles away refused (Growtopia reaches 3, +1 for lag)");
         outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 2, .pos = owner->pos, .punch = ::pos{ 64, 20 } });
         CHECK(w.blocks[cord(64, 20)].fg == 2, "3 tiles away placed");
         max_reach = 1e9f;

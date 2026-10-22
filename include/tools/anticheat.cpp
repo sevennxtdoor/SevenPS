@@ -14,7 +14,7 @@ namespace
     constexpr float SIDE_FACTOR = 1.5f, UP_SPEED = 1200.0f, DOWN_SPEED = 2500.0f;
     constexpr float SIDE_SLACK = 3 * 32.0f, UP_SLACK = 5 * 32.0f, DOWN_SLACK = 8 * 32.0f;
     constexpr float MAX_SAVED_SECONDS = 1.0f;
-    constexpr float PUNCH_GAP_MS = 150.0f, PUNCH_BURST = 3.0f;
+    constexpr float PUNCH_GAP_MS = 200.0f, PUNCH_BURST = 3.0f; // @note Growtopia's Fist: 300 punches a minute (wiki), a few may come at once after lag
 
     float seconds_since(clock::time_point &last, clock::time_point now)
     {
