@@ -6,6 +6,7 @@
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
 #include "tools/guild.hpp"
+#include "tools/mentor.hpp"
 #include "wrench.hpp"
 
 void action::wrench(ENetEvent& event, const std::string& header) 
@@ -113,7 +114,8 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_button("show_clothes", "`wView worn clothes``")
                             .add_button("ignore_player", is_ignoring(*pPeer, pOthers->growid) ? "`wUnignore Player``" : "`wIgnore Player``")
                             .add_button("report_player", "`wReport Player``")
-                            .raw(guild_wrench_lines(*pPeer, *pOthers)); // @note their guild + Invite to Guild / Promote / Demote / Kick from Guild
+                            .raw(guild_wrench_lines(*pPeer, *pOthers)) // @note their guild + Invite to Guild / Promote / Demote / Kick from Guild
+                            .raw(mentor_wrench_lines(*pPeer, *pOthers)); // @note Add Apprentice / "Your Apprentice"
 
                     /* @note world owner (or staff) controls */
                     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);

@@ -103,6 +103,10 @@ void create_table_if_not_exist()
     /* @note World Lock: the access list, World Level and music setting were never saved (lost on every restart) */
     if (mysql_query(db, "ALTER TABLE world ADD COLUMN IF NOT EXISTS access VARCHAR(255) DEFAULT '', ADD COLUMN IF NOT EXISTS min_level INT DEFAULT 1, ADD COLUMN IF NOT EXISTS lock_state INT DEFAULT 0"))
         std::fprintf(stderr, "%s\n", mysql_error(db));
+    /* @note Mentors & Apprentices (tools/mentor.cpp): one row per apprentice */
+    if (mysql_query(db, "CREATE TABLE IF NOT EXISTS mentorship (apprentice VARCHAR(18) NOT NULL PRIMARY KEY, mentor VARCHAR(18) NOT NULL, level INT DEFAULT 1, "
+                         "archived TINYINT DEFAULT 0, pending INT DEFAULT 0, since BIGINT DEFAULT 0, INDEX (mentor))"))
+        std::fprintf(stderr, "%s\n", mysql_error(db));
     /* @note Guild Lock: the guild's home world and which ranks may build there */
     if (mysql_query(db, "ALTER TABLE guild ADD COLUMN IF NOT EXISTS world VARCHAR(24) DEFAULT '', ADD COLUMN IF NOT EXISTS access_ranks INT DEFAULT 0, ADD COLUMN IF NOT EXISTS lock_item INT DEFAULT 242, "
                          "ADD COLUMN IF NOT EXISTS level INT DEFAULT 1, ADD COLUMN IF NOT EXISTS xp BIGINT DEFAULT 0")) // @note guild levels 1-50

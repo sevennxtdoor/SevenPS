@@ -7,6 +7,7 @@
 #include "automate/holiday.hpp"
 #include "tools/cps.hpp"
 #include "tools/social.hpp"
+#include "tools/mentor.hpp"
 
 #include "enter_game.hpp"
 
@@ -26,6 +27,7 @@ void action::enter_game(ENetEvent& event, const std::string& header)
     if (pPeer->role >= MODERATOR)
         on::ConsoleMessage(event.peer, "`5Super Supporter`` status active! Perks: `$/nick {name}``, all titles (wrench yourself > `wTitle``)");
     
+    mentor_login(event); // @note tickets that waited for a free slot or for this login
     send_inventory_state(event);
     on::SetBux(event);
     send_varlist(event.peer, { "SetHasGrowID", 1, pPeer->growid.c_str(), "" });

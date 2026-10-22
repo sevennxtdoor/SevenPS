@@ -114,7 +114,6 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
                 send_varlist(event.peer, { "OnNameChanged", pOthers->display_growid }, pOthers->netid); // @note their title ("of Legend"...), like a title change does
                 guild_show(*event.peer, *pOthers); // @note their guild flag
                 on::Spawn(peer, pPeer->netid, pPeer->user_id, pPeer->rest_pos, pPeer->display_growid, pPeer->country, pPeer->role, pPeer->role >= DEVELOPER, false);
-                on::SetClothing(peer);
                 on::ConsoleMessage(&peer, std::format("`5<{} entered, `w{}`` others here>``", pPeer->display_growid, world.visitors));
             }
             
@@ -148,6 +147,11 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         ++world.visitors;
         send_varlist(event.peer, { "OnSetCurrentWeather", current_weather(world) }); // @note else the world looks sunny until a machine is punched
         on::SetClothing(*event.peer);
+        /* @note the others' skin and clothes, and again with our first movement in this world (movement.cpp) in case the game
+         * was still loading the world */
+        for (ENetPeer *other : peers(world.name, PEER_SAME_WORLD))
+            if (other != event.peer) on::ShowClothing(*event.peer, *other);
+        pPeer->others_clothes_due = true;
         refresh_display_name(*event.peer); // @note name + title effects (OnNameChanged & OnCountryState) for everyone here, exactly like
                                            // changing a title: the spawn packet alone lost them after leaving a world
         guild_broadcast(*event.peer); // @note our guild flag for everyone here

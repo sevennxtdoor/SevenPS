@@ -5,6 +5,7 @@
 #include "tools/playmods.hpp"
 #include "tools/anticheat.hpp"
 #include "tools/duct_tape.hpp"
+#include "onVariant/SetClothing.hpp"
 
 #include "movement.hpp"
 
@@ -15,6 +16,12 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     /* @note the position comes from the client: a made-up one (NaN, negative, past the world) was later used as a tile index */
     if (auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
         world == worlds.end() || !in_world(*world, gamePacket.pos.by_32(true))) return;
+    if (pPeer->others_clothes_due && pPeer->netid != 0) // @note our game has loaded the world now (join_request.cpp)
+    {
+        pPeer->others_clothes_due = false;
+        for (ENetPeer *other : peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD))
+            if (other != event.peer) on::ShowClothing(*event.peer, *other);
+    }
     if (!move_allowed(*event.peer, gamePacket.pos)) return; // @note teleport/speed hack: put back, nobody sees the jump
 
     pPeer->pos = gamePacket.pos;
@@ -34,5 +41,6 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     if (pPeer->pain_hp <= 0) action::respawn(event, ""), pPeer->pain_hp = 10;
     
     gamePacket.netid = pPeer->netid;
+    on::RememberMove(*event.peer, gamePacket); // @note shown again to whoever enters while we stand still
     state_visuals(*event.peer, std::move(gamePacket)); // finished.
 }

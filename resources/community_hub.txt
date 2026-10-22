@@ -1,0 +1,9 @@
+# Community Hub (Social Portal > Community Hub). One entry per line, read every time the hub opens:
+#   featured|WORLD                 Featured Worlds
+#   wotd|WORLD|date                World of the Day: the first wotd line is today's, the rest show as past ones
+#   creator|name|platform|url      Content Creators (url optional, must start with https://)
+#   youtube|url                    Official YouTube Channel button (hidden while there's none)
+# World names: letters and numbers only, up to 24. Top Worlds are the busiest worlds, nothing to fill in.
+
+featured|START
+wotd|START|2026-10-22

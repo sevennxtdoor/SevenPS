@@ -12,6 +12,7 @@
 #include "tools/special_blocks.hpp"
 #include "commands/warp.hpp"
 #include "action/respawn.hpp"
+#include "tools/mentor.hpp"
 
 #include "consumables.hpp"
 
@@ -260,6 +261,37 @@ static bool fragments(ENetEvent &event, ::world &world, const ::item &item)
     return true;
 }
 
+/* @note Apprentice / Mentor Tickets (growtopiawiki.com, each ticket's page). using an Apprentice Ticket gives the mentor theirs */
+static void mentor_ticket(ENetEvent &event, ::world &world, const ::item &item, int step, bool apprentice)
+{
+    take(event, item.id);
+    std::string got{};
+    if (apprentice && step == 2) // @note Level 10: the contents of a Rare Clothes Pack (3 wearables, as the store's pack)
+    {
+        std::vector<short> ids{};
+        for (const ::item &cloth : items)
+            if (cloth.type == type::CLOTHING && cloth.rarity >= 11 && cloth.rarity <= 60) ids.emplace_back(cloth.id);
+        for (int i = 0; i < 3 && !ids.empty(); ++i)
+        {
+            const short id = ids[RandomRange(0, static_cast<int>(ids.size()))];
+            give(event, world, id, 1);
+            got += std::format("{}{}", got.empty() ? "" : ", ", name_of(id, 1));
+        }
+    }
+    else
+    {
+        static constexpr std::pair<short, int> apprentice_prize[]{ { 5706, 1 }, { 3898, 1 }, { 0, 0 }, { 242, 1 }, { 1486, 1 } }; // @note Small Seed Pack, Telephone, -, World Lock, Growtoken
+        static constexpr std::pair<short, int> mentor_prize[]{ { 5706, 1 }, { 5706, 5 }, { 242, 1 }, { 1486, 1 }, { 1486, 2 } };
+        const auto [id, count] = (apprentice ? apprentice_prize : mentor_prize)[step];
+        give(event, world, id, count);
+        got = name_of(id, count);
+    }
+    if (apprentice) apprentice_ticket_used(event, step);
+    bubble(event, std::format("You received {}!", got));
+    on::ConsoleMessage(event.peer, std::format("You used a `w{}`` and received {}.", item.raw_name, got));
+    effect(event, "audio/cash_register.wav");
+}
+
 /* @note a timed mod from consumables.txt, used on yourself or on the player standing on `tile` */
 static void use_buff(ENetEvent &event, ::world &world, const ::pos &tile, const ::item &item, const buff_def &def)
 {
@@ -301,6 +333,9 @@ bool use_consumable(ENetEvent &event, ::world &world, ::block &block, const ::po
 {
     if (const buff_def *def = buff_for_item(item.id)) { use_buff(event, world, tile, item, *def); return true; }
     if (special_use(event, world, block, tile, item)) return true; // @note Fossil Brush, Fossil, Polished Fossil
+
+    if (const int step = apprentice_ticket_step(item.id); step >= 0) { if (on_self(event, tile)) mentor_ticket(event, world, item, step, true); return true; }
+    if (const int step = mentor_ticket_step(item.id); step >= 0) { if (on_self(event, tile)) mentor_ticket(event, world, item, step, false); return true; }
 
     switch (item.id)
     {

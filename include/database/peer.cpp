@@ -14,6 +14,7 @@
 #include "tools/playmods.hpp"
 #include "tools/buffs.hpp"
 #include "tools/guild.hpp"
+#include "tools/mentor.hpp"
 
 #include "peer.hpp"
 
@@ -330,6 +331,7 @@ void peer::add_xp(ENetEvent &event, u_short value)
         send_varlist(event.peer, { "OnTalkBubble", this->netid, message, 0u });
         on::ConsoleMessage(event.peer, message);
         announce_level(*this, lvl);
+        mentor_level_up(event, lvl); // @note Apprentice Tickets, the mentor's milestones
     }
 }
 

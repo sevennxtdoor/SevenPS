@@ -125,6 +125,7 @@ public:
     u_char punch_effect{}; // @note last equipped clothing that has a effect. supporting 0-255 effects.
 
     int netid{}; // @note peer's netid is world identity. this will be useful for many packet sending
+    bool others_clothes_due{}; // @note just entered a world: the others' skin and clothes go out with our first movement (movement.cpp)
     std::string display_growid{}; // @note use this for displaying growid, never use ::growid
     std::string country{};
 

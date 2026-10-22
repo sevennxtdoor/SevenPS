@@ -18,6 +18,7 @@
 #include "include/tools/item_hunt.hpp" // @note hunt_tick()
 #include "include/tools/backup.hpp" // @note backup_tick()
 #include "include/tools/guild.hpp" // @note load_guilds()
+#include "include/tools/mentor.hpp" // @note load_mentorship()
 #include "include/tools/auth.hpp" // @note apply_password_reset()
 #include "include/tools/web_login.hpp" // @note web_login_tick()
 #include "include/tools/buffs.hpp" // @note buff_tick()
@@ -85,6 +86,7 @@ int main()
     decode_items();      // @note reads items.dat into legible class members (id, item name, ect)
     parse_store();       // @todo thread loop this so the store can update without restarting server (stored in .\resource\store.txt)
     load_guilds();       // @note `guild` table
+    load_mentorship();   // @note `mentorship` table
     load_ranks();        // @note .\resources\ranks.txt
     check_for_holiday(); // @note check for any holidays using local time (your VPS or local time) - @todo thread loop so it can change the holiday without restarting
 

@@ -30,6 +30,8 @@
 #include "tools/guild.hpp"
 #include "commands/setlevel.hpp"
 #include "tools/guild_level.hpp"
+#include "tools/mentor.hpp"
+#include "tools/community_hub.hpp"
 #include "tools/sponsor.hpp"
 #include "tools/auth.hpp"
 #include "action/protocol.hpp"
@@ -40,6 +42,7 @@
 #include "tools/guard.hpp"
 #include "tools/web_login.hpp"
 #include "onVariant/SetClothing.hpp"
+#include "onVariant/Spawn.hpp"
 #include "tools/playmods.hpp"
 #include "commands/punch.hpp"
 #include "tools/buffs.hpp"
@@ -2499,6 +2502,159 @@ int main()
         billboard_edit(ev, ::hPipe("dialog_name|billboard_edit|billboard_item|2|billboard_toggle|1|setprice|-50"));
         CHECK(owner->billboard.id == 2 && owner->billboard.price == 0, "your own item; a negative price becomes 0");
         owner->slots = so, owner->billboard = bb;
+    }
+
+    /* ================= Mentors & Apprentices, Community Hub ================= */
+    std::puts("\n[M1] mentors and apprentices");
+    {
+        { ::hStmt del{ "DELETE FROM mentorship WHERE apprentice IN ('MTOWNER', 'MTVISIT')" }; del.execute(); }
+        load_mentorship();
+        owner->growid = "MTOWNER"; visitor->growid = "MTVISIT";
+        const auto o_level = owner->level, v_level = visitor->level; const int o_size = owner->slot_size, v_size = visitor->slot_size, o_gems = owner->gems;
+        const auto o_slots = owner->slots, v_slots = visitor->slots;
+        owner->slots.clear(); visitor->slots.clear(); owner->slot_size = 60; visitor->slot_size = 60;
+        for (const char *k : { "mentor_day", "mentor_left", "appr_tickets", "appr_used", "mentor_claimed" }) { pset(*owner, k, 0); pset(*visitor, k, 0); }
+        auto said_to = [&](ENetPeer *who, const std::string &needle) { for (auto &pk : outbox) if (pk.peer == who && std::string(pk.data.begin(), pk.data.end()).find(needle) != std::string::npos) return true; return false; };
+        auto add = [&]() { outbox.clear(); mentor_wrench_button(ev, ::hPipe(std::format("dialog_name|popup|netID|{}|buttonClicked|mentor_add", visitor->netid))); };
+        auto answer = [&](const std::string &b) { outbox.clear(); mentor_invite_return(ev2, ::hPipe("dialog_name|mt_mentor_invite|buttonClicked|" + b)); };
+        auto mr = [&](ENetEvent &e, const std::string &b) { outbox.clear(); mentor_return(e, ::hPipe("dialog_name|mt_mentor|buttonClicked|" + b)); };
+        auto has_add = [&]() { return mentor_wrench_lines(*owner, *visitor).find("mentor_add") != std::string::npos; };
+        auto is_mine = [&]() { return mentor_wrench_lines(*owner, *visitor).find("Your Apprentice") != std::string::npos; };
+        enet_peers[0].address.host.v4[0] = 10; enet_peers[0].address.host.v4[3] = 1;
+        enet_peers[1].address.host.v4[0] = 10; enet_peers[1].address.host.v4[3] = 1;
+
+        owner->level[0] = 19; visitor->level[0] = 2;
+        CHECK(!has_add(), "level 19: no Add Apprentice");
+        owner->level[0] = 20;
+        CHECK(has_add(), "level 20 on a level 2 player: Add Apprentice");
+        visitor->level[0] = 3;
+        CHECK(!has_add(), "level 3 can't be an apprentice");
+        add(); CHECK(said("below level 3"), "and the button refuses it too");
+        visitor->level[0] = 2;
+        add(); CHECK(said("own connection") && !said_to(&enet_peers[1], "mt_mentor_invite"), "same IP: refused");
+        enet_peers[1].address.host.v4[3] = 2;
+        add(); CHECK(said_to(&enet_peers[1], "mt_mentor_invite") && said_to(&enet_peers[1], "wants to be your Mentor"), "request dialog + chat message reach the player");
+        answer("decline"); CHECK(said_to(&enet_peers[0], "declined"), "decline tells the mentor");
+        answer("accept"); CHECK(held(*visitor, 7788) == 0 && !is_mine(), "a declined request can't be accepted later");
+        add(); answer("accept");
+        CHECK(said_to(&enet_peers[0], "is now your apprentice") && held(*visitor, 7788) == 1, "accepted: Apprentice Ticket - Level 1");
+        CHECK(pget(*owner, "mentor_day") == static_cast<int>(std::time(nullptr) / 86400), "today's apprentice used up");
+        CHECK(is_mine(), "wrench shows 'Your Apprentice'");
+
+        mr(ev, "show"); CHECK(said("MTVISIT") && said("(1/50)") && said("mentor_milestones"), "Show Apprentices: the list, 1/50, milestones");
+        mr(ev2, "show"); CHECK(said("Your Mentor: MTOWNER") && said("mentor_leave") && said("level `w5``"), "apprentice view: mentor, next ticket, Leave");
+
+        visitor->level[0] = 5; mentor_level_up(ev2, 5);
+        CHECK(held(*visitor, 7790) == 1, "level 5: Apprentice Ticket - Level 5");
+        apprentice_ticket_used(ev2, 1);
+        CHECK(held(*owner, 7800) == 1, "using it gives the mentor Mentor Ticket - Level 5");
+        apprentice_ticket_used(ev2, 1);
+        CHECK(held(*owner, 7800) == 1, "only once per level");
+        apprentice_ticket_used(ev2, 3);
+        CHECK(held(*owner, 7804) == 0, "a level 20 ticket at level 5 gives nothing");
+        CHECK(apprentice_ticket_step(7796) == 4 && apprentice_ticket_step(7797) == -1 && mentor_ticket_step(7798) == 0 && mentor_ticket_step(7788) == -1, "ticket ids");
+
+        mr(ev2, "mentor_leave"); CHECK(said("mentor_leave_yes") && said("7 days"), "Leave asks first");
+        mr(ev2, "mentor_leave_yes"); CHECK(!is_mine() && pget(*visitor, "mentor_left") > 0, "left: no mentor anymore");
+        CHECK(!has_add(), "level 5: too high for a new mentor");
+        visitor->level[0] = 2; // @note below 3 again, to test the rest
+        pset(*owner, "mentor_day", 0);
+        add(); CHECK(said("7 days") && !is_mine(), "no new mentor for 7 days");
+        pset(*visitor, "mentor_left", 0);
+        add(); answer("accept"); CHECK(is_mine() && held(*visitor, 7788) == 1, "re-added; tickets aren't given twice");
+        add(); CHECK(said("already has a Mentor"), "can't add them twice");
+
+        mr(ev, "remove_MTVISIT"); CHECK(said_to(&enet_peers[1], "removed you") && !is_mine(), "mentor removes an apprentice below level 30");
+        add(); CHECK(said("one apprentice per day"), "one apprentice per day");
+        pset(*owner, "mentor_day", 0);
+        add(); answer("accept");
+        visitor->level[0] = 30; mentor_level_up(ev2, 30);
+        CHECK(held(*visitor, 7794) == 1 && held(*visitor, 7796) == 1 && said_to(&enet_peers[1], "completed the Mentorship"), "level 30: the level 20 and 30 tickets, program completed");
+        mr(ev2, "mentor_leave_yes"); CHECK(is_mine(), "can't leave after level 20");
+        mr(ev, "remove_MTVISIT"); CHECK(is_mine() && said("archive_MTVISIT"), "level 30: remove refused, Archive offered");
+        mr(ev, "archive_MTVISIT"); mr(ev, "show"); CHECK(said("(0/50)"), "archived: the slot is free");
+        mr(ev, "mentor_archived"); CHECK(said("MTVISIT"), "listed under Archived Apprentices");
+        mr(ev, "appr_NOBODY"); CHECK(said("My Apprentices"), "an unknown name: just the list");
+
+        owner->gems = 0;
+        mr(ev, "mentor_milestones"); CHECK(said("claim_0") && !said("claim_1"), "1 apprentice at level 20: first milestone claimable");
+        mr(ev, "claim_1"); CHECK(owner->gems == 0, "not reached: nothing");
+        mr(ev, "claim_0"); CHECK(owner->gems == 1000, "claimed 1,000 gems");
+        mr(ev, "claim_0"); CHECK(owner->gems == 1000, "only once");
+        mr(ev, "claim_99"); mr(ev, "claim_-1"); mr(ev, "claim_"); CHECK(owner->gems == 1000, "bad indexes ignored");
+
+        { ::hStmt del{ "DELETE FROM mentorship WHERE apprentice IN ('MTOWNER', 'MTVISIT')" }; del.execute(); }
+        load_mentorship();
+        owner->level = o_level; visitor->level = v_level; owner->slot_size = o_size; visitor->slot_size = v_size; owner->gems = o_gems;
+        owner->slots = o_slots; visitor->slots = v_slots;
+        enet_peers[0].address.host = {}; enet_peers[1].address.host = {};
+    }
+    std::puts("\n[V1] other players see your skin and clothes");
+    {
+        auto clothing_to = [&](ENetPeer *who, int netid) {
+            for (auto &pk : outbox)
+                if (pk.peer == who && std::string(pk.data.begin(), pk.data.end()).find("OnSetClothing") != std::string::npos &&
+                    pk.data.size() > 12 && *reinterpret_cast<const int*>(&pk.data[8]) == netid) return true;
+            return false;
+        };
+        owner->recent_worlds.back() = visitor->recent_worlds.back() = "MTTEST";
+        outbox.clear(); on::SetClothing(enet_peers[1]);
+        CHECK(clothing_to(&enet_peers[0], visitor->netid) && clothing_to(&enet_peers[1], visitor->netid), "OnSetClothing reaches the others in the world too");
+        outbox.clear(); on::ShowClothing(enet_peers[0], enet_peers[1]);
+        CHECK(clothing_to(&enet_peers[0], visitor->netid) && !clothing_to(&enet_peers[1], visitor->netid), "ShowClothing: only the viewer");
+        auto move_to = [&](ENetPeer *who, int netid) { return std::ranges::any_of(outbox, [&](const sent &pk) { return pk.peer == who && pk.data.size() > 12 &&
+                  pk.data[0] == 4 && pk.data[4] == 0 && *reinterpret_cast<const int*>(&pk.data[8]) == netid; }); };
+        visitor->netid += 100; outbox.clear(); on::ShowClothing(enet_peers[0], enet_peers[1]);
+        CHECK(!move_to(&enet_peers[0], visitor->netid), "no movement in this world yet: nothing made up (a made-up one swapped clothes in game)");
+        visitor->netid -= 100;
+        outbox.clear(); movement(ev2, ::gamePacket{ .type = 0, .netid = visitor->netid, .uid = 77, .pos = visitor->pos });
+        outbox.clear(); on::ShowClothing(enet_peers[0], enet_peers[1]);
+        CHECK(move_to(&enet_peers[0], visitor->netid), "moved before: their last movement is sent again");
+        CHECK(std::ranges::any_of(outbox, [&](const sent &pk) { return pk.peer == &enet_peers[0] && pk.data.size() > 16 && pk.data[4] == 0 && *reinterpret_cast<const int*>(&pk.data[12]) == 77; }),
+              "...exactly as the game sent it");
+        outbox.clear(); on::Spawn(enet_peers[0], visitor->netid, visitor->user_id, ::pos{ 352.0f, 640.0f }, "x", "us", false, false, false);
+        CHECK(said("posXY|352|640"), "OnSpawn position in pixels (was divided by 32: others stood in the top left corner)");
+        visitor->others_clothes_due = true;
+        outbox.clear(); movement(ev2, ::gamePacket{ .type = 0, .netid = visitor->netid, .pos = visitor->pos });
+        CHECK(clothing_to(&enet_peers[1], owner->netid) && !visitor->others_clothes_due, "just entered: the others' clothes come with the first movement");
+        outbox.clear(); movement(ev2, ::gamePacket{ .type = 0, .netid = visitor->netid, .pos = visitor->pos });
+        CHECK(!clothing_to(&enet_peers[1], owner->netid), "only once");
+        const int netid = visitor->netid; visitor->netid = 0;
+        outbox.clear(); on::SetClothing(enet_peers[1]);
+        CHECK(!clothing_to(&enet_peers[0], 0) && clothing_to(&enet_peers[1], 0), "outside a world: only yourself");
+        visitor->netid = netid;
+    }
+
+    std::puts("\n[V2] leaving to the menu and then quitting doesn't empty the world");
+    {
+        const std::string world = visitor->recent_worlds.back();
+        auto it = std::ranges::find(worlds, world, &::world::name);
+        if (it != worlds.end())
+        {
+            const int visitors = it->visitors = 2; // @note owner + visitor
+            const int netid = visitor->netid;
+            action::quit_to_exit(ev2, "", true);
+            it = std::ranges::find(worlds, world, &::world::name);
+            CHECK(it != worlds.end() && it->visitors == visitors - 1 && visitor->netid == 0, "left: one visitor less");
+            action::quit_to_exit(ev2, "", true); // @note what quitting the game does next
+            it = std::ranges::find(worlds, world, &::world::name);
+            CHECK(it != worlds.end() && it->visitors == visitors - 1, "quitting from the menu: count unchanged, the world stays loaded");
+            visitor->netid = netid;
+            if (it != worlds.end()) it->visitors = visitors;
+        }
+        else CHECK(false, "test world loaded");
+    }
+
+    std::puts("\n[M2] community hub");
+    {
+        auto hub = [&](const std::string &b) { outbox.clear(); community_hub_return(ev, ::hPipe("dialog_name|mt_hub|buttonClicked|" + b)); };
+        outbox.clear(); send_community_hub(ev);
+        CHECK(said("Community Hub") && said("hub_featured") && said("hub_wotd") && said("hub_top") && said("hub_creators"), "hub menu");
+        hub("hub_featured"); CHECK(said("go_START"), "featured worlds from resources/community_hub.txt");
+        hub("hub_wotd"); CHECK(said("go_START") && said("2026-10-22"), "world of the day");
+        hub("hub_top"); CHECK(said("Top Worlds"), "top worlds");
+        hub("go_../BAD"); CHECK(outbox.empty(), "a bad world name does nothing");
+        hub("back"); CHECK(said("Social Portal"), "Back -> Social Portal");
     }
 
     /* ================= News & rules ================= */
