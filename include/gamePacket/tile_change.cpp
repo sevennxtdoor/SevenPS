@@ -35,6 +35,10 @@
 #include "tools/combiner.hpp"
 #include "tools/auth.hpp"
 #include "tools/anticheat.hpp"
+#include "tools/duct_tape.hpp"
+#include "tools/love_loot.hpp"
+#include "tools/combustible.hpp"
+#include "tools/home.hpp"
 #include "tile_change.hpp"
 
 float max_reach = 4.0f; // @note Growtopia reaches 3 tiles (wiki: Fist), +1 for lag. playmods ('pr+N'/'br+N') add on top
@@ -104,7 +108,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
         /* @note MOD/DEV can spawn items, so they only build in their own private world (or START/PARKOUR): blocks or seeds
          * left in a public world would be broken/harvested by players and the spawned items would leak into the economy */
-        if (staff_locked(*pPeer) && gamePacket.id != 18 && gamePacket.id != 32 && !is_system_world(world->name) &&
+        if (staff_locked(*pPeer) && gamePacket.id != 18 && gamePacket.id != 32 && gamePacket.id != 408/*Duct Tape: moderating, not building*/ && !is_system_world(world->name) &&
             (world->owner != pPeer->user_id || world->is_public) &&
             !(world->owner == 0 && item.type == type::LOCK && !is_tile_lock(item.id))) // @note but they may World Lock a fresh world
         {
@@ -323,24 +327,15 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             
             if (item.id == 392/*Heartstone*/ || item.id == 3402/*GBC*/ || item.id == 9350/*Super GBC*/)
             {
-                short reward =
-                    (!RandomRange(0, 99)) ? 1458 : // @note GHC
-                    (!RandomRange(0, 20)) ? 362 : // @note Angel Wings
-                    (!RandomRange(0, 8))  ? 366 : // @note Heartbow
-                    (!RandomRange(0, 8))  ? 1470 : // @note Ruby Necklace
-                    (!RandomRange(0, 20)) ? 2384 : // @note Love Bug
-                    (!RandomRange(0, 4))  ? 2396 : // @note Valensign
-                    (!RandomRange(0, 10)) ? 3388 : // @note Heartbreaker Hammer
-                    (!RandomRange(0, 10)) ? 2390 : // @note Teeny Angel Wings
-                    (!RandomRange(0, 10)) ? 3396 : // @note Lovebird Pendant
-                    (!RandomRange(0, 2))  ? 3404 : // @note Sour Lollipop
-                    (!RandomRange(0, 4))  ? 3406 : // @note Sweet Lollipop
-                    (!RandomRange(0, 2))  ? 3408 : // @note Pink Marble Arch
-                    388; // @note Perfume
-                    // @todo add all the remaining drops - https://growtopia.fandom.com/wiki/Golden_Booty_Chest
+                /* @note the whole wiki table (tools/love_loot.cpp). the wiki gives no odds: the Golden Heart Crystal keeps
+                 * its 1% (guessed), the other 68 are even. the old chain dropped Perfume most of the time */
+                const ::slot reward = (!RandomRange(0, 99)) ? ::slot{ 1458, 1 } /*GHC*/ : random_love_item();
 
-                magplant_drop(event, ::slot(reward, (reward == 3408 || reward == 3404) ? 10 : 1), gamePacket.punch.by_32(), *world);
-                if (reward == 1458)
+                magplant_drop(event, reward, gamePacket.punch.by_32(), *world);
+                if (item.id == 392) // @note a Heartstone also drops 0-26 gems (wiki: Heartstone)
+                    for (int gems = RandomRange(0, 27); short i : {10, 5, 1})
+                        for (; gems >= i; gems -= i) magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
+                if (reward.id == 1458)
                 {
                     std::string message = std::format("msg|`4The Power of Love! `2{} found a `#Golden Heart Crystal`2 in a `#{}`2!", pPeer->growid, item.raw_name);
                     peers(pPeer->recent_worlds.back(), PEER_ALL, [message](ENetPeer &p)
@@ -485,7 +480,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (block.fg == 3090) // @note Highly Combustible Box
                     {
                         block.fg = 3128; // @note Combusted Box
-                        if (!(block.state[2] & S_TOGGLE)/*closed*/) {} // @todo recipes: https://growtopia.fandom.com/wiki/Guide:Highly_Combustible_Box
+                        burn_box(event, *world, gamePacket.punch); // @note recipes (tools/combustible.cpp)
                     }
                     break;
                 }
@@ -527,18 +522,18 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     });
                     return; // @note used up on "Broadcast" (dialog_return/megaphone.cpp), not here: "Nevermind" used to lose it too
                 }
-                case 408: // @note Duct Tape
+                case 408: // @note Duct Tape: a moderator's tool in Growtopia (wiki), 10 minutes (tools/duct_tape.cpp)
                 {
-                    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer& p) 
+                    if (pPeer->role < MODERATOR) throw std::runtime_error("Only moderators can use Duct Tape.");
+                    bool taped{};
+                    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer& p)
                     {
                         ::peer *_p = static_cast<::peer*>(p.data);
-
-                        if (gamePacket.punch == _p->pos.by_32(true))
-                        {
-                            _p->state |= S_DUCT_TAPE; // @todo add a 10 minute timer that will remove it.
-                            on::SetClothing(p);
-                        }
+                        if (_p == pPeer || gamePacket.punch != _p->pos.by_32(true) || _p->role >= MODERATOR) return;
+                        duct_tape(p);
+                        taped = true;
                     });
+                    if (!taped) return; // @note nobody standing there: the tape isn't used up
                     break;
                 }
                 case 3478: // @note Paint Bucket - Red
@@ -645,15 +640,17 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 "add_checkbox|checkbox_disable_music|Disable Custom Music Blocks|{}\n"
                                 "add_text_input|tempo|Music BPM|100|3|\n"
                                 "add_checkbox|checkbox_disable_music_render|Make Custom Music Blocks invisible|0\n"
-                                //"add_smalltext|Your current home world is: JOLEIT|left|\n"           // @todo only show when peer has a set home world.
-                                "add_checkbox|checkbox_set_as_home_world|Set as Home World|0|\n"
+                                "{}" // @note "Your current home world is: X" (tools/home.cpp)
+                                "add_checkbox|checkbox_set_as_home_world|Set as Home World|{}|\n"
                                 "add_text_input|minimum_entry_level|World Level: |{}|3|\n"
                                 "add_smalltext|Set minimum world entry level.|\n"
                                 "add_button|sessionlength_dialog|`wSet World Timer``|noflags|0|0|\n"
                                 "add_button|changecat|`wCategory: None``|noflags|0|0|\n"
                                 "add_button|getKey|Get World Key|noflags|0|0|\n"
                                 "end_dialog|lock_edit|Cancel|OK|\n",
-                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, access_list, to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0", world->minimum_entry_level
+                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, access_list, to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0",
+                                home_world(*pPeer).empty() ? std::string{} : std::format("add_smalltext|Your current home world is: {}|left|\n", home_world(*pPeer)),
+                                (home_world(*pPeer) == world->name) ? "1" : "0", world->minimum_entry_level
                             )
                         });
                     }

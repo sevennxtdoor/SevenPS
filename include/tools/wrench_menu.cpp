@@ -2,6 +2,7 @@
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
+#include "tools/duct_tape.hpp"
 
 #include "wrench_menu.hpp"
 
@@ -198,6 +199,7 @@ void sendpm_return(ENetEvent &event, const ::hPipe &hPipe)
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
     const std::string message = clean_text(hPipe["message"], 120);
     if (message.empty()) return;
+    if (tape_blocks(*event.peer)) return; // @note duct tape: no private messages
 
     const std::string to = hPipe["to"];
     for (ENetPeer *p : peers())

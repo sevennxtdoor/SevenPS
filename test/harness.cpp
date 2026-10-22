@@ -6,6 +6,11 @@
 #include "tools/string.hpp"
 #include "tools/time.hpp"
 #include "tools/anticheat.hpp"
+#include "tools/duct_tape.hpp"
+#include "tools/love_loot.hpp"
+#include "tools/world_key.hpp"
+#include "tools/home.hpp"
+#include "commands/titles.hpp"
 #include "database/database_config.hpp"
 #include "gamePacket/tile_activate.hpp"
 #include "tools/magplant.hpp"
@@ -2249,6 +2254,108 @@ int main()
         CHECK(held(*owner, hat1) == 10, "owner gets it back once locked again");
         w.blocks[cord(vt.x_int(), vt.y_int())] = ::block{};
         owner->slots = so; visitor->slots = sv;
+    }
+
+    /* ================= Like Growtopia (wiki) ================= */
+    std::puts("\n[GT1] the wiki's item names are all in items.dat");
+    CHECK(love_loot_size() == 68, "all 68 Golden Booty Chest prizes found (without the Golden Heart Crystal)");
+    CHECK(world_key_id() != 0 && !(id_to_item(world_key_id()).cat & CAT_UNTRADEABLE), "World Key found, and it can be traded");
+
+    std::puts("\n[GT2] Duct Tape: moderators only, 10 minutes");
+    {
+        const auto so = owner->slots, sv = visitor->slots; const auto ro = owner->role, rv = visitor->role;
+        const ::pos vo = visitor->pos;
+        owner->role = PLAYER, visitor->role = PLAYER;
+        visitor->pos = ::pos{ 12 * 32.0f, 20 * 32.0f };
+        const ::pos spot = visitor->pos.by_32(true);
+        owner->slots = { ::slot(408, 2) };
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 408, .pos = owner->pos, .punch = spot });
+        CHECK(taped_left(*visitor) == 0 && held(*owner, 408) == 2, "a player can't use it");
+        owner->role = MODERATOR;
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 408, .pos = owner->pos, .punch = spot });
+        CHECK(taped_left(*visitor) > 590 && (visitor->state & S_DUCT_TAPE) && held(*owner, 408) == 1, "a moderator tapes the player standing there, one tape used");
+        CHECK(said("Duct tape has covered your mouth!"), "Growtopia's message");
+        outbox.clear(); action::input(ev2, "action|input\n|text|/sb hello everyone");
+        CHECK(said("covered with duct tape") && !said("hello everyone"), "no super broadcast while taped");
+        pset(*visitor, "tape_until", static_cast<int>(std::time(nullptr)) - 1);
+        outbox.clear(); duct_tape_tick(*ev2.peer);
+        CHECK(!(visitor->state & S_DUCT_TAPE) && said("Duct tape removed. OUCH!"), "after 10 minutes it comes off");
+        owner->slots = so, visitor->slots = sv, owner->role = ro, visitor->role = rv, visitor->pos = vo;
+    }
+
+    std::puts("\n[GT3] lava: 5 hits kill you, 10 with Fireproof");
+    {
+        const ::pos vo = visitor->pos; const auto st = visitor->state;
+        auto hit = [&]() { outbox.clear(); movement(ev2, ::gamePacket{ .type = 0, .state = state::S_LAVA_HIT, .pos = vo }); };
+        visitor->pain_hp = 10, visitor->pain_at = 0;
+        for (int k = 0; k < 4; ++k) hit();
+        CHECK(visitor->pain_hp == 2, "4 hits: still alive");
+        hit();
+        CHECK(said("OnKilled") && visitor->pain_hp == 10, "the 5th hit kills");
+        visitor->state |= STATE_FIREPROOF;
+        for (int k = 0; k < 9; ++k) hit();
+        CHECK(visitor->pain_hp == 1 && !said("OnKilled"), "Fireproof: 9 hits, still alive");
+        hit();
+        CHECK(said("OnKilled"), "Fireproof: the 10th kills (it used to never kill)");
+        visitor->pain_hp = 4, visitor->pain_at = std::time(nullptr) - 6;
+        hit();
+        CHECK(visitor->pain_hp == 9, "5 seconds without lava heals you");
+        visitor->state = st, visitor->pain_hp = 10, visitor->pos = vo;
+    }
+
+    std::puts("\n[GT4] Highly Combustible Box burns what's inside");
+    {
+        const auto so = owner->slots; const auto saved_objects = w.objects;
+        const ::pos box{ 50, 30 };
+        w.objects.clear();
+        w.blocks[cord(50, 30)] = ::block{}; w.blocks[cord(50, 30)].fg = 3090;
+        const short obsidian = static_cast<short>(std::ranges::find(items, std::string_view{ "Obsidian" }, &::item::raw_name)->id);
+        const short glass = static_cast<short>(std::ranges::find(items, std::string_view{ "Dragon Glass" }, &::item::raw_name)->id);
+        add_object(ev, ::slot(obsidian, 5), box.by_32(), w);
+        add_object(ev, ::slot(2, 3), ::pos{ box.x * 32.0f + 4, box.y * 32.0f + 4 }, w); // @note Dirt, on the same tile
+        owner->slots = { ::slot(3062, 1) };
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 3062, .pos = owner->pos, .punch = box });
+        CHECK(w.blocks[cord(50, 30)].fg == 3128, "it bursts into a Combusted Box");
+        CHECK(std::ranges::count_if(w.objects, [&](const ::object &o) { return o.id == glass && o.count == 5; }) == 1, "5 Obsidian -> 5 Dragon Glass");
+        CHECK(std::ranges::none_of(w.objects, [](const ::object &o) { return o.id == 2; }), "the Dirt burnt away");
+        w.blocks[cord(50, 30)] = ::block{};
+        w.objects = saved_objects; owner->slots = so;
+    }
+
+    std::puts("\n[GT5] World Key sells the world in a trade");
+    {
+        const int wo = w.owner; const auto acc = w.access; const auto saved_objects = w.objects;
+        const auto so = owner->slots, sv = visitor->slots;
+        const short key = world_key_id();
+        w.owner = owner->user_id; w.access.fill(0); w.objects.clear();
+        w.blocks[cord(70, 10)] = ::block{}; w.blocks[cord(70, 10)].fg = 242;
+        owner->slots = {}; visitor->slots = {};
+        const std::string get = "dialog_name|lock_edit|tilex|70|tiley|10|buttonClicked|getKey";
+        w.access[0] = visitor->user_id;
+        outbox.clear(); lock_edit(ev, ::hPipe(get));
+        CHECK(held(*owner, key) == 0 && said("access list"), "not while someone has access");
+        w.access.fill(0);
+        outbox.clear(); lock_edit(ev, ::hPipe(get));
+        CHECK(held(*owner, key) == 1 && said("You got a World Key! You can now trade this World to other Players!"), "owner gets the key (Growtopia's message)");
+        modify_item_inventory(ev, ::slot(key, -1)); modify_item_inventory(ev2, ::slot(key, 1)); // @note what trade_confirm() swaps
+        outbox.clear(); world_key_traded(*ev.peer, *ev2.peer);
+        CHECK(w.owner == visitor->user_id && held(*visitor, key) == 0, "traded: the other player owns the world, key used up");
+        owner->slots = { ::slot(key, 1) };
+        world_key_left(ev);
+        CHECK(held(*owner, key) == 0, "leaving the world takes the key away");
+        w.blocks[cord(70, 10)] = ::block{};
+        w.owner = wo, w.access = acc, w.objects = saved_objects; owner->slots = so, visitor->slots = sv;
+        refresh_display_name(*ev.peer); refresh_display_name(*ev2.peer);
+    }
+
+    std::puts("\n[GT6] /sethome and /home");
+    {
+        pset_str(*owner, "home", "");
+        outbox.clear(); home_command(ev, "home");
+        CHECK(said("don't have a home world"), "no home yet");
+        outbox.clear(); sethome_command(ev, "sethome");
+        CHECK(home_world(*owner) == "MTTEST", "/sethome saves the world you're in");
+        pset_str(*owner, "home", "");
     }
 
     /* ================= News & rules ================= */

@@ -139,6 +139,7 @@ public:
     ::pos rest_pos{}; // @note respawn position {x, y}
     bool facing_left{}; // @note peer is directed towards the left direction
     short pain_hp{ 10 };
+    std::time_t pain_at{}; // @note last lava hit: about 5 seconds without one and pain_hp is full again (Growtopia)
 
     int slot_size{16}; // @note amount of slots this peer has | were talking total slots not itemed slots, to get itemed slots do slot.size()
     std::vector<slot> slots{}; // @note an array of each slot. storing {id, count}

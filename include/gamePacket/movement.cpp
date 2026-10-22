@@ -4,6 +4,7 @@
 #include "tools/area_lock.hpp"
 #include "tools/playmods.hpp"
 #include "tools/anticheat.hpp"
+#include "tools/duct_tape.hpp"
 
 #include "movement.hpp"
 
@@ -19,9 +20,17 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     pPeer->pos = gamePacket.pos;
     pPeer->facing_left = gamePacket.state & state::S_MOVE_LEFT;
     fishing_moved(event); // @note walking away pulls the line in
+    duct_tape_tick(*event.peer); // @note 10 minutes are up: take the tape off
 
-    /* add fireproof only take away 1 hp instead of 2 */
-    if ((gamePacket.state & state::S_LAVA_HIT) && !(pPeer->state & STATE_FIREPROOF)) pPeer->pain_hp -= 2; // @note fireproof items (playmods.txt)
+    /* @note Growtopia (wiki: Lava): 5 lava hits in quick succession kill you, 10 with the Fireproof mod (playmods.txt),
+     * and about 5 seconds without a hit heals you. fireproof used to make you never die at all */
+    if (gamePacket.state & state::S_LAVA_HIT)
+    {
+        const std::time_t now = std::time(nullptr);
+        if (now - pPeer->pain_at >= 5) pPeer->pain_hp = 10;
+        pPeer->pain_at = now;
+        pPeer->pain_hp -= (pPeer->state & STATE_FIREPROOF) ? 1 : 2;
+    }
     if (pPeer->pain_hp <= 0) action::respawn(event, ""), pPeer->pain_hp = 10;
     
     gamePacket.netid = pPeer->netid;

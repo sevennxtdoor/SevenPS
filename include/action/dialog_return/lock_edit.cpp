@@ -3,6 +3,8 @@
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/economy.hpp"
 #include "commands/titles.hpp"
+#include "tools/world_key.hpp"
+#include "tools/home.hpp"
 
 #include "lock_edit.hpp"
 
@@ -13,6 +15,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
     if (world->owner == 0 || pPeer->user_id != world->owner) return; // @note never trust the dialog: anyone can send a fake lock_edit
+    if (hPipe["buttonClicked"] == "getKey") return world_key_get(event, *world); // @note tools/world_key.cpp
 
     ::pos pos{};
     pos.x = atoi(hPipe["tilex"].c_str());
@@ -46,6 +49,8 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     }
     for (ENetPeer *p : peers(world->name, PEER_SAME_WORLD)) // @note cyan name on/off for the ones added/removed
         if (std::ranges::find(changed, static_cast<::peer*>(p->data)->user_id) != changed.end()) refresh_display_name(*p);
+
+    if (hPipe["checkbox_set_as_home_world"] == "1" && home_world(*pPeer) != world->name) set_home(event, world->name); // @note like /sethome
 
     world->is_public = atoi(hPipe["checkbox_public"].c_str());
     if (world->is_public && staff_locked(*pPeer)) // @note players would break the blocks a MOD/DEV spawned

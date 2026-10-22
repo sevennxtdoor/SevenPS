@@ -6,6 +6,7 @@
 #include "tools/cps.hpp"
 #include "commands/gtos.hpp"
 #include "tools/casino.hpp"
+#include "tools/duct_tape.hpp"
 #include "input.hpp"
 
 void action::input(ENetEvent& event, const std::string& header)
@@ -21,6 +22,7 @@ void action::input(ENetEvent& event, const std::string& header)
     if (text.empty()) return; // @note we recheck if empty since we did trimming.
     if (text.size() > 120 && !text.starts_with('/')) text.resize(120); // @note the game caps chat at 120: a proxy sent kilobytes to everyone in the world
     
+    duct_tape_tick(*event.peer);
     u_int now = ticks();
     pPeer->messages.push_back(now);
     if (pPeer->messages.size() > 5) pPeer->messages.pop_front();
@@ -34,6 +36,7 @@ void action::input(ENetEvent& event, const std::string& header)
     {
         on::ConsoleMessage(event.peer, std::format("`4You are muted for {} more minutes.``", (muted_left(*pPeer) + 59) / 60));
     }
+    else if ((text.starts_with("/sb") || text.starts_with("/msg") || text.starts_with("/gc")) && tape_blocks(*event.peer)) {} // @note duct tape: no broadcasts or messages
     else if (pPeer->role < MODERATOR && fake_spin(text)) // @note chat, /me, /sb, /msg: no fake "spun the wheel" messages (casino scams)
     {
         on::ConsoleMessage(event.peer, "`4Fake Roulette Wheel results aren't allowed.`` Only a real spin shows that message.");

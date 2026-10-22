@@ -4,6 +4,7 @@
 #include "tools/string.hpp"
 #include "tools/economy.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/duct_tape.hpp"
 
 #include "boxes.hpp"
 
@@ -343,6 +344,7 @@ void box_return(ENetEvent &event, const ::hPipe &hPipe)
     if (kind == box_kind::MAIL && is_owner) return;
     const std::string text = clean(hPipe["text"]);
     if (text.empty()) return;
+    if (tape_blocks(*event.peer)) return; // @note duct tape: no writing on bulletin boards and mailboxes
     if (b.notes.size() >= MAX_NOTES)
     {
         if (kind == box_kind::MAIL) return on::ConsoleMessage(event.peer, "`4This mailbox is full!``");

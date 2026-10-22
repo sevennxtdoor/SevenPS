@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "tools/area_lock.hpp"
 #include "tools/password_door.hpp"
+#include "tools/duct_tape.hpp"
 
 #include "gateway_edit.hpp"
 
@@ -14,6 +15,7 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
     if (world == worlds.end()) return;
     if (!can_build(*pPeer, *world, ::pos{ tilex, tiley })) return; // @note never trust the dialog: bounds + who may edit (a faked dialog could rename START's doors or write outside the world)
+    if (hPipe["dialog_name"] != "gateway_edit" && tape_blocks(*event.peer)) return; // @note duct tape: no editing doors or signs
 
     block &block = world->blocks[cord(tilex, tiley)];
 

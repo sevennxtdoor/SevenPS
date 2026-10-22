@@ -5,6 +5,7 @@
 #include "trade.hpp"
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
+#include "tools/world_key.hpp"
 
 static ::peer *data(ENetPeer &p) { return static_cast<::peer*>(p.data); }
 
@@ -364,6 +365,10 @@ void trade_confirm(ENetEvent& event, const ::hPipe &hPipe)
     });
     sfx(*event.peer, "audio/keypad_hit.wav");
     sfx(*partner, "audio/keypad_hit.wav");
+
+    /* @note a World Key changes the world's owner (tools/world_key.cpp) */
+    if (std::ranges::find(pPeer->trade_items, world_key_id(), &::slot::id) != pPeer->trade_items.end()) world_key_traded(*event.peer, *partner);
+    if (std::ranges::find(pPartner->trade_items, world_key_id(), &::slot::id) != pPartner->trade_items.end()) world_key_traded(*partner, *event.peer);
 
     log_trade(pPeer->growid, pPartner->growid, items_for_message(*pPeer), items_for_message(*pPartner));
     add_stat(mine, "trades");
