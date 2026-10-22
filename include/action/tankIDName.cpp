@@ -70,6 +70,9 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     {
         send_action(*event.peer, "log", "msg|`4Sorry, this account has been banned from SevenPS.``");
         send_action(*event.peer, "logon_fail", ""); // @note triggers action|quit on client.
+        /* @note load() already set loaded: a modded client that ignored logon_fail kept playing while banned */
+        pPeer->loaded = false;
+        enet_peer_disconnect_later(event.peer, 0);
         return;
     }
 

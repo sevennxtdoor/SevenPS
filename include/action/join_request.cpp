@@ -19,6 +19,7 @@
 #include "action/quit_to_exit.hpp"
 #include "tools/auth.hpp"
 #include "tools/system_worlds.hpp"
+#include "tools/anticheat.hpp"
 
 #include "join_request.hpp"
 
@@ -50,8 +51,16 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
                 throw std::runtime_error(std::format("`4Oh no! ``You've been banned from that world by its owner! Try again in `w{}`` minute{}.", left, (left == 1) ? "" : "s"));
 
         auto it = std::ranges::find(worlds, name, &::world::name);
-        if (it == worlds.end()) 
+        if (it == worlds.end())
+        {
+            /* @note every new name generated a world that was saved on leaving: a bot joining random names filled the database */
+            if (pPeer->role < MODERATOR && !::world::exists(name))
+            {
+                if (ticks() - pPeer->last_new_world < 5) throw std::runtime_error("`4Slow down!`` Wait a few seconds before making another new world.");
+                pPeer->last_new_world = ticks();
+            }
             it = worlds.emplace(worlds.end(), name);
+        }
             
         ::world &world = *it;
         /* @note World Lock -> World Level: owner, access list and staff may always enter */
@@ -81,7 +90,7 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             (std::ranges::find(world.access, pPeer->user_id) != world.access.end()) ? "`c" : "`w");
 
         pPeer->rest_pos = world.spawn;
-        pPeer->pos = world.spawn; // @note the reach check (tile_change) used the last world's spot until the first move
+        moved_by_server(*pPeer, world.spawn); // @note the reach check (tile_change) used the last world's spot until the first move
 
         pPeer->netid = ++world.netid_counter;
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, &world](ENetPeer& peer/*send to everyone in world*/) 

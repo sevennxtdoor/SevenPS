@@ -2,6 +2,7 @@
 #include "action/join_request.hpp"
 #include "action/quit_to_exit.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/anticheat.hpp"
 
 #include "password_door.hpp"
 
@@ -28,7 +29,7 @@ namespace
     void put_at(ENetEvent &event, const ::pos &pixel)
     {
         ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-        pPeer->pos = pixel;
+        moved_by_server(*pPeer, pixel);
         send_varlist(event.peer, { "OnSetPos", CL_Vec2f{ pixel.x, pixel.y } }, pPeer->netid);
         send_varlist(event.peer, { "OnZoomCamera", 10000.0f, 1000u });
         send_varlist(event.peer, { "OnSetFreezeState", 0u }, pPeer->netid);

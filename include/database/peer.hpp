@@ -168,6 +168,7 @@ public:
     std::array<std::string, 200ull> my_worlds{}; // @note first 200 relevant worlds locked by peer.
     
     std::deque<u_int> messages; // @note last 5 que messages sent time, this is used to check for spamming
+    u_int last_new_world{}; // @note in memory only: when this player last made a brand new world (join_request)
 
     u_short fires_removed{};
     u_short gbc_pity{}; // @note GBC pity; for each 100 will receive super GBC
@@ -200,6 +201,11 @@ public:
     std::time_t fish_bite_end{}; // @note 0 = no fish on the hook right now
 
     std::chrono::steady_clock::time_point spin_ready{}; // @note Roulette Wheel cooldown (tools/casino.cpp)
+
+    /* @note anti-cheat (tools/anticheat.cpp), in memory only: distance budgets in pixels and punches */
+    std::chrono::steady_clock::time_point move_at{}, punch_at{};
+    float move_side{}, move_up{}, move_down{}, punch_budget{};
+    u_int move_strikes{};
 
     int rank_level{}; // @note CreativePS-style rank bought with gems (tools/rank.cpp), 0 = none. saved
 };

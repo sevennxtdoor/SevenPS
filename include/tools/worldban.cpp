@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include "action/quit_to_exit.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/anticheat.hpp"
 
 #include "worldban.hpp"
 
@@ -67,13 +68,13 @@ bool world_punish(ENetEvent& event, const std::string &act, ENetPeer *target, in
     std::string message{};
     if (act == "pull")
     {
-        pTarget->pos = pPeer->pos;
+        moved_by_server(*pTarget, pPeer->pos);
         send_varlist(target, { "OnSetPos", CL_Vec2f{pPeer->pos.x, pPeer->pos.y} }, pTarget->netid);
         message = std::format("{} `5pulls`` {}``!", pPeer->display_growid, pTarget->display_growid);
     }
     else if (act == "kick")
     {
-        pTarget->pos = world->spawn;
+        moved_by_server(*pTarget, world->spawn);
         send_varlist(target, { "OnSetPos", CL_Vec2f{world->spawn.x, world->spawn.y} }, pTarget->netid);
         message = std::format("{} `4kicks`` {}``!", pPeer->display_growid, pTarget->display_growid);
     }

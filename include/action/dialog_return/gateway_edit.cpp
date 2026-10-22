@@ -17,15 +17,19 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
 
     block &block = world->blocks[cord(tilex, tiley)];
 
+    /* @note the dialog caps these, a proxy doesn't: the world saves lengths as i16, so 32 KB of text went negative and
+     * everything saved after it was lost on the next load */
+    const auto capped = [&hPipe](const char *key, std::size_t max) { return hPipe[key].substr(0, max); };
+
     if (hPipe["dialog_name"] == "sign_edit") 
     {
         auto sign = std::ranges::find(world->signs, ::pos{tilex, tiley}, &::sign::pos);
         if (sign != world->signs.end()) 
         {
-            sign->label = hPipe["sign_text"];
+            sign->label = capped("sign_text", 128);
         }
         else {
-            world->signs.emplace_back(::sign(hPipe["sign_text"], ::pos{tilex, tiley}));
+            world->signs.emplace_back(::sign(capped("sign_text", 128), ::pos{tilex, tiley}));
         }
     }
     else if (hPipe["dialog_name"] == "door_edit") 
@@ -37,9 +41,9 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
         if (door == world->doors.end())
             door = world->doors.emplace(world->doors.end(), "", "", "", ::pos{ tilex, tiley });
 
-        door->label = hPipe["door_name"];
-        door->dest = hPipe["door_target"];
-        door->id = hPipe["door_id"];
+        door->label = capped("door_name", 100);
+        door->dest = capped("door_target", 24);
+        door->id = capped("door_id", 11);
         door->password = (block.fg == PASSWORD_DOOR) ? clean_door_password(hPipe["door_password"]) : "";
     }
     else if (hPipe["dialog_name"] == "gateway_edit") 

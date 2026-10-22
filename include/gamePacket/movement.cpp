@@ -3,6 +3,7 @@
 #include "tools/fishing.hpp"
 #include "tools/area_lock.hpp"
 #include "tools/playmods.hpp"
+#include "tools/anticheat.hpp"
 
 #include "movement.hpp"
 
@@ -13,6 +14,7 @@ void movement(ENetEvent& event, ::gamePacket gamePacket)
     /* @note the position comes from the client: a made-up one (NaN, negative, past the world) was later used as a tile index */
     if (auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
         world == worlds.end() || !in_world(*world, gamePacket.pos.by_32(true))) return;
+    if (!move_allowed(*event.peer, gamePacket.pos)) return; // @note teleport/speed hack: put back, nobody sees the jump
 
     pPeer->pos = gamePacket.pos;
     pPeer->facing_left = gamePacket.state & state::S_MOVE_LEFT;

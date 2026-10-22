@@ -4,6 +4,8 @@
 #include "gamePacket/tile_change.hpp"
 #include "tools/mannequin.hpp"
 #include "tools/string.hpp"
+#include "tools/time.hpp"
+#include "tools/anticheat.hpp"
 #include "database/database_config.hpp"
 #include "gamePacket/tile_activate.hpp"
 #include "tools/magplant.hpp"
@@ -127,6 +129,7 @@ int main()
     }
     decode_items(); std::puts("items ok");
     max_reach = 1e9f; // @note most tests build far from where the fake players stand; [WL4] tests the reach
+    anticheat_on = false; // @note most tests move players around and punch many times at once; [AC1] tests it
     const ::item &mq = id_to_item(1420);
     std::printf("Mannequin 1420 type=%d (MANNEQUIN=%d) name=%s\n", mq.type, type::MANNEQUIN, mq.raw_name.c_str());
     if (mq.type != type::MANNEQUIN) { std::puts("1420 is not TYPE_MANNEQUIN, stop"); return 1; }
@@ -288,6 +291,21 @@ int main()
     std::puts("\n[D3] visitor can't edit the door");
     outbox.clear(); gateway_edit(ev2, ::hPipe("dialog_name|door_edit|tilex|21|tiley|20|door_name|Hacked|door_target||door_id||door_password|"));
     CHECK(dA->password == "ABC1" && dA->label == "Secret", "visitor edit ignored");
+
+    std::puts("\n[D3b] door/sign text from a proxy is cut to the dialog's length (world saves lengths as i16)");
+    {
+        const std::string huge(40000, 'A');
+        outbox.clear(); gateway_edit(ev, ::hPipe("dialog_name|door_edit|tilex|40|tiley|20|door_name|" + huge + "|door_target|" + huge + "|door_id|" + huge + "|door_password|"));
+        CHECK(dB->label.size() == 100 && dB->dest.size() == 24 && dB->id.size() == 11, "door label 100, destination 24, id 11");
+        gateway_edit(ev, ::hPipe("dialog_name|door_edit|tilex|40|tiley|20|door_name|B|door_target||door_id|B|door_password|"));
+        const ::pos st{ 42, 20 };
+        w.blocks[cord(st.x_int(), st.y_int())].fg = 20; // @note Sign
+        gateway_edit(ev, ::hPipe("dialog_name|sign_edit|tilex|42|tiley|20|sign_text|" + huge));
+        auto s = std::ranges::find(w.signs, st, &::sign::pos);
+        CHECK(s != w.signs.end() && s->label.size() == 128, "sign text 128");
+        if (s != w.signs.end()) w.signs.erase(s);
+        w.blocks[cord(st.x_int(), st.y_int())] = ::block{};
+    }
 
     std::puts("\n[D4] world blob never contains the password");
     { ::blob wb = w.serialize(); const auto &d = wb.data(); std::string raw(d.begin(), d.end()); CHECK(raw.find("ABC1") == std::string::npos, "ABC1 not in world data"); CHECK(raw.find("Secret") != std::string::npos, "label is"); }
@@ -879,6 +897,15 @@ int main()
         CHECK(said("logon_fail") && fourth->growid.empty(), "MTAUTH2's token can't log in as Mike");
         third->loaded = false; // @note never saves
 
+        std::puts("\n[A3a] a banned account can't stay connected");
+        { ::hStmt up{ "UPDATE peer SET banned = 1 WHERE growid = 'MTAUTH2'" }; up.execute(); }
+        ::peer *banned = new ::peer(); lp.data = banned;
+        outbox.clear(); action::tankIDName(le, "tankIDName|MTAUTH2|tankIDPass|" + tok + "|protocol|225|country|id|" + pad);
+        CHECK(said("logon_fail") && !said("OnSuperMainStartAcceptLogon"), "banned: refused");
+        CHECK(!banned->loaded && lp.state == ENET_PEER_STATE_DISCONNECT_LATER, "not loaded (no packets accepted) and disconnected");
+        { ::hStmt up{ "UPDATE peer SET banned = 0 WHERE growid = 'MTAUTH2'" }; up.execute(); }
+        lp.state = ENET_PEER_STATE_CONNECTED;
+
         std::puts("\n[A3b] staff log on as @Name in their role color");
         CHECK(role_name("Seven", OWNER) == "`9@Seven``" && role_name("Mod", MODERATOR) == "`#@Mod``" && role_name("Dev", DEVELOPER) == "`6@Dev``", "@ tag + role color for staff");
         CHECK(role_name("Bob", PLAYER) == "`2Bob``", "players: no @");
@@ -924,6 +951,33 @@ int main()
         CHECK(owner_p->pos.x == 320.0f && owner_p->pos.y == 320.0f, "made-up position (NaN / outside): not taken");
         movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 64.0f, 96.0f } });
         CHECK(owner_p->pos.x == 64.0f, "a real position still moves you");
+
+        std::puts("\n[AC1] anti-cheat: teleports and fast punching");
+        anticheat_on = true;
+        const auto saved_role = owner_p->role;
+        owner_p->role = PLAYER;
+        moved_by_server(*owner_p, ::pos{ 320.0f, 320.0f });
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 352.0f, 320.0f } });
+        CHECK(owner_p->pos.x == 352.0f, "walking a tile: fine");
+        outbox.clear(); movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 3000.0f, 320.0f } });
+        CHECK(owner_p->pos.x == 352.0f && said("OnSetPos"), "across the world at once: refused and put back");
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 352.0f, 1500.0f } });
+        CHECK(owner_p->pos.y == 1500.0f, "a long fall: fine");
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 352.0f, 0.0f } });
+        CHECK(owner_p->pos.y == 1500.0f, "flying 47 tiles up at once: refused");
+        moved_by_server(*owner_p, ::pos{ 3000.0f, 32.0f }); // @note a door / respawn
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 3010.0f, 32.0f } });
+        CHECK(owner_p->pos.x == 3010.0f, "after the server moved you: the next move starts there");
+        owner_p->role = MODERATOR;
+        movement(ev, ::gamePacket{ .type = 0, .pos = ::pos{ 64.0f, 96.0f } });
+        CHECK(owner_p->pos.x == 64.0f, "staff isn't checked");
+        owner_p->role = PLAYER;
+        owner_p->punch_at = {}; // @note hasn't punched in a long time
+        int punches = 0;
+        for (int k = 0; k < 10; ++k) punches += punch_allowed(*owner_p);
+        CHECK(punches == 3, "10 punches at once: 3 count (lag burst), the rest do nothing");
+        owner_p->role = saved_role;
+        anticheat_on = false;
     }
 
     std::puts("\n[S2] guard: floods, IP blocks, account spam, hidden passwords");
@@ -1694,6 +1748,23 @@ int main()
         CHECK(said("of Legend") && said("|maxLevel") && said("|doctor"), "and again the next time");
         w.visitors -= 10;
         visitor->titles = saved_titles, visitor->titles_on = saved_on, visitor->role = saved_role, visitor->rank_level = saved_rank;
+    }
+
+    std::puts("\n[J1] a new world at most once every 5 seconds (bots filled the database with random names)");
+    {
+        const auto saved_role = visitor->role;
+        const auto saved_last = visitor->last_new_world;
+        const auto saved_netid = visitor->netid; // @note joining again gives a new netid, later tests pick the visitor by netid 2
+        visitor->role = PLAYER;
+        w.visitors += 10; // @note leaving must never drop MTTEST from memory
+        visitor->last_new_world = ticks(); // @note as if a new world was just made
+        outbox.clear(); action::quit_to_exit(ev2, "", true);
+        outbox.clear(); action::join_request(ev2, "", "MTNEWWORLDX");
+        CHECK(said("OnFailedToEnterWorld") && said("Slow down") && std::ranges::find(worlds, "MTNEWWORLDX", &::world::name) == worlds.end(), "a 2nd new world right away: refused, nothing made");
+        outbox.clear(); action::join_request(ev2, "", "MTTEST");
+        CHECK(!said("Slow down") && visitor->netid != 0, "an existing world: no wait");
+        w.visitors -= 10;
+        visitor->role = saved_role, visitor->last_new_world = saved_last, visitor->netid = saved_netid;
     }
 
     /* ================= /ghost is staff only ================= */

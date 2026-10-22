@@ -34,6 +34,7 @@
 #include "tools/special_tiles.hpp"
 #include "tools/combiner.hpp"
 #include "tools/auth.hpp"
+#include "tools/anticheat.hpp"
 #include "tile_change.hpp"
 
 float max_reach = 7.0f;
@@ -120,6 +121,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
             if (!punch) // @note put all multiple punch features here
             {
+                if (!punch_allowed(*pPeer)) return; // @note fast-break hack. only the real punch counts, not Rayman's extra tiles
                 punch = true;
                 if (pPeer->clothing[clothing::HAND] == 5480) // @note Rayman's Fist
                 {
