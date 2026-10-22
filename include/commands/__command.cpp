@@ -41,12 +41,12 @@ static constexpr std::string_view emotes[24]{
 
 /* named commands with their usage hint, shown in /help */
 static constexpr std::string_view named_help =
-    "/time /sb {msg} /punch {id} /skin {id} /who /me {msg} "
+    "/time /sb {msg} /warp {world} /punch {id} /skin {id} /who /me {msg} "
     "/news /weather {id} /wban {growid} /uba /title /start /event /top /rank /msg {growid} {msg} /online /hunt /tutorial /guild /gc {msg} /sponsor /parkour /pay {growid} {gems} /go /rgo /sethome /home /rules /mods /radio /info {item} /status /spin /luckybox /redeem {code}";
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
-    "/warp {world} /ghost /warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
+    "/ghost /warpto {growid} /mute {growid} {time} {reason} /unmute {growid} /curse {growid} {time} {reason} /uncurse {growid} /warn {growid} {reason} /kick {growid} /ban {growid} /unban {growid} /nuke {world} /unnuke {world} /wban {growid} {minutes} /nick {name} /hidestatus";
 
 /* developer+, shown in /help to DEVELOPER and OWNER */
 static constexpr std::string_view dev_help =

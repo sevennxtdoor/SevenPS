@@ -4,6 +4,7 @@
 #include "action/join_request.hpp"
 #include "action/quit_to_exit.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/rank.hpp"
 
 #include "warp.hpp"
 
@@ -23,8 +24,9 @@ void warp(ENetEvent& event, const std::string_view text)
 void warp_command(ENetEvent& event, const std::string_view text)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    if (pPeer->role < MODERATOR) // @note Super Supporter = staff in SevenPS (peer::update_effects)
-        return on::ConsoleMessage(event.peer, "`4/warp is a `5Super Supporter`` perk.``");
+    const ::rank *r = get_rank(*pPeer);
+    if (pPeer->role < MODERATOR && !(r && r->warp)) // @note Super Supporter = staff in SevenPS (peer::update_effects), or a rank with the 'warp' perk
+        return on::ConsoleMessage(event.peer, "`4/warp is a `5Super Supporter`` perk.`` Get a rank (`$/rank``) to warp!");
 
     using clock = std::chrono::steady_clock;
     static std::unordered_map<int, clock::time_point> last_warp{}; // @note user id -> last /warp. in memory only

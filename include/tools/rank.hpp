@@ -12,7 +12,7 @@ struct rank
     int gem_bonus{};      // @note % extra gems from breaking blocks & online rewards
     int xp_bonus{};       // @note % extra XP
     int slots{};          // @note extra backpack slots (total for this rank, not on top of the previous one)
-    bool sb_free{}, titles{}, nick{};
+    bool sb_free{}, titles{}, nick{}, warp{}; // @note warp: /warp like a Super Supporter
     int spins{ 1 };         // @note Daily Spins a day (perk spinN)
     int gacha_discount{};   // @note % off the Lucky Box (perk gachaN)
 };

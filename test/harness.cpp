@@ -2372,6 +2372,11 @@ int main()
         outbox.clear(); warp_command(ev, "warp MTTEST");
         CHECK(said("Wait") && !said("Magically warping"), "again right away: wait 15 seconds");
         owner->role = PLAYER;
+        const auto rk = visitor->rank_level;
+        visitor->rank_level = 1; // @note VIP
+        outbox.clear(); warp_command(ev2, "warp MTTEST");
+        CHECK(said("Magically warping"), "a VIP (rank with the warp perk) can /warp too");
+        visitor->rank_level = rk;
         outbox.clear(); rgo(ev2, "rgo");
         CHECK(said("No private message"), "/rgo without a message");
         outbox.clear(); msg_command(ev, "msg MTVISIT hi");
