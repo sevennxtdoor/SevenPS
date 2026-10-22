@@ -23,6 +23,7 @@
 #include "ghost.hpp"
 #include "give.hpp"
 #include "setrole.hpp"
+#include "setlevel.hpp"
 #include "moderation.hpp"
 #include "restart.hpp"
 #include "titles.hpp"
@@ -54,7 +55,7 @@ static constexpr std::string_view dev_help =
 
 /* owner only */
 static constexpr std::string_view owner_help =
-    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR} /giverank {growid} {0-5} /stafflog {growid} /code";
+    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR} /giverank {growid} {0-5} /setlevel {growid} {1-125} /stafflog {growid} /code";
 
 std::array<std::string_view, 14> cmd_requires_arg{
     "sb", "warp", "punch", "skin", "me", "weather", "give", "setrole", "kick", "ban", "unban", "wban", "givetitle", "givegems"
@@ -97,6 +98,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"ghost", &ghost},
         {"give", &give},
         {"setrole", &setrole},
+        {"setlevel", &setlevel}, // @note owner only
         {"kick", &kick},
         {"ban", &ban},
         {"unban", &unban},

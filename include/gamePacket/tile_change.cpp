@@ -38,6 +38,7 @@
 #include "tools/duct_tape.hpp"
 #include "tools/love_loot.hpp"
 #include "tools/combustible.hpp"
+#include "tools/guild.hpp"
 #include "tools/home.hpp"
 #include "tile_change.hpp"
 
@@ -92,7 +93,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
         }
         if (!(gamePacket.id == 18 && (item.cat & CAT_PUBLIC)) && gamePacket.id != 32) // @note anyone may punch a public block, but not place one (Public Lava in a locked world). wrenching is checked by each dialog
             if ((world->owner && !world->is_public && !pPeer->role) &&
-                (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end()))
+                (pPeer->user_id != world->owner && std::ranges::find(world->access, pPeer->user_id) == world->access.end()) &&
+                !guild_access(*pPeer, *world)) // @note Guild Lock: ranks the leader allowed
             {
                 /* @note was a silent return: punching or building in someone else's world showed nothing. once a second, a held punch sends many */
                 static std::unordered_map<int, std::time_t> last_shown{};
@@ -232,6 +234,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
                     if (world->owner != pPeer->user_id)
                         throw std::runtime_error(world_locked_text(world->name, world->owner));
+                    if (is_guild_home(*world)) throw std::runtime_error("A guild's home lock can't be destroyed."); // @note like the Guild Lock (growtopiawiki.com/w/Guild_Lock)
                     break;
                 }
                 /* @note providers: a ready one is harvested by special_tile_punch() (resources/providers.txt), otherwise it takes damage. the old code here dropped prizes on every punch (ATM: up to 100 gems a punch) and providers could never be broken */
@@ -634,6 +637,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 "embed_data|tiley|{}\n"
                                 "add_spacer|small|\n"
                                 "{}"
+                                "{}" // @note Guild Lock: which guild ranks may build (tools/guild.cpp)
                                 "add_spacer|small|\n"
                                 "add_player_picker|playerNetID|`wAdd``|\n"
                                 "add_checkbox|checkbox_public|Allow anyone to Build and Break|{}\n"
@@ -648,7 +652,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                                 "add_button|changecat|`wCategory: None``|noflags|0|0|\n"
                                 "add_button|getKey|Get World Key|noflags|0|0|\n"
                                 "end_dialog|lock_edit|Cancel|OK|\n",
-                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, access_list, to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0",
+                                item.raw_name, item.id, gamePacket.punch.x, gamePacket.punch.y, access_list,
+                                guild_lock_section(*world), to_char(world->is_public), (world->lock_state & DISABLE_MUSIC) ? "1" : "0",
                                 home_world(*pPeer).empty() ? std::string{} : std::format("add_smalltext|Your current home world is: {}|left|\n", home_world(*pPeer)),
                                 (home_world(*pPeer) == world->name) ? "1" : "0", world->minimum_entry_level
                             )
@@ -854,6 +859,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                         area_lock_visuals = true;
                         break;
                     }
+                    if (item.id == GUILD_LOCK) throw std::runtime_error("A Guild Lock can't be placed."); // @note its tile data isn't known (it crashed the game)
                     if (std::string other = area_lock_other_owner(*world, pPeer->user_id); !other.empty())
                         throw std::runtime_error(std::format("`wThat area is owned by {}``", other));
 

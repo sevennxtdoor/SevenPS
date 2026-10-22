@@ -2,6 +2,7 @@
 #include "onVariant/ConsoleMessage.hpp"
 #include "commands/titles.hpp" // @note refresh_display_name()
 #include "tools/auth.hpp"      // @note owner_display()
+#include "tools/guild.hpp"     // @note is_guild_home()
 
 #include "world_key.hpp"
 
@@ -46,6 +47,8 @@ void world_key_get(ENetEvent &event, ::world &world)
 
     const ::pos lock = world_lock_tile(world);
     if (lock.x < 0) return;
+    if (is_guild_home(world))
+        return on::ConsoleMessage(event.peer, "`4You can't get a World Key for a guild's home world.``");
     /* @note the rules from the wiki (World Key) */
     if (world.blocks[cord(lock.x_int(), lock.y_int())].fg == MY_FIRST_WORLD_LOCK)
         return on::ConsoleMessage(event.peer, "`4You can't get a World Key for a My First World Lock.``");

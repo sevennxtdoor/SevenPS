@@ -3,6 +3,7 @@
 #include "commands/titles.hpp"
 #include "action/trade.hpp"
 #include "tools/wrench_menu.hpp"
+#include "tools/guild.hpp"
 
 #include "popup.hpp"
 
@@ -11,6 +12,7 @@ void popup(ENetEvent& event, const ::hPipe &hPipe)
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
     if (wrench_menu_button(event, hPipe)) return; // @note notebook, world lock bank, online status, clothes, message...
+    if (guild_wrench_button(event, hPipe)) return; // @note Invite to Guild, Promote, Demote, Kick from Guild
 
     /* wrench menu: pull / kick / worldban (world owner or staff) */
     if (const std::string clicked{ hPipe["buttonClicked"] }; clicked == "pull" || clicked == "kick" || clicked == "worldban" || clicked == "trade")

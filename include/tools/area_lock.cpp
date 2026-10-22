@@ -5,6 +5,7 @@
 #include "tools/string.hpp"
 #include "tools/system_worlds.hpp"
 #include "tools/auth.hpp"
+#include "tools/guild.hpp"
 
 #include "area_lock.hpp"
 
@@ -310,7 +311,7 @@ int tile_owner(::world &world, const ::pos &tile)
 bool tile_access(const ::peer &p, ::world &world, const ::pos &tile)
 {
     if (world.owner != 0)
-        return p.user_id == world.owner || std::ranges::find(world.access, p.user_id) != world.access.end();
+        return p.user_id == world.owner || std::ranges::find(world.access, p.user_id) != world.access.end() || guild_access(p, world);
     const ::area_lock *lock = area_lock_at(world, tile);
     return lock && has_access(p, *lock);
 }

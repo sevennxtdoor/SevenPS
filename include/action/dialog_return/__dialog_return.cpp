@@ -25,6 +25,7 @@
 #include "tools/mannequin.hpp"
 #include "onVariant/RequestGazette.hpp"
 #include "tools/sponsor.hpp"
+#include "tools/guild.hpp"
 
 #include "tools/rewards.hpp"
 #include "tools/cps.hpp"
@@ -73,4 +74,6 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"mt_mannequin", std::bind(&mannequin_return, std::placeholders::_1, std::placeholders::_2)},
     {"gazette", std::bind(&gazette_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_sponsor", std::bind(&sponsor_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_guild", std::bind(&guild_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_guild_invite", std::bind(&guild_invite_return, std::placeholders::_1, std::placeholders::_2)},
 };

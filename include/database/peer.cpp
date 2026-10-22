@@ -13,6 +13,7 @@
 #include "tools/string.hpp"
 #include "tools/playmods.hpp"
 #include "tools/buffs.hpp"
+#include "tools/guild.hpp"
 
 #include "peer.hpp"
 
@@ -304,6 +305,7 @@ void peer::add_xp(ENetEvent &event, u_short value)
 {
     value = static_cast<u_short>(xp_bonus(*this, value)); // @note rank bonus
     if (event_on(event_type::XP)) value *= 2; // @note XP x2 event
+    guild_add_xp(this->growid, value); // @note growtopiawiki.com/w/Guilds: any XP earned counts for the guild
     u_short &lvl = this->level.front();
     u_short &xp = this->level.back() += value; // @note factor the new xp amount
 

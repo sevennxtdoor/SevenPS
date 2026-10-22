@@ -5,6 +5,7 @@
 #include "commands/titles.hpp"
 #include "tools/world_key.hpp"
 #include "tools/home.hpp"
+#include "tools/guild.hpp"
 
 #include "lock_edit.hpp"
 
@@ -21,6 +22,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     pos.x = atoi(hPipe["tilex"].c_str());
     pos.y = atoi(hPipe["tiley"].c_str());
     if (!in_world(*world, pos.x_int(), pos.y_int())) return;
+    guild_lock_edit(*world, hPipe); // @note guild ranks with access (only a guild's home world)
 
     /* @note access list: unticked names are removed, the player picker adds someone in this world (like Small/Big/Huge Locks) */
     std::vector<int> changed{};

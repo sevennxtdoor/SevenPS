@@ -28,6 +28,8 @@
 #include "tools/backup.hpp"
 #include "tools/tutorial.hpp"
 #include "tools/guild.hpp"
+#include "commands/setlevel.hpp"
+#include "tools/guild_level.hpp"
 #include "tools/sponsor.hpp"
 #include "tools/auth.hpp"
 #include "action/protocol.hpp"
@@ -738,48 +740,133 @@ int main()
         load_guilds();
         owner->growid = "MTOWNER"; visitor->growid = "MTVISIT";
         owner->role = 0; visitor->role = 0;
-        owner->level[0] = 1; owner->gems = 60000;
+        owner->level[0] = 1; owner->gems = 260000;
+        /* @note the guild moves MTTEST's owner, access and My Worlds around: put them back afterwards */
+        const int w_owner = w.owner; const auto w_access = w.access;
+        const auto owner_worlds = owner->my_worlds, visitor_worlds = visitor->my_worlds;
+        const ::pos lock{ 90, 25 };
+        w.blocks[cord(90, 25)].fg = 9640; // @note My First World Lock: refused below, then a Diamond Lock
         auto g = [&](ENetEvent &e, const std::string &t) { outbox.clear(); guild_command(e, t); };
         auto said_to = [&](ENetPeer *who, const std::string &needle) { for (auto &pk : outbox) if (pk.peer == who && std::string(pk.data.begin(), pk.data.end()).find(needle) != std::string::npos) return true; return false; };
+        auto gr = [&](ENetEvent &e, const std::string &s) { outbox.clear(); guild_return(e, ::hPipe("dialog_name|mt_guild|" + s)); };
+        auto mk = [&](ENetEvent &e, const std::string &name) { gr(e, "guild_name|" + name + "|guild_statement|Enter a Guild statement here!|buttonClicked|create"); };
+        CHECK(id_to_item(GUILD_LOCK).type == type::LOCK, "item 5814 is a lock in items.dat");
         g(ev, "guild create MTTESTG");
+        CHECK(said("Social Portal") && !in_guild("MTOWNER"), "/guild create only points to the Social Portal");
+        g(ev, "guild"); CHECK(said("Grow Guild") && said("200,000") && said("create_guild"), "Grow Guild dialog with the GT price");
+        gr(ev, "buttonClicked|create_guild"); CHECK(said("Grow Guild Creation") && said("guild_statement"), "Create a Guild -> Grow Guild Creation");
+        gr(ev, "buttonClicked|back"); CHECK(said("Social Portal"), "Back -> Social Portal");
+        mk(ev, "MTTESTG");
         CHECK(said("level 5") && !in_guild("MTOWNER"), "level 5 needed");
         owner->level[0] = 10;
-        g(ev, "guild create a!"); CHECK(said("3-15 letters"), "bad name refused");
-        g(ev, "guild create MTTESTG");
-        CHECK(in_guild("MTOWNER") && owner->gems == 10000, "created, 50000 gems paid");
-        CHECK(on::country_state(*owner).find("|showGuild") != std::string::npos, "|showGuild in country state");
-        CHECK(said("OnGuildDataChanged"), "flag data sent");
-        visitor->gems = 60000; visitor->level[0] = 10;
-        g(ev2, "guild create mttestg"); CHECK(said("taken"), "name taken (any case)");
+        mk(ev, "a!"); CHECK(said("3-15 letters"), "bad name refused");
+        gr(ev, "guild_name|MTTESTG|buttonClicked|");
+        CHECK(!in_guild("MTOWNER"), "Close button creates nothing");
+        w.owner = 2;
+        mk(ev, "MTTESTG"); CHECK(said("world owned by you") && !in_guild("MTOWNER"), "not your world: refused");
+        w.owner = w_owner;
+        mk(ev, "MTTESTG"); CHECK(said("World Lock!") && !in_guild("MTOWNER"), "My First World Lock can't become a Guild Lock");
+        w.blocks[cord(90, 25)].fg = 1796;
+        const int wl_before = held(*owner, 1796);
+        mk(ev, "MTTESTG");
+        CHECK(in_guild("MTOWNER") && owner->gems == 60000, "created, 200000 gems paid");
+        CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK && held(*owner, 1796) == wl_before + 1 && is_guild_home(w), "the Diamond Lock became the Guild Lock, Diamond Lock back in the backpack");
+        guild_lock_fix(w); CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK, "the home world's Guild Lock stays on load");
+        {
+            auto update_size = [&](short fg) {
+                w.blocks[cord(90, 25)].fg = fg;
+                outbox.clear(); send_tile_update(ev, ::gamePacket{ .id = fg, .punch = lock }, w.blocks[cord(90, 25)], w);
+                return outbox.empty() ? std::size_t{} : outbox.front().data.size();
+            };
+            const std::size_t diamond = update_size(1796), guild_lock = update_size(GUILD_LOCK);
+            CHECK(diamond > 0 && guild_lock == diamond + 16, "Guild Lock tile data: a lock's + 16 more bytes");
+        }
+        CHECK(guild_lock_section(w).find("MTTESTG") != std::string::npos, "MTTEST is the guild's home");
+        outbox.clear(); guild_broadcast(enet_peers[0]);
+        CHECK(on::country_state(*owner).find("|showGuild") != std::string::npos && said("OnGuildDataChanged"), "guild data (flag, GL/GC/GE tag) sent, mascot or not");
+        outbox.clear(); g(ev, "guild"); CHECK(said("Guild Level: `w1``/50") && said("Members: `w1/5``") && said("Upgrade Guild") && said("Guild Mascot"), "guild menu: level 1/50, 5 members, leader buttons");
+        gr(ev, "buttonClicked|"); CHECK(outbox.empty(), "Close on the guild menu does nothing");
+        gr(ev, "buttonClicked|upgrade"); CHECK(said("more XP"), "upgrade needs XP");
+        guild_add_xp("MTOWNER", 405000); owner->gems = 50000;
+        gr(ev, "buttonClicked|upgrade"); CHECK(said("costs 100,000"), "upgrade needs gems");
+        owner->gems = 160000;
+        gr(ev, "buttonClicked|upgrade"); CHECK(said("reached level 2") && owner->gems == 60000 && said("Members: `w1/10``"), "level 2: 100,000 gems, 10 members");
+        CHECK(guild_xp_needed(1) == 405000 && guild_gems_needed(14) == 1000000 && guild_xp_needed(49) > guild_xp_needed(48) && guild_xp_needed(50) == 0 && guild_max_members(50) == 250, "level table 1-50");
+        gr(ev, "buttonClicked|mascot"); CHECK(said("Guild Mascot") && said("pick_fg") && said("50,000"), "mascot dialog");
+        gr(ev, "sel_fg|0|sel_bg|0|pick_fg|14"); CHECK(said("foreground must be"), "a background picked as the foreground: refused");
+        gr(ev, "sel_fg|0|sel_bg|0|pick_fg|2"); CHECK(said("sel_fg|2"), "Dirt picked, kept in the dialog");
+        gr(ev, "sel_fg|2|sel_bg|14|buttonClicked|set_mascot"); CHECK(said("must be level 3"), "mascot needs guild level 3");
+        CHECK(guild_self_lines(*owner).find("Guild: MTTESTG") != std::string::npos && guild_self_lines(*owner).find("guild_info") != std::string::npos, "own wrench menu shows the guild");
+        outbox.clear(); CHECK(guild_wrench_button(ev, ::hPipe("dialog_name|popup|buttonClicked|guild_info")) && said("MTTESTG"), "Show Guild opens the guild menu");
+        visitor->gems = 260000; visitor->level[0] = 10;
+        mk(ev2, "mttestg"); CHECK(said("taken"), "name taken (any case)");
+        owner->pos = ::pos{ 89 * 32.0f, 25 * 32.0f };
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = lock });
+        CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK && said("can't be destroyed"), "the Guild Lock can't be broken");
 
         std::puts("\n[G2] invite, accept, guild chat");
         g(ev2, "guild accept"); CHECK(said("no guild invite"), "can't join uninvited");
-        g(ev, "guild invite MTVISIT"); CHECK(said_to(&enet_peers[1], "invited you"), "invite reaches the player");
-        g(ev2, "guild accept"); CHECK(in_guild("MTVISIT"), "joined");
+        CHECK(guild_wrench_lines(*owner, *visitor).find("guild_invite") != std::string::npos, "wrench: leader sees Invite to Guild");
+        CHECK(guild_wrench_lines(*visitor, *owner).find("Guild: MTTESTG") != std::string::npos, "wrench: shows the other's guild and rank");
+        outbox.clear(); CHECK(guild_wrench_button(ev, ::hPipe("dialog_name|popup|netID|2|buttonClicked|guild_invite")), "wrench button handled");
+        CHECK(said_to(&enet_peers[1], "invited you") && said_to(&enet_peers[1], "mt_guild_invite"), "invite dialog reaches the player");
+        outbox.clear(); guild_invite_return(ev2, ::hPipe("dialog_name|mt_guild_invite|buttonClicked|accept")); CHECK(in_guild("MTVISIT"), "Accept: joined");
         outbox.clear(); gc_command(ev2, "gc hello guild");
         CHECK(said_to(&enet_peers[0], "[GUILD]") && said_to(&enet_peers[0], "hello guild"), "/gc reaches the leader");
+        CHECK(!guild_access(*visitor, w), "a member can't build in the home world by default");
+        guild_lock_edit(w, ::hPipe("dialog_name|lock_edit|guild_access_0|1|guild_access_1|0|guild_access_2|0"));
+        { const std::vector<int> ids = guild_access_ids(w);
+          CHECK(guild_access(*visitor, w) && std::ranges::find(ids, visitor->user_id) != ids.end(), "leader ticks Members: the member may build"); }
+        guild_lock_edit(w, ::hPipe("dialog_name|lock_edit|checkbox_public|0"));
+        CHECK(guild_access(*visitor, w), "a dialog without the guild boxes changes nothing");
 
         std::puts("\n[G3] ranks");
         g(ev2, "guild kick MTOWNER"); CHECK(in_guild("MTOWNER") && said("below your rank"), "member can't kick the leader");
-        g(ev2, "guild invite MTOWNER"); CHECK(said("Only the leader and co-leaders"), "member can't invite");
-        g(ev, "guild promote MTVISIT"); CHECK(said("Elder"), "promoted to Elder");
+        g(ev2, "guild invite MTOWNER"); CHECK(said("Only Elders"), "member can't invite");
+        CHECK(guild_wrench_lines(*visitor, *owner).find("guild_") == std::string::npos, "wrench: a member gets no guild buttons on the leader");
+        CHECK(guild_wrench_lines(*owner, *visitor).find("Promote to Elder") != std::string::npos, "wrench: leader sees Promote to Elder");
+        outbox.clear(); guild_wrench_button(ev, ::hPipe("dialog_name|popup|netID|2|buttonClicked|guild_promote")); CHECK(said("Elder"), "promoted to Elder (wrench)");
         g(ev, "guild promote MTVISIT"); CHECK(said("Co-Leader"), "promoted to Co-Leader");
+        { const std::string lines = guild_wrench_lines(*owner, *visitor);
+          CHECK(lines.find("guild_promote") == std::string::npos && lines.find("Demote to Elder") != std::string::npos, "wrench: no promote past Co-Leader, demote shown"); }
         g(ev, "guild promote MTVISIT"); CHECK(said("can't go higher"), "no second leader by promote");
         g(ev2, "guild statement We farm together!"); CHECK(said_to(&enet_peers[0], "We farm together!"), "co-leader sets the statement");
         g(ev, "guild leave"); CHECK(in_guild("MTOWNER") && said("Give the guild"), "leader can't just leave");
         g(ev, "guild leader MTVISIT"); CHECK(said("new leader"), "leadership handed over");
+        CHECK(w.owner == visitor->user_id, "the home world goes to the new leader");
         g(ev, "guild disband confirm"); CHECK(in_guild("MTOWNER") && said("Only the leader"), "ex-leader can't disband");
 
         std::puts("\n[G4] saved, then disbanded");
         load_guilds();
         CHECK(in_guild("MTOWNER") && in_guild("MTVISIT"), "still there after reload from the database");
+        CHECK(guild_lock_section(w).find("guild_access_0|Members|1") != std::string::npos, "home world and rank access saved");
         g(ev2, "guild kick MTOWNER"); CHECK(!in_guild("MTOWNER"), "new leader kicks the old one");
         g(ev2, "guild disband"); CHECK(in_guild("MTVISIT") && said("confirm"), "disband asks to confirm");
         g(ev2, "guild disband confirm"); CHECK(!in_guild("MTVISIT"), "disbanded");
+        CHECK(w.blocks[cord(90, 25)].fg == 1796 && !is_guild_home(w), "disbanded: the Guild Lock turned back into the Diamond Lock");
+        w.blocks[cord(90, 25)].fg = GUILD_LOCK; guild_lock_fix(w);
+        CHECK(w.blocks[cord(90, 25)].fg == 242, "a Guild Lock outside a guild's home turns back on load");
         load_guilds();
         CHECK(!in_guild("MTVISIT"), "gone from the database too");
         CHECK(on::country_state(*visitor).find("|showGuild") == std::string::npos, "no |showGuild without a guild");
         { ::hStmt del{ "DELETE FROM guild WHERE name = 'MTTESTG'" }; del.execute(); }
+        w.blocks[cord(90, 25)].fg = 0;
+        w.owner = w_owner; w.access = w_access;
+        owner->my_worlds = owner_worlds; visitor->my_worlds = visitor_worlds;
+        for (::slot &s : owner->slots) if (s.id == 1796) s.count = static_cast<short>(wl_before); // @note the Diamond Lock Create Guild gave back
+        std::erase_if(owner->slots, [](const ::slot &s) { return s.id == 1796 && s.count <= 0; });
+    }
+
+    std::puts("\n[SL1] /setlevel: owner only, 1-125, online players");
+    {
+        const u_char role = owner->role; const u_short lvl = visitor->level.front();
+        owner->role = 0;
+        outbox.clear(); setlevel(ev, "setlevel MTVISIT 125"); CHECK(visitor->level.front() == lvl && said("Unknown command"), "not for players");
+        owner->role = OWNER;
+        outbox.clear(); setlevel(ev, "setlevel MTVISIT 126"); CHECK(visitor->level.front() == lvl && said("1-125"), "level out of range refused");
+        outbox.clear(); setlevel(ev, "setlevel NOBODYHERE 50"); CHECK(said("offline"), "offline player refused");
+        outbox.clear(); setlevel(ev, "setlevel mtvisit 125"); CHECK(visitor->level.front() == 125 && visitor->level.back() == 0, "level set (any case)");
+        visitor->level.front() = lvl; owner->role = role;
     }
 
     /* ================= Sponsor items (items.dat rewrite) ================= */

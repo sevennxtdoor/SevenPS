@@ -1,4 +1,5 @@
 #include "pch.hpp"
+#include "tools/guild.hpp"
 #include "autosave.hpp"
 
 namespace
@@ -19,6 +20,7 @@ void save_everything()
         }
     });
     for (::world &world : worlds) world.save();
+    save_guilds(); // @note guild XP from the members' play
 
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
     std::printf("[autosave] %d player(s), %zu world(s) saved in %lld ms\n", players, worlds.size(), static_cast<long long>(ms));

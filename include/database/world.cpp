@@ -14,6 +14,16 @@
 #include "tools/mannequin.hpp"
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
+#include "tools/guild.hpp"
+
+/* @note the user ids a World Lock tells the game have access: the access list, plus the allowed guild members in a guild's home world */
+static std::vector<int> lock_access_ids(const ::world &world)
+{
+    std::vector<int> ids{};
+    for (int uid : world.access) if (uid > 0) ids.push_back(uid);
+    for (int uid : guild_access_ids(world)) if (std::ranges::find(ids, uid) == ids.end()) ids.push_back(uid);
+    return ids;
+}
 
 char get_type(const ::item &item)
 {
@@ -154,13 +164,14 @@ static void tree_extra(::blob &blob, const ::world &world, const ::pos &pos, boo
             else if (type == '\x03'/*lock*/)
             {
                 if (!is_tile_lock(block.fg)) this->is_public = (block.state[2] & S_PUBLIC); // @note check if world lock has S_PUBLIC flag, i will change this later
-                int access = std::ranges::count_if(this->access, std::identity{});
-                
+                const std::vector<int> access = is_tile_lock(block.fg) ? std::vector<int>{} : lock_access_ids(*this);
+
                 const ::area_lock *area = is_tile_lock(block.fg) ? area_lock_at(*this, block_pos) : nullptr;
                 blob.u8(area ? 0x00 : this->lock_state);
                 blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : this->owner); // @note an area lock shows its own owner
-                blob.i32(is_tile_lock(block.fg) ? 0 : access);
-                if (!is_tile_lock(block.fg)) for (int uid : this->access) if (uid > 0) blob.i32(uid); // @note the client reads {count} user ids
+                blob.i32(static_cast<int>(access.size()));
+                for (int uid : access) blob.i32(uid); // @note the client reads {count} user ids
+                if (block.fg == GUILD_LOCK) for (int i = 0; i < 4; ++i) blob.i32(0); // @note Guild Lock: 16 more bytes (gtworld-r), unknown, zeros
             }
             else if (type == '\x04'/*seed*/)
             {
@@ -369,6 +380,7 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         if (this->blocks.empty()) { if (!build_system_world(*this)) generate_world(*this); } // @note broken/empty save
         else if (is_system_world(this->name) && this->signs.empty()) build_system_world(*this); // @note an old plain START gets its design (it has no signs yet)
         refresh_system_signs(*this); // @note START's "Get started" sign points to /tutorial
+        guild_lock_fix(*this); // @note a Guild Lock tile crashes the game: back to the lock it replaced
     }
     else 
     {
@@ -584,13 +596,14 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
         case type::LOCK:
         {
             if (!is_tile_lock(block.fg)) world.is_public = (block.state[2] & S_PUBLIC); // @note check if world lock has S_PUBLIC flag, i will change this later
-            int access = std::ranges::count_if(world.access, std::identity{});
+            const std::vector<int> access = is_tile_lock(block.fg) ? std::vector<int>{} : lock_access_ids(world);
 
             const ::area_lock *area = is_tile_lock(block.fg) ? area_lock_at(world, gamePacket.punch) : nullptr;
             blob.u8(area ? 0x00 : world.lock_state);
             blob.i32(is_tile_lock(block.fg) ? (area ? area->owner : 0) : world.owner); // @note an area lock shows its own owner
-            blob.i32(is_tile_lock(block.fg) ? 0 : access);
-            if (!is_tile_lock(block.fg)) for (int uid : world.access) if (uid > 0) blob.i32(uid); // @note the client reads {count} user ids
+            blob.i32(static_cast<int>(access.size()));
+            for (int uid : access) blob.i32(uid); // @note the client reads {count} user ids
+            if (block.fg == GUILD_LOCK) for (int i = 0; i < 4; ++i) blob.i32(0); // @note Guild Lock: 16 more bytes (gtworld-r), unknown, zeros
             break;
         }
         case type::SEED:

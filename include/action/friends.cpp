@@ -1,9 +1,12 @@
 #include "pch.hpp"
 #include "tools/create_dialog.hpp"
+#include "tools/guild.hpp"
 #include "friends.hpp"
 
 void action::friends(ENetEvent& event, const std::string& header) 
 {
+    const ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    const bool guild = pPeer && in_guild(pPeer->growid); // @note GT shows "Show Guild" once you have one
     send_varlist(event.peer, {
         "OnDialogRequest", 
         create_dialog()
@@ -13,7 +16,7 @@ void action::friends(ENetEvent& event, const std::string& header)
             .add_button("showfriend", "`wShow Friends``")
             .add_button("communityhub", "`wCommunity Hub``")
             .add_button("show_apprentices", "`wShow Apprentices``")
-            .add_button("showguild", "`wCreate Guild``")
+            .add_button("showguild", guild ? "`wShow Guild``" : "`wCreate Guild``")
             .add_button("trade_history", "`wTrade History``")
             .add_quick_exit()
             .end_dialog("socialportal", "")

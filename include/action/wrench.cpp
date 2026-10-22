@@ -5,6 +5,7 @@
 #include "tools/wrench_menu.hpp"
 #include "tools/profile.hpp"
 #include "tools/social.hpp"
+#include "tools/guild.hpp"
 #include "wrench.hpp"
 
 void action::wrench(ENetEvent& event, const std::string& header) 
@@ -39,6 +40,7 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_spacer("small")
                             .add_textbox(std::format("`oStatus: {} `o({})``", status_label(*pOthers), online_status_label(*pOthers)))
                             .add_spacer("small")
+                            .raw(guild_self_lines(*pOthers)) // @note your guild and rank, Show Guild
                             .add_button("renew_pvp_license", "Get Card Battle License")
                             .add_spacer("small")
                             .set_custom_spacing(5, 10)
@@ -110,7 +112,8 @@ void action::wrench(ENetEvent& event, const std::string& header)
                             .add_button("friend_add", are_friends(pPeer->growid, pOthers->growid) ? "`wRemove friend``" : "`wAdd as friend``")
                             .add_button("show_clothes", "`wView worn clothes``")
                             .add_button("ignore_player", is_ignoring(*pPeer, pOthers->growid) ? "`wUnignore Player``" : "`wIgnore Player``")
-                            .add_button("report_player", "`wReport Player``");
+                            .add_button("report_player", "`wReport Player``")
+                            .raw(guild_wrench_lines(*pPeer, *pOthers)); // @note their guild + Invite to Guild / Promote / Demote / Kick from Guild
 
                     /* @note world owner (or staff) controls */
                     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);
