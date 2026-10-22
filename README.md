@@ -98,5 +98,10 @@ MSYSTEM=UCRT64 /c/msys64/usr/bin/bash.exe -lc "bash '$PWD/test/run.sh'"
 
 ## License
 
-Apache License 2.0, see [`LICENSE`](LICENSE). SevenPS is a modified version of Gurotopia
-(© gurotopia, 2024); the changes and other credits are in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
+SevenPS is a modified version of Gurotopia (© gurotopia, 2024). Gurotopia's original code stays
+under the Apache License 2.0, see [`LICENSE`](LICENSE).
+
+The SevenPS changes (© 2026 Seven, all rights reserved) may be read and studied, but **using, copying,
+modifying or hosting them needs permission first**. Ask on Discord: **feelingsarefake**.
+
+The changes and other credits are in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
