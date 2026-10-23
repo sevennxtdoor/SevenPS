@@ -5,6 +5,11 @@
 Everything SevenPS adds or changes (roles, trade, vending, surgery, ranks, guilds, events, login security,
 backups...) is listed in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
 
+> **Disclaimer:** SevenPS is a fan-made, non-commercial project for learning. It is not affiliated with,
+> endorsed by or connected to Ubisoft or Growtopia. Growtopia and its names are trademarks of their owners.
+> This repository contains no game files or assets from Ubisoft (no `items.dat`, images or sounds), and
+> nothing in SevenPS is sold for real money.
+
 ## Requirements
 
 - [MSYS2](https://www.msys2.org/) (Windows) with the UCRT64 toolchain:
@@ -72,7 +77,7 @@ To play on your own PC, point the game's server addresses at it in the **hosts**
 |---|---|
 | `mysql_login.txt` | MariaDB login (see above). Secret, git-ignored |
 | `server_data.php` | Address, port, maintenance text and login page the game gets. Made on the first start |
-| `items.dat` | The game's item list |
+| `items.dat` | The game's item list. Not included (it belongs to Ubisoft): copy it from your own Growtopia install |
 | `resources/` | Login page, store, ranks, prize tables, punch effects and other data the server reads |
 | `resources/ctx/` | TLS certificate and key for the login server. The keys are git-ignored, never upload them |
 | `reset_password.txt` | Forgotten password: write `growid|new password` in it and start the server. It is deleted after use |
