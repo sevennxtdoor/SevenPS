@@ -32,6 +32,8 @@ void action::quit_to_exit(ENetEvent& event, const std::string& header, bool skip
 
         on::ConsoleMessage(&peer, message);
         send_varlist(&peer, { "OnRemove", netid, pId }); // @todo
+        send_varlist(&peer, { "OnTalkBubble", pPeer->netid, message, 0u }); // @note bubble + door sound like GTOS sendPlayerLeave()
+        send_action(peer, "play_sfx", "file|audio/door_shut.wav\ndelayMS|0\n");
     });
 
     if (--world->visitors <= 0) // @note take 1, and if result is 0, delete memory copy of world.

@@ -202,6 +202,20 @@ void uba(ENetEvent& event, const std::string_view text)
     on::ConsoleMessage(event.peer, "`oYou've unbanned everybody from this world.``");
 }
 
+/* @return the online player {growid} if they are in your world, else logs an error and returns nullptr */
+static ENetPeer *find_in_world(ENetEvent& event, const std::string &growid)
+{
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    ENetPeer *target = find_online(growid);
+    if (!target || pPeer->netid == 0 || static_cast<::peer*>(target->data)->recent_worlds.back() != pPeer->recent_worlds.back()
+        || static_cast<::peer*>(target->data)->netid == 0)
+    {
+        send_action(*event.peer, "log", std::format("msg|`4Player `w{}`` `4is not in this world.``", growid));
+        return nullptr;
+    }
+    return target;
+}
+
 /* /wban {growid} [minutes] - world owner (always 10 minutes) or staff (1-60 minutes). target must be in your world */
 void wban(ENetEvent& event, const std::string_view text)
 {
@@ -213,13 +227,26 @@ void wban(ENetEvent& event, const std::string_view text)
     args >> growid;
     if (int n{}; args >> n && pPeer->role >= MODERATOR) minutes = std::clamp(n, 1, 60); // @note only staff choose the length
 
-    ENetPeer *target = find_online(growid);
-    if (!target || pPeer->netid == 0 || static_cast<::peer*>(target->data)->recent_worlds.back() != pPeer->recent_worlds.back()
-        || static_cast<::peer*>(target->data)->netid == 0)
-    {
-        send_action(*event.peer, "log", std::format("msg|`4Player `w{}`` `4is not in this world.``", growid));
-        return;
-    }
+    ENetPeer *target = find_in_world(event, growid);
+    if (!target) return;
     if (!world_punish(event, "worldban", target, minutes))
         send_action(*event.peer, "log", "msg|`4You can't world ban that player.`` (only the world owner or staff can, and not on the owner or higher staff)");
+}
+
+/* /pull {growid} - same as the wrench Pull button */
+void pull(ENetEvent& event, const std::string_view text)
+{
+    ENetPeer *target = find_in_world(event, argument(text));
+    if (!target) return;
+    if (!world_punish(event, "pull", target))
+        send_action(*event.peer, "log", "msg|`4You can't pull that player.`` (only the world owner or staff can, and not on the owner or higher staff)");
+}
+
+/* /wkick {growid} - same as the wrench Kick button (/kick disconnects from the server) */
+void wkick(ENetEvent& event, const std::string_view text)
+{
+    ENetPeer *target = find_in_world(event, argument(text));
+    if (!target) return;
+    if (!world_punish(event, "kick", target))
+        send_action(*event.peer, "log", "msg|`4You can't kick that player.`` (only the world owner or staff can, and not on the owner or higher staff)");
 }

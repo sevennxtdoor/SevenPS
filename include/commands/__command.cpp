@@ -43,7 +43,7 @@ static constexpr std::string_view emotes[24]{
 /* named commands with their usage hint, shown in /help */
 static constexpr std::string_view named_help =
     "/time /sb {msg} /warp {world} /punch {id} /skin {id} /who /me {msg} "
-    "/news /weather {id} /wban {growid} /uba /title /start /event /top /rank /msg {growid} {msg} /online /hunt /tutorial /guild /gc {msg} /sponsor /parkour /pay {growid} {gems} /go /rgo /sethome /home /rules /mods /radio /info {item} /status /spin /luckybox /redeem {code}";
+    "/news /weather {id} /pull {growid} /wkick {growid} /wban {growid} /uba /title /start /event /top /rank /msg {growid} {msg} /online /hunt /tutorial /guild /gc {msg} /sponsor /parkour /pay {growid} {gems} /go /rgo /sethome /home /rules /mods /radio /info {item} /status /spin /luckybox /redeem {code}";
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
@@ -57,8 +57,8 @@ static constexpr std::string_view dev_help =
 static constexpr std::string_view owner_help =
     "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR} /giverank {growid} {0-5} /setlevel {growid} {1-125} /stafflog {growid} /code";
 
-std::array<std::string_view, 14> cmd_requires_arg{
-    "sb", "warp", "punch", "skin", "me", "weather", "give", "setrole", "kick", "ban", "unban", "wban", "givetitle", "givegems"
+std::array<std::string_view, 16> cmd_requires_arg{
+    "sb", "warp", "punch", "skin", "me", "weather", "give", "setrole", "kick", "ban", "unban", "wban", "pull", "wkick", "givetitle", "givegems"
 };
 
 /* if you plan to use this outside of this file, please include in __command.hpp (^-^) - and just make it a void. */
@@ -107,6 +107,8 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"restart", &restart},
         {"uba", &uba},
         {"wban", &wban},
+        {"pull", &pull},
+        {"wkick", &wkick},
         {"title", &title},
         {"givetitle", &givetitle},
         {"nick", &nick},

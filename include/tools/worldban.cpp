@@ -71,11 +71,21 @@ bool world_punish(ENetEvent& event, const std::string &act, ENetPeer *target, in
         moved_by_server(*pTarget, pPeer->pos);
         send_varlist(target, { "OnSetPos", CL_Vec2f{pPeer->pos.x, pPeer->pos.y} }, pTarget->netid);
         message = std::format("{} `5pulls`` {}``!", pPeer->display_growid, pTarget->display_growid);
+        /* @note sound + overlay from GTOS */
+        send_action(*event.peer, "play_sfx", "file|audio/object_spawn.wav\ndelayMS|0\n");
+        send_action(*target, "play_sfx", "file|audio/object_spawn.wav\ndelayMS|0\n");
+        send_varlist(target, { "OnTextOverlay", (pPeer->user_id == world->owner) ?
+            std::format("You were pulled by {}", pPeer->display_growid) : std::string{"You were summoned by a mod"} });
     }
     else if (act == "kick")
     {
+        /* @note GT kills the player and respawns them at the door, same packets as action::respawn() */
         moved_by_server(*pTarget, world->spawn);
-        send_varlist(target, { "OnSetPos", CL_Vec2f{world->spawn.x, world->spawn.y} }, pTarget->netid);
+        send_varlist(target, { "OnSetFreezeState", 2u }, pTarget->netid);
+        send_varlist(target, { "OnKilled" }, pTarget->netid);
+        send_varlist(target, { "OnSetPos", CL_Vec2f{world->spawn.x, world->spawn.y} }, pTarget->netid, 0x000007d0/*2000ms*/);
+        send_action(*target, "play_sfx", "file|audio/teleport.wav\ndelayMS|2000\n");
+        send_varlist(target, { "OnSetFreezeState", 0u }, pTarget->netid, 0x000007e4/*2020ms*/);
         message = std::format("{} `4kicks`` {}``!", pPeer->display_growid, pTarget->display_growid);
     }
     else if (act == "worldban")
@@ -85,7 +95,11 @@ bool world_punish(ENetEvent& event, const std::string &act, ENetPeer *target, in
     }
     else return false;
 
-    peers(world_name, PEER_SAME_WORLD, [&message](ENetPeer &p) { on::ConsoleMessage(&p, message); });
+    peers(world_name, PEER_SAME_WORLD, [&message, &act](ENetPeer &p)
+    {
+        on::ConsoleMessage(&p, message);
+        if (act == "worldban") send_action(p, "play_sfx", "file|audio/repair.wav\ndelayMS|0\n"); // @note GTOS
+    });
     send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, message, 0u });
 
     if (act == "worldban")

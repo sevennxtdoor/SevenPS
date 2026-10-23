@@ -14,3 +14,7 @@ extern void uba(ENetEvent& event, const std::string_view text);
 
 /* world owner (or staff): world ban a player in your world */
 extern void wban(ENetEvent& event, const std::string_view text);
+
+/* world owner (or staff): pull / kick a player in your world, like the wrench buttons */
+extern void pull(ENetEvent& event, const std::string_view text);
+extern void wkick(ENetEvent& event, const std::string_view text);
