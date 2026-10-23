@@ -54,10 +54,8 @@ void jammer_toggled(ENetEvent &event, ::world &world, ::block &block, const ::po
     }
     const std::string message = std::format("`w{}`` {} by {}``. {}", id_to_item(block.fg).raw_name, on ? "`2enabled" : "`4disabled", pPeer->display_growid, what);
 
-    ::gamePacket update{};
-    update.id = block.fg;
-    update.punch = tile;
-    send_tile_update(event, update, block, world); // @note everyone sees it switch on/off
+    /* @note no tile update here: the game flips a toggleable block itself when it gets the punch damage (tile_apply_damage), like upstream
+     * Gurotopia. sending the new state first made it flip twice, so everyone saw it the other way round (debug_toggle.log 2026-10-23) */
     send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, std::format("`w{}`` {}``", id_to_item(block.fg).raw_name, on ? "`2ON" : "`4OFF"), 0u, 1u });
     peers(world.name, PEER_SAME_WORLD, [&message](ENetPeer &p) { on::ConsoleMessage(&p, message); });
     if (block.fg == jammer::ANTIGRAVITY) // @note everyone's gravity changes right away

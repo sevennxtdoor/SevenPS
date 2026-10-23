@@ -5,12 +5,13 @@
 # extra (optional, comma separated):
 #   dj = double jump, dig = Enhanced Digging (blocks need 1 hit less)
 #   pr+N = punch N tiles further, br+N = build N tiles further (N = 1..10)
-#   eyes (invisible, only eyes), horns, halo, highjump, fireproof (lava doesn't hurt), spikeproof,
+#   eyes (invisible, only eyes), noface (no face), horns, halo, highjump, fireproof (lava doesn't hurt), spikeproof,
 #   stinky, sparkle, shadow, irradiated, spotlight
 # Back items (wings, capes) already give double jump.
 
 # From GTopia's playmods (MIT, (c) keichira)
 1904|0|0|Invisible (The One Ring)|eyes
+3774|0|0|Faceless (No-Face)|noface
 3066|0|0|Long Reach (Fire Hose)|pr+1
 3716|0|0|Hunting Ghosts (Neutron Gun)|pr+2
 4746|0|0|Energized Horn (Diamond Horn)|br+1

@@ -17,6 +17,7 @@ namespace
      * matching the notes already in SetClothing.cpp. only looks/abilities the client draws or applies itself */
     const std::unordered_map<std::string_view, int> state_names{
         { "eyes",       0x00000004 }, // @note invisible, only eyes and mouth (The One Ring)
+        { "noface",     0x00000010 }, // @note no face (No-Face)
         { "horns",      0x00000040 }, // @note devil horns
         { "halo",       0x00000080 }, // @note angel halo
         { "highjump",   0x00000100 },

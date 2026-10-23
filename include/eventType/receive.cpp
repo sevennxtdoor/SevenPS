@@ -2,6 +2,9 @@
 #include "action/__action.hpp"
 #include "gamePacket/_gamePacket.hpp"
 #include "tools/guard.hpp"
+#include "tools/jammer.hpp" // @todo TEMPORARY debug
+#include "commands/weather.hpp" // @todo TEMPORARY debug
+#include <fstream>
 #include "receive.hpp"
 
 void receive(ENetEvent& event)
@@ -48,6 +51,15 @@ void receive(ENetEvent& event)
             gamePacket.size = event.packet->dataLength - sizeof(::gamePacket); // @todo did i do this right? or check for flag ::EXTENDED
 
             if (!pPeer->loaded && gamePacket.type != 0x15 && gamePacket.type != 0x1a) break; // @note ping and disconnect only
+            /* @todo TEMPORARY debug (jammer/weather not toggling in game): every packet aimed at one goes to debug_toggle.log. remove after */
+            if (gamePacket.type != 0x00 && gamePacket.type != 0x15 && pPeer->netid != 0)
+                if (auto w = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name); w != worlds.end() && gamePacket.punch.x >= 0 && gamePacket.punch.y >= 0 && gamePacket.punch.x < 100 &&
+                    cord(gamePacket.punch.x, gamePacket.punch.y) < static_cast<int>(w->blocks.size()))
+                    if (const ::block &b = w->blocks[cord(gamePacket.punch.x, gamePacket.punch.y)]; is_jammer(b.fg) || is_weather_machine(b.fg))
+                        if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log)
+                            log << std::format("{} user={} role={} world={} owner={} public={} type={:#x} id={} punch={},{} fg={} state2={:#04x} hits={}\n",
+                                std::time(nullptr), pPeer->user_id, (int)pPeer->role, w->name, w->owner, w->is_public, gamePacket.type, gamePacket.id,
+                                gamePacket.punch.x, gamePacket.punch.y, b.fg, b.state[2], b.hits[0]);
             if (const auto i = gamePacket_pool.find(gamePacket.type); i != gamePacket_pool.end())
                 i->second(event, std::move(gamePacket));
             break;

@@ -17,7 +17,7 @@ enum playmod_flag : int {
 extern bool has_playmod(const ::peer &p, int flag);
 
 /* @note every character state bit playmods.txt can give (update_effects clears these before adding the worn ones) */
-constexpr int PLAYMOD_STATES = 0x4 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 | 0x4000 | 0x8000 | 0x40000 | 0x80000 | 0x100000;
+constexpr int PLAYMOD_STATES = 0x4 | 0x10 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 | 0x4000 | 0x8000 | 0x40000 | 0x80000 | 0x100000;
 constexpr int STATE_FIREPROOF = 0x200;
 
 /* @return the character state bits from worn items ('eyes', 'halo', 'fireproof'... in playmods.txt) */

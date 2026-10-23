@@ -6,6 +6,7 @@
 #include "tools/rank.hpp"
 #include "tools/cps.hpp"
 #include "tools/economy.hpp"
+#include "tools/legendary.hpp"
 
 #include "system_worlds.hpp"
 
@@ -27,11 +28,13 @@ namespace
 
     const ::pos PARKOUR_FINISH{ 96, 13 };
     constexpr int PARKOUR_REWARD = 1000; // @note gems, once a day (+ rank bonus)
+
+    const ::pos MOUNTAIN_FINISH{ 93, 6 }; // @note LEGENDARYMOUNTAIN: a Legendary Orb, once a day
 }
 
 bool is_system_world(std::string_view name)
 {
-    return name == "START" || name == "PARKOUR";
+    return name == "START" || name == "PARKOUR" || name == "LEGENDARYMOUNTAIN";
 }
 
 namespace
@@ -77,7 +80,6 @@ static void clear_world(::world &w)
     w.doors.clear();
     w.signs.clear();
     w.trees.clear();
-    w.displays.clear();
     w.random_blocks.clear();
     w.objects.clear();
     w.last_object_uid = 0;
@@ -200,10 +202,50 @@ static void build_parkour(::world &w)
     put_sign(w, 98, 13, "`2FINISH!`` Touch the checkpoint to claim your reward. See you tomorrow!");
 }
 
+/* ---------- LEGENDARYMOUNTAIN ---------- */
+
+/* @note real GT's layout isn't known to us: a SevenPS climb, one block up every 3 tiles (like PARKOUR) over spikes,
+ * with a rock mountain drawn in the background and the Legendary Orb checkpoint at the peak */
+static void build_legendary_mountain(::world &w)
+{
+    clear_world(w);
+    for (int y = 0; y < GROUND; ++y)
+        for (int x = 0; x < W; ++x) bg(w, x, y, id::SUNSET_CLOUDS_BG);
+    for (int x = 0; x < W; ++x) fg(w, x, GROUND, id::BEDROCK);
+
+    /* @note the mountain behind the climb (background only, it can't be walked on) */
+    for (int x = 4; x < W; ++x)
+    {
+        const int top = (x <= 92) ? std::max(7, 36 - (x - 4) / 3) : 7 + (x - 92) * 2; // @note follows the climb up, steep on the far side
+        for (int y = top; y < GROUND; ++y) bg(w, x, y, id::CAVE_BG);
+    }
+
+    main_door(w, 2);
+    put_sign(w, 4, GROUND - 1, "`9LEGENDARYMOUNTAIN`` Climb to the peak for a `9Legendary Orb`` (once a day), the last step of every Legendary Quest. Spikes send you back to your last checkpoint.");
+    for (int x = 5; x < W; ++x) fg(w, x, GROUND - 1, id::DEATH_SPIKES);
+
+    for (int i = 0; i < 28; ++i)
+    {
+        const int x = 6 + i * 3, y = 35 - i;
+        if (i % 7 == 6) // @note a wider rest with a checkpoint
+        {
+            for (int k = 0; k < 3; ++k) fg(w, x + k, y, id::STEEL);
+            fg(w, x + 1, y - 1, id::CHECKPOINT);
+        }
+        else fg(w, x, y, id::STEEL);
+    }
+
+    /* @note the peak */
+    for (int x = 90; x <= 97; ++x) fg(w, x, MOUNTAIN_FINISH.y_int() + 1, id::GOLDEN_BLOCK);
+    fg(w, MOUNTAIN_FINISH.x_int(), MOUNTAIN_FINISH.y_int(), id::CHECKPOINT);
+    put_sign(w, 96, MOUNTAIN_FINISH.y_int(), "`9The peak!`` Touch the checkpoint to collect your `9Legendary Orb``. Come back tomorrow for another.");
+}
+
 bool build_system_world(::world &world)
 {
     if (world.name == "START") build_start(world);
     else if (world.name == "PARKOUR") build_parkour(world);
+    else if (world.name == "LEGENDARYMOUNTAIN") build_legendary_mountain(world);
     else return false;
     return true;
 }
@@ -212,6 +254,23 @@ bool build_system_world(::world &world)
 
 void system_checkpoint(ENetEvent &event, ::world &world, const ::pos &tile)
 {
+    if (world.name == "LEGENDARYMOUNTAIN" && tile.x_int() == MOUNTAIN_FINISH.x_int() && tile.y_int() == MOUNTAIN_FINISH.y_int())
+    {
+        ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+        const int today = static_cast<int>(std::time(nullptr) / 86400);
+        if (pget(*pPeer, "orb_day") == today)
+            return on::ConsoleMessage(event.peer, "`oYou already took a Legendary Orb today. Come back tomorrow!``");
+        auto orb = std::ranges::find(pPeer->slots, static_cast<short>(LEGENDARY_ORB), &::slot::id);
+        if (orb == pPeer->slots.end() ? static_cast<int>(pPeer->slots.size()) >= pPeer->slot_size : orb->count >= 200)
+            return on::ConsoleMessage(event.peer, "`4Make room in your backpack for the Legendary Orb!``");
+
+        pset(*pPeer, "orb_day", today);
+        modify_item_inventory(event, ::slot(LEGENDARY_ORB, 1));
+        send_action(*event.peer, "play_sfx", "file|audio/levelup2.wav\ndelayMS|0\n");
+        send_varlist(event.peer, { "OnTextOverlay", "`9You collected a Legendary Orb!``" });
+        system_broadcast(std::format("`9** ``{} `9reached the peak of `wLEGENDARYMOUNTAIN`` `9and took a Legendary Orb!``", pPeer->display_growid));
+        return;
+    }
     if (world.name != "PARKOUR" || tile.x_int() != PARKOUR_FINISH.x_int() || tile.y_int() != PARKOUR_FINISH.y_int()) return;
 
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
@@ -240,7 +299,7 @@ void rebuild_command(ENetEvent &event, const std::string_view text)
     std::vector<std::string> args = readch(std::string{ text }, ' ');
     std::string name = (args.size() >= 2) ? args[1] : "";
     for (char &c : name) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-    if (!is_system_world(name)) return on::ConsoleMessage(event.peer, "`oUsage: `w/rebuild START`` or `w/rebuild PARKOUR`` (everything built there is replaced!)``");
+    if (!is_system_world(name)) return on::ConsoleMessage(event.peer, "`oUsage: `w/rebuild START``, `w/rebuild PARKOUR`` or `w/rebuild LEGENDARYMOUNTAIN`` (everything built there is replaced!)``");
 
     /* @note everyone leaves first so nobody sees half a world. the last one out saves and unloads it */
     for (ENetPeer *p : peers())

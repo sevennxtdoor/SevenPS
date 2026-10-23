@@ -19,7 +19,7 @@ void setlevel(ENetEvent &event, const std::string_view text)
     for (ENetPeer *p : peers())
         if (::peer *pp = static_cast<::peer*>(p->data); pp && !pp->growid.empty() && lower(pp->growid) == lower(args[1]))
         {
-            pp->level.front() = static_cast<u_short>(level);
+            pp->level.front() = static_cast<u_int>(level);
             pp->level.back() = 0; // @note xp starts over at the new level
             ENetEvent theirs{ .peer = p };
             on::CountryState(theirs); // @note the level 125 badge

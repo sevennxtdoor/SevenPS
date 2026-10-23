@@ -1,0 +1,24 @@
+# SevenPS Crazy Jim's Daily Quest (Telephone, dial 12345): each day 2 different lines are picked, the same for everyone.
+# Deliver both and get 1 Growtoken, once a day per account (resets at midnight server time).
+# item|id|count   (count 1-200, it must fit in one stack)
+# @note real Growtopia's list is not on the wiki pages we could read, these are SevenPS picks (guess)
+item|2|200|Dirt
+item|10|200|Rock
+item|14|200|Cave Background
+item|100|200|Wood Block
+item|56|200|Glass Pane
+item|52|150|Wooden Background
+item|442|200|Sand
+item|4|150|Lava
+item|170|100|Red Block
+item|336|100|Stone Wall
+item|12|50|Door
+item|20|50|Sign
+item|102|100|Wooden Platform
+item|54|100|Window
+item|222|50|Wooden Table
+item|28|25|Danger Sign
+item|180|50|Blue Block
+item|554|25|Ladder
+item|328|50|Bubble Wrap
+item|186|25|Steel Block

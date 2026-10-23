@@ -77,7 +77,7 @@ bool staff_locked(const ::peer &p) { return p.role >= MODERATOR && p.role < OWNE
 void staff_locked_message(ENetPeer &p)
 {
     send_varlist(&p, { "OnTextOverlay", "`4Staff accounts can't give items or gems to players.``" });
-    on::ConsoleMessage(&p, "`4Staff accounts can't drop, trade, use vending machines or /pay`` - this keeps the economy fair. Use a normal account to play.");
+    on::ConsoleMessage(&p, "`4Staff accounts can't trade, use vending machines or /pay`` - this keeps the economy fair. Use a normal account to play.");
 }
 
 void staff_log(const ::peer &staff, std::string_view action, std::string_view target, int item, int amount)

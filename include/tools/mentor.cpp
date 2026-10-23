@@ -319,7 +319,7 @@ void mentor_invite_return(ENetEvent &event, const ::hPipe &hPipe)
     if (const std::string why = cannot_add(*mentor, *event.peer); !why.empty()) return say(event.peer, why); // @note again: things changed since the request
 
     ::peer &m = *static_cast<::peer*>(mentor->data);
-    link l{ .apprentice = p.growid, .mentor = m.growid, .level = p.level.front(), .since = std::time(nullptr) };
+    link l{ .apprentice = p.growid, .mentor = m.growid, .level = static_cast<int>(p.level.front()), .since = std::time(nullptr) };
     links.push_back(l);
     save(l);
     pset(m, "mentor_day", static_cast<int>(std::time(nullptr) / 86400));

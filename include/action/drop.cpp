@@ -15,9 +15,8 @@ void action::drop(ENetEvent& event, const std::string& header)
         send_varlist(event.peer, { "OnTextOverlay", "You can't drop that." });
         return;
     }
-    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-    if (staff_locked(*pPeer)) return staff_locked_message(*event.peer);
-    
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data); // @note MOD/DEV may drop (logged in staff_log, see drop_item.cpp)
+
     for (const ::slot &slot : pPeer->slots)
         if (slot.id == item.id) 
         {

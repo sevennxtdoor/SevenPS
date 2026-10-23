@@ -14,7 +14,7 @@ extern void system_checkpoint(ENetEvent &event, ::world &world, const ::pos &til
 /* @note an already built START keeps its blocks, but the signs that teach the basics get today's text */
 extern void refresh_system_signs(::world &world);
 
-extern void rebuild_command(ENetEvent &event, const std::string_view text); // @note /rebuild {START|PARKOUR}, owner only
+extern void rebuild_command(ENetEvent &event, const std::string_view text); // @note /rebuild {START|PARKOUR|LEGENDARYMOUNTAIN}, owner only
 
 /* @note door destinations are not part of the blocks blob, they're kept in the `world_door` table */
 extern void load_doors(::world &world);

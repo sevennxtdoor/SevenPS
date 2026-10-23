@@ -25,8 +25,11 @@
 #include "item_activate_object.hpp"
 
 #include "tools/password_door.hpp"
+#include "tools/telephone.hpp"
+#include "tools/legendary.hpp"
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
+#include "tools/display_block.hpp"
 #include "tools/fishing.hpp"
 #include "tools/casino.hpp"
 #include "tools/economy.hpp"
@@ -41,6 +44,7 @@
 #include "tools/guild.hpp"
 #include "tools/home.hpp"
 #include "tile_change.hpp"
+#include <fstream> // @todo TEMPORARY debug
 
 float max_reach = 4.0f; // @note Growtopia reaches 3 tiles (wiki: Fist), +1 for lag. playmods ('pr+N'/'br+N') add on top
 
@@ -222,6 +226,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (mannequin_punched(event, *world, gamePacket.punch)) return; // @note takes a piece of clothing back instead of damage
                     break;
                 }
+                case type::DISPLAY_BLOCK:
+                {
+                    if (std::string reason = display_refuse_break(*pPeer, *world, gamePacket.punch); !reason.empty()) throw std::runtime_error(reason);
+                    break;
+                }
                 case type::MAGPLANT:
                 {
                     if (block.hits[0] == 0) magplant_punched(event, *world, gamePacket.punch); // @note first hit switches building mode
@@ -246,8 +255,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     if (ticks() - tree->tick >= item.tick) // @todo limit this check.
                     {
                         block.hits[0] = 99;
-                        magplant_drop(event, ::slot(item.id - 1, RandomRange(1, std::max<int>(tree->fruit, 1) * 3)), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
+                        const short fruit = static_cast<short>(RandomRange(1, std::max<int>(tree->fruit, 1) * 3));
+                        magplant_drop(event, ::slot(item.id - 1, fruit), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
                         add_stat(event, "harvested");
+                        add_stat(event, "fruit_rarity", fruit * std::max<int>(item.rarity, 0)); // @note Legendary Quest step (tools/legendary.cpp)
                     }
                     break;
                 }
@@ -280,6 +291,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     clear_weather_override(world->name); // @note the machine wins over /weather
 
                     const int weather_id = on ? get_weather_id(item.id) : 0;
+                    if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
+                        log << std::format("{} weather toggled on={} weather_id={} item={}\n", std::time(nullptr), on, weather_id, item.id);
                     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [weather_id](ENetPeer& p)
                     {
                         send_varlist(&p, { "OnSetCurrentWeather", weather_id });
@@ -293,6 +306,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 {
                     block.state[2] ^= S_TOGGLE;
                     if (is_jammer(block.fg)) jammer_toggled(event, *world, block, gamePacket.punch);
+                    if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
+                        log << std::format("{} toggle item={} state2={:#04x}\n", std::time(nullptr), block.fg, block.state[2]);
                     break;
                 }
                 case type::RANDOM:
@@ -321,9 +336,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             /* @todo update these changes with tile_update() */
             block.state[2] = 0x00; // @note reset tile direction
             add_stat(event, "broken");
+            add_stat(event, "broken_rarity", std::max<int>(item.rarity, 0)); // @note Legendary Quest step (tools/legendary.cpp)
             if (box_type(item) != box_kind::NONE) box_removed(*world, gamePacket.punch); // @note letters on a broken mailbox are gone
             if (item.type == type::MAGPLANT) magplant_removed(event, *world, gamePacket.punch);
             if (item.type == type::MANNEQUIN) mannequin_removed(*world, gamePacket.punch);
+            if (item.type == type::DISPLAY_BLOCK) display_removed(event, *world, gamePacket.punch); // @note the displayed item drops out
             block.state[3] &= ~S_VANISH; // @note remove paint
             const bool own_drops = special_break(event, *world, block, gamePacket.punch, item, tile_update) || // @note loot blocks, fossils, Mystery Pinata
                                    special_tile_break(event, *world, gamePacket.punch, item); // @note Bunny Egg prize, crystal cluster gone
@@ -360,7 +377,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             }
 
             if (own_drops) { } // @note special_break() dropped its own prizes
-            else if (item.cat == CAT_RETURN)
+            else if (item.cat & CAT_RETURN) // @note a bit flag: e.g. My First World Lock is CAT_RETURN | CAT_UNTRADEABLE
             {
                 int uid = add_object(event, ::slot(item.id, 1), gamePacket.pos, *world);
                 item_activate_object(event, ::gamePacket{.id = uid, .punch = gamePacket.punch});
@@ -397,6 +414,11 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 pPeer->add_xp(event, std::trunc(1.0f + item.rarity / 5.0f));
             }
         } // @note delete im, id
+        else if (gamePacket.id != 32 && id_to_item(block.fg).type == type::DISPLAY_BLOCK) // @note putting it on display, not wearing/using/placing it
+        {
+            if (!from_remote) display_use_item(event, *world, gamePacket.punch, gamePacket.id);
+            return;
+        }
         else if (item.cloth_type != clothing::NONE) 
         {
             if (id_to_item(block.fg).type == type::MANNEQUIN) // @note dressing a mannequin, not yourself
@@ -613,6 +635,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 return;
             }
             if (item.id == 6016) return growscan_dialog(event, *world); // @note GrowScan 9000
+            if (item.id == TELEPHONE) return telephone_dialog(event, *world, gamePacket.punch); // @note anyone may call (Crazy Jim, Sales-Man)
+            if (item.id == LEGENDARY_WIZARD) return legendary_wizard_dialog(event, *world, gamePacket.punch); // @note checks access itself
             if (special_tile_wrench(event, *world, gamePacket.punch, item)) return; // @note crystal cluster, Bunny Egg
             switch (item.type)
             {
@@ -736,7 +760,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::DISPLAY_BLOCK:
                 {
-                    // @todo
+                    display_wrench(event, *world, gamePacket.punch); // @note checks the owner itself
                     break;
                 }
                 case type::VENDING_MACHINE:
@@ -770,12 +794,6 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                         if (from_remote) return;
                         mannequin_use_item(event, *world, gamePacket.punch, gamePacket.id);
                         return;
-                    }
-                    case type::DISPLAY_BLOCK:
-                    {
-                        world->displays.emplace_back(::display(item.id, gamePacket.punch));
-                        update_tile = true;
-                        break;
                     }
                     case type::SEED:
                     {
@@ -894,6 +912,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     block.state[2] = 0x11; // @todo
                     tile_update = true;
                     add_stat(event, "planted"); // @note tutorial
+                    add_stat(event, "planted_rarity", std::max<int>(item.rarity, 0)); // @note Legendary Quest step (tools/legendary.cpp)
                     break;
                 }
                 case type::ENTRANCE:
@@ -935,6 +954,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
     }
     catch (const std::exception& exc)
     {
+        if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
+            log << std::format("{} user={} tile_change refused id={} punch={},{}: {}\n", std::time(nullptr), pPeer->user_id, gamePacket.id, gamePacket.punch.x, gamePacket.punch.y, exc.what());
         send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, exc.what(), 0u, 1u });
         return;
     }

@@ -55,7 +55,7 @@ static constexpr std::string_view dev_help =
 
 /* owner only */
 static constexpr std::string_view owner_help =
-    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR} /giverank {growid} {0-5} /setlevel {growid} {1-125} /stafflog {growid} /code";
+    "/setrole {growid} dev /restart {minutes} /restart cancel /rebuild {START|PARKOUR|LEGENDARYMOUNTAIN} /giverank {growid} {0-5} /setlevel {growid} {1-125} /stafflog {growid} /code";
 
 std::array<std::string_view, 16> cmd_requires_arg{
     "sb", "warp", "punch", "skin", "me", "weather", "give", "setrole", "kick", "ban", "unban", "wban", "pull", "wkick", "givetitle", "givegems"

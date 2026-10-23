@@ -48,6 +48,7 @@ struct block
     u_char state[4];
 
     u_char hits[2] = {0, 0}; // @note fg, bg
+    std::chrono::steady_clock::time_point hit_at{}; // @note last punch, hits reset after item.hit_reset (memory only, not saved)
 
     void reset();
 
@@ -95,15 +96,6 @@ struct tree
     ::pos pos{};
 
     ::blob to_blob(bool seconds = false) const;
-};
-
-struct display
-{
-    display(u_int _id, ::pos _pos) : 
-        id(_id), pos(_pos) {}
-
-    u_int id{};
-    ::pos pos{};
 };
 
 struct random_block
@@ -163,7 +155,6 @@ public:
     u_int last_object_uid{0};
     std::vector<::object> objects{};
     std::vector<::door> doors{};
-    std::vector<::display> displays{};
     std::vector<::random_block> random_blocks{};
     std::vector<::sign> signs{};
     std::vector<::tree> trees{};

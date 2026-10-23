@@ -111,8 +111,8 @@ void peer::mysql_select_all()
     this->playtime      = this->mysql_select<signed>("playtime");
     this->login_time    = std::time(nullptr);
     profile_load(*this, this->mysql_select<std::string>("profile"));
-    this->level.front() = static_cast<u_short>(std::clamp(this->mysql_select<signed>("level"), 1, 125));
-    this->level.back()  = static_cast<u_short>(std::max(this->mysql_select<signed>("xp"), 0));
+    this->level.front() = static_cast<u_int>(std::clamp(this->mysql_select<signed>("level"), 1, 125));
+    this->level.back()  = static_cast<u_int>(std::max(this->mysql_select<signed>("xp"), 0));
     this->rank_level    = this->mysql_select<signed>("rank_level");
 
     auto blob = this->mysql_select<std::vector<u_char>>("inventory");
@@ -303,17 +303,18 @@ u_short peer::emplace(::slot slot)
     return excess;
 }
 
-void peer::add_xp(ENetEvent &event, u_short value) 
+void peer::add_xp(ENetEvent &event, u_int value) 
 {
-    value = static_cast<u_short>(xp_bonus(*this, value)); // @note rank bonus
+    value = static_cast<u_int>(xp_bonus(*this, static_cast<int>(value))); // @note rank bonus
     if (event_on(event_type::XP)) value *= 2; // @note XP x2 event
-    guild_add_xp(this->growid, value); // @note growtopiawiki.com/w/Guilds: any XP earned counts for the guild
-    u_short &lvl = this->level.front();
-    u_short &xp = this->level.back() += value; // @note factor the new xp amount
+    guild_add_xp(this->growid, static_cast<int>(value)); // @note growtopiawiki.com/w/Guilds: any XP earned counts for the guild
+    pset(*this, "xp_earned", static_cast<int>(std::min<long long>(pget(*this, "xp_earned") + static_cast<long long>(value), std::numeric_limits<int>::max()))); // @note Legendary Quest step
+    u_int &lvl = this->level.front();
+    u_int &xp = this->level.back() += value; // @note factor the new xp amount
 
     for (; lvl < 125; )
     {
-        u_short xp_formula = 50 * (lvl * lvl + 2); // @author https://www.growtopiagame.com/forums/member/553046-kasete
+        u_int xp_formula = 50 * (lvl * lvl + 2); // @author https://www.growtopiagame.com/forums/member/553046-kasete
         if (xp < xp_formula) break;
 
         xp -= xp_formula;
@@ -325,7 +326,7 @@ void peer::add_xp(ENetEvent &event, u_short value)
             /* @todo based on account age give peer other items... */
         }
         if (lvl == 125) on::CountryState(event);
-        send_varlist(event.peer, { "OnPlayerLeveledUp", lvl });
+        send_varlist(event.peer, { "OnPlayerLeveledUp", static_cast<int>(lvl) });
         send_varlist(event.peer, { "OnParticleEffect", 46u, CL_Vec2f{1812.0f, 1724.0f}, 0.0f, 0.0f });
 
         std::string message = std::format("{} is now level {}!", this->display_growid, lvl);

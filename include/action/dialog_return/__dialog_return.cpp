@@ -21,6 +21,8 @@
 #include "tools/area_lock.hpp"
 #include "tools/boxes.hpp"
 #include "tools/password_door.hpp"
+#include "tools/telephone.hpp"
+#include "tools/legendary.hpp"
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
 #include "onVariant/RequestGazette.hpp"
@@ -73,6 +75,8 @@ std::unordered_map<std::string, std::function<void(ENetEvent &, const ::hPipe &)
     {"mt_box", std::bind(&box_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_magplant", std::bind(&magplant_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_passdoor", std::bind(&password_door_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_phone", std::bind(&telephone_return, std::placeholders::_1, std::placeholders::_2)},
+    {"mt_wizard", std::bind(&legendary_wizard_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_mannequin", std::bind(&mannequin_return, std::placeholders::_1, std::placeholders::_2)},
     {"gazette", std::bind(&gazette_return, std::placeholders::_1, std::placeholders::_2)},
     {"mt_sponsor", std::bind(&sponsor_return, std::placeholders::_1, std::placeholders::_2)},

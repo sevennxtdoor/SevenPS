@@ -78,7 +78,11 @@ namespace
     void give(ENetEvent &event, const std::vector<gift> &list, int gems, std::string_view source)
     {
         ::peer &p = me(event);
-        for (const gift &g : list) modify_item_inventory(event, ::slot(g.id, g.count));
+        for (const gift &g : list)
+        {
+            modify_item_inventory(event, ::slot(g.id, g.count));
+            if (g.id == 1486) add_stat(event, "growtokens", g.count); // @note Growtoken: Legendary Quest step
+        }
         if (gems > 0)
         {
             p.gems = static_cast<signed>(std::min<long long>(p.gems + static_cast<long long>(gems), std::numeric_limits<signed>::max()));

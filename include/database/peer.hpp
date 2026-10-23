@@ -156,11 +156,11 @@ public:
     std::vector<short> fav{};
 
     signed gems{0};
-    std::array<u_short, 2ull> level{ 1, 0 }; // {level, xp} XP formula credits: https://www.growtopiagame.com/forums/member/553046-kasete
+    std::array<u_int, 2ull> level{ 1, 0 }; // {level, xp} @note u_int: level 37+ needs more than 65535 xp XP formula credits: https://www.growtopiagame.com/forums/member/553046-kasete
     /*
     * @brief add XP safely, this function also handles level up.
     */
-    void add_xp(ENetEvent &event, u_short value);
+    void add_xp(ENetEvent &event, u_int value);
 
     /*
     * @brief recalculate transient effects based on clothing.

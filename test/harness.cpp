@@ -3,6 +3,7 @@
 #include "pch.hpp"
 #include "gamePacket/tile_change.hpp"
 #include "tools/mannequin.hpp"
+#include "tools/display_block.hpp"
 #include "tools/string.hpp"
 #include "tools/time.hpp"
 #include "tools/anticheat.hpp"
@@ -71,6 +72,9 @@
 #include "database/shouhin.hpp"
 #include <filesystem>
 #include "automate/holiday.hpp"
+#include "tools/telephone.hpp"
+#include "tools/legendary.hpp"
+#include "tools/system_worlds.hpp"
 #include "tools/vending.hpp"
 #include "commands/gtos.hpp"
 #include "commands/me.hpp"
@@ -99,7 +103,7 @@ int enet_peer_send(ENetPeer *peer, enet_uint8, ENetPacket *packet)
 }
 world::~world() {}
 void load_vendings(::world&) {} void load_doors(::world&) {} void load_area_locks(::world&) {}
-void load_boxes(::world&) {} void load_magplants(::world&) {} void load_mannequins(::world&) {}
+void load_boxes(::world&) {} void load_magplants(::world&) {} void load_mannequins(::world&) {} void load_displays(::world&) {}
 
 /* ---------- helpers ---------- */
 static int fails = 0, passes = 0;
@@ -272,6 +276,46 @@ int main()
     std::puts("\n[13] world blob: tile extra written for a placed mannequin");
     b.fg = 1420; mannequin_placed(w, tile);
     { ::blob wb = w.serialize(); CHECK(wb.size() > 6000 * 8, "world serializes"); }
+
+    /* ================= Display Block ================= */
+    std::puts("\n[DB1] Display Block: owner puts an item on it, wrench takes it back, breaking ejects it");
+    {
+        auto it = std::ranges::find(items, std::string("Display Block"), &::item::raw_name);
+        CHECK(it != items.end() && it->type == type::DISPLAY_BLOCK, "Display Block is TYPE_DISPLAY_BLOCK");
+        const short DISPLAY = (it != items.end()) ? static_cast<short>(it->id) : 0;
+        const ::pos dtile{ 14, 20 };
+        ::block &db = w.blocks[cord(14, 20)];
+        db.fg = DISPLAY;
+        auto shown = [&] { ::blob bl; display_extra(bl, w, dtile); u_int id{}; memcpy(&id, bl.data().data(), 4); return id; };
+        const auto access_before = w.access;
+        owner->slots = { ::slot(hat1, 2), ::slot(untrade, 1) }; owner->slot_size = 16;
+        visitor->slots = { ::slot(hat2, 1) };
+
+        CHECK(shown() == 0, "empty block shows item 0");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = hat1, .pos = owner->pos, .punch = dtile });
+        CHECK(shown() == static_cast<u_int>(hat1) && held(*owner, hat1) == 1, "hat on display, one left the backpack");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = hat1, .pos = owner->pos, .punch = dtile });
+        CHECK(said("Remove what's in there first") && held(*owner, hat1) == 1, "second item refused, not eaten");
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = untrade, .pos = owner->pos, .punch = dtile });
+        CHECK(held(*owner, untrade) == 1, "untradeable not taken");
+
+        w.access[0] = visitor->user_id; // @note even with access: only the owner
+        outbox.clear(); tile_change(ev2, ::gamePacket{ .type = 3, .id = 32, .pos = visitor->pos, .punch = dtile });
+        CHECK(shown() == static_cast<u_int>(hat1) && held(*visitor, hat1) == 0, "visitor can't wrench it out");
+        for (int k = 0; k < 20; ++k) tile_change(ev2, ::gamePacket{ .type = 3, .id = 18, .pos = visitor->pos, .punch = dtile });
+        CHECK(db.fg == DISPLAY && shown() == static_cast<u_int>(hat1), "visitor can't break it while something is on it");
+        w.access = access_before;
+
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = dtile });
+        CHECK(shown() == 0 && held(*owner, hat1) == 2, "owner wrench: hat back in the backpack");
+
+        tile_change(ev, ::gamePacket{ .type = 3, .id = hat1, .pos = owner->pos, .punch = dtile });
+        const std::size_t objects_before = w.objects.size();
+        for (int k = 0; k < 20 && db.fg == DISPLAY; ++k) tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = dtile });
+        CHECK(db.fg == 0, "owner breaks it");
+        CHECK(std::ranges::any_of(w.objects.begin() + objects_before, w.objects.end(), [&](const ::object &o) { return o.id == hat1 && o.count == 1; }), "the hat dropped out");
+        CHECK(shown() == 0, "nothing left on the broken block");
+    }
 
     /* ================= Password Door ================= */
     std::puts("\n[D1] Password Door item");
@@ -876,6 +920,18 @@ int main()
         outbox.clear(); setlevel(ev, "setlevel NOBODYHERE 50"); CHECK(said("offline"), "offline player refused");
         outbox.clear(); setlevel(ev, "setlevel mtvisit 125"); CHECK(visitor->level.front() == 125 && visitor->level.back() == 0, "level set (any case)");
         visitor->level.front() = lvl; owner->role = role;
+    }
+
+    std::puts("\n[XP1] xp past 65535 (level 37+) does not wrap");
+    {
+        const auto level_before = owner->level; const int rank_before = owner->rank_level;
+        owner->rank_level = 0; // @note no rank XP bonus
+        owner->level = { 37, 0 };
+        owner->add_xp(ev, 68549); CHECK(owner->level.front() == 37 && owner->level.back() == 68549, "level 37: 68,549/68,550 xp kept, no level up");
+        owner->add_xp(ev, 1); CHECK(owner->level.front() == 38 && owner->level.back() == 0, "level 37 -> 38 at 68,550 xp");
+        owner->level = { 124, 0 };
+        owner->add_xp(ev, 10000); CHECK(owner->level.front() == 124 && owner->level.back() == 10000, "level 124: 10,000 xp is not a level up");
+        owner->level = level_before; owner->rank_level = rank_before;
     }
 
     /* ================= Sponsor items (items.dat rewrite) ================= */
@@ -1593,6 +1649,20 @@ int main()
         CHECK(get_type(id_to_item(456)) == 0x08 && size_of(0x08) == 1, "Dice: the face");
         CHECK(get_type(id_to_item(872)) == 0x09 && size_of(0x09) == 4, "Chicken: provider timer");
         CHECK(get_type(id_to_item(2)) == 0x00, "Dirt: none");
+
+        std::puts("\n[Y9b] break progress resets after a pause");
+        {
+            const ::pos hp{ 28, 20 };
+            ::block &hb = w.blocks[cord(28, 20)];
+            hb = ::block{}; hb.fg = 2;
+            std::printf("  Dirt hits=%d hit_reset=%ds\n", id_to_item(2).hits, id_to_item(2).hit_reset);
+            CHECK(id_to_item(2).hit_reset > 0, "Dirt has a reset time in items.dat");
+            punch(hp); punch(hp);
+            CHECK(hb.fg == 2 && hb.hits[0] == 2, "two quick punches add up");
+            hb.hit_at -= std::chrono::seconds(id_to_item(2).hit_reset + 1);
+            punch(hp);
+            CHECK(hb.fg == 2 && hb.hits[0] == 1, "after the reset time the damage starts over");
+        }
 
         std::puts("\n[Y10] a provider grows for its own time, then a punch harvests it");
         const ::pos pv{ 28, 20 };
@@ -2690,6 +2760,194 @@ int main()
         for (int k = 0; k < 40; ++k) action::refresh_item_data(ev, "action|refresh_item_data");
         CHECK(items_packets() == 0, "40 more requests: nothing queued (was 5.7 MB each)");
         owner->items_sent = was;
+    }
+
+    std::puts("\n[TP1] Telephone: Crazy Jim (12345) and Sales-Man (53785)");
+    {
+        const ::pos phone{ 50, 20 };
+        w.blocks[cord(50, 20)].fg = TELEPHONE;
+        const ::pos was_pos = owner->pos;
+        const std::vector<::slot> was_slots = owner->slots;
+        owner->pos = phone.by_32();
+        owner->slots.clear();
+        auto phone_ret = [&](const std::string &s) { outbox.clear(); telephone_return(ev, ::hPipe("dialog_name|mt_phone|" + s)); };
+
+        phone_ret("number|12345");
+        CHECK(outbox.empty(), "dialog without wrenching a Telephone is ignored");
+
+        outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = phone });
+        CHECK(said("Phone #"), "wrench opens the dial dialog");
+        phone_ret("number|99999");
+        CHECK(said("does not exist"), "unknown number");
+
+        std::tm t = localtime(); t.tm_hour = 12, t.tm_min = 0, t.tm_sec = 0;
+        const int day = static_cast<int>(std::mktime(&t) / 86400);
+        const auto quest = crazy_jim_quest(day);
+        CHECK(quest[0].first > 0 && quest[1].first > 0 && quest[0].first != quest[1].first, "2 different items today");
+        CHECK(crazy_jim_quest(day) == quest, "same quest every call on the same day");
+
+        phone_ret("number|12345");
+        CHECK(said("Crazy Jim's Daily Quest") && said("You don't have everything"), "Crazy Jim asks, no Deliver yet");
+        phone_ret("buttonClicked|jim_deliver");
+        CHECK(held(*owner, 1486) == 0, "faked Deliver without the items gives nothing");
+
+        owner->slots = { ::slot(quest[0].first, quest[0].second), ::slot(quest[1].first, quest[1].second) };
+        phone_ret("number|12345");
+        CHECK(said("jim_deliver"), "Deliver button with the items");
+        phone_ret("buttonClicked|jim_deliver");
+        CHECK(held(*owner, 1486) == 1, "1 Growtoken");
+        CHECK(held(*owner, quest[0].first) == 0 && held(*owner, quest[1].first) == 0, "both items taken");
+        CHECK(pget(*owner, "jim_day") == day, "done for today");
+
+        owner->slots.push_back(::slot(quest[0].first, quest[0].second));
+        owner->slots.push_back(::slot(quest[1].first, quest[1].second));
+        phone_ret("buttonClicked|jim_deliver");
+        CHECK(held(*owner, 1486) == 1, "only once a day");
+
+        phone_ret("number|53785");
+        CHECK(said("Sales-Man") && said("sm_wolf"), "Sales-Man shop");
+        owner->slots.push_back(::slot(4354, 19));
+        phone_ret("buttonClicked|sm_wolf");
+        CHECK(held(*owner, 1486) == 1 && held(*owner, 4354) == 19, "19 Wolf Tickets is not enough");
+        modify_item_inventory(ev, ::slot(4354, 1));
+        phone_ret("buttonClicked|sm_wolf");
+        CHECK(held(*owner, 1486) == 2 && held(*owner, 4354) == 0, "20 Wolf Tickets -> 1 Growtoken");
+
+        owner->slots.push_back(::slot(4298, 100));
+        owner->pos = ::pos{ 70 * 32.0f, 20 * 32.0f };
+        phone_ret("buttonClicked|sm_caduceus");
+        CHECK(held(*owner, 1486) == 2 && held(*owner, 4298) == 100, "walked away from the phone: ignored");
+
+        pset(*owner, "jim_day", 0);
+        owner->pos = was_pos;
+        owner->slots = was_slots;
+        w.blocks[cord(50, 20)] = ::block{};
+    }
+
+    std::puts("\n[LQ1] Legendary Wizard: Quest For Honor from start to the title");
+    {
+        const ::pos wiz{ 55, 20 };
+        w.blocks[cord(55, 20)].fg = LEGENDARY_WIZARD;
+        const ::pos was_pos = owner->pos;
+        const std::vector<::slot> was_slots = owner->slots;
+        const int was_gems = owner->gems, was_titles = owner->titles, was_titles_on = owner->titles_on;
+        owner->pos = wiz.by_32();
+        owner->slots.clear();
+        for (const char *key : { "lq", "lq_step", "lq_prog", "lq_base", "lq_done" }) pset(*owner, key, 0);
+        auto wiz_ret = [&](const std::string &clicked) { outbox.clear(); legendary_wizard_return(ev, ::hPipe("dialog_name|mt_wizard|buttonClicked|" + clicked)); };
+        auto wrench = [&] { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 32, .pos = owner->pos, .punch = wiz }); };
+
+        wiz_ret("start_honor");
+        CHECK(pget(*owner, "lq") == 0, "starting without wrenching the Wizard is ignored");
+        wrench();
+        CHECK(said("The Legendary Wizard") && said("q_honor") && said("q_blade"), "Wizard lists the 5 quests");
+        wiz_ret("q_honor");
+        CHECK(said("Quest For Honor") && said("19 steps") && said("start_honor"), "disclaimer before starting");
+        wiz_ret("start_honor");
+        CHECK(pget(*owner, "lq") == 1 && pget(*owner, "lq_step") == 1 && said("(Step 1/19)"), "quest started at step 1");
+
+        owner->slots = { ::slot(442, 200) };
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_prog") == 200 && held(*owner, 442) == 0 && said("Keep it coming"), "200 Sand delivered, still on step 1");
+        pset(*owner, "lq_prog", 1999);
+        modify_item_inventory(ev, ::slot(442, 5));
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_step") == 2 && held(*owner, 442) == 4, "only the 1 missing Sand taken, step 2");
+
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_step") == 2 && said("Good luck"), "block step needs 5,000 blocks broken from now on");
+        pset(*owner, "broken", pget(*owner, "broken") + 5000);
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_step") == 3, "5,000 blocks -> step 3");
+
+        pset(*owner, "lq_step", 9); pset(*owner, "lq_prog", 0);
+        owner->gems = 150000;
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_step") == 10 && owner->gems == 50000, "100,000 gems step takes exactly 100,000");
+
+        pset(*owner, "lq_step", 19); pset(*owner, "lq_prog", 0);
+        wiz_ret("deliver");
+        CHECK(pget(*owner, "lq_step") == 19, "final step needs a Legendary Orb");
+        modify_item_inventory(ev, ::slot(LEGENDARY_ORB, 1));
+        wiz_ret("deliver");
+        CHECK((owner->titles & T_LEGEND) && pget(*owner, "lq") == 0 && (pget(*owner, "lq_done") & 1), "Legendary Title earned, quest done");
+        CHECK(w.blocks[cord(55, 20)].fg == 0, "the Wizard vanished");
+        CHECK(held(*owner, LEGENDARY_ORB) == 0, "orb taken");
+
+        w.blocks[cord(55, 20)].fg = LEGENDARY_WIZARD;
+        wrench();
+        CHECK(said("Quest For Honor`` (completed)") && !said("q_honor"), "Honor can't be done twice");
+        wiz_ret("start_honor");
+        CHECK(pget(*owner, "lq") == 0, "faked start of a finished quest ignored");
+
+        wiz_ret("start_fire");
+        CHECK(pget(*owner, "lq") == 2, "Quest For Fire started");
+        wiz_ret("give_up");
+        CHECK(said("give_up_yes") && pget(*owner, "lq") == 2, "give up asks first");
+        wiz_ret("give_up_yes");
+        CHECK(pget(*owner, "lq") == 0 && pget(*owner, "lq_step") == 0, "gave up, progress gone");
+
+        owner->pos = ::pos{ 80 * 32.0f, 20 * 32.0f };
+        wiz_ret("start_fire");
+        CHECK(pget(*owner, "lq") == 0, "walked away from the Wizard: ignored");
+
+        for (const char *key : { "lq", "lq_step", "lq_prog", "lq_base", "lq_done" }) pset(*owner, key, 0);
+        owner->pos = was_pos; owner->slots = was_slots; owner->gems = was_gems;
+        owner->titles = was_titles; owner->titles_on = was_titles_on;
+        w.blocks[cord(55, 20)] = ::block{};
+    }
+
+    std::puts("\n[PM1] No-Face hides the face only while worn");
+    {
+        const u_int was_face = owner->clothing[clothing::FACE];
+        owner->clothing[clothing::FACE] = 3774;
+        owner->update_effects();
+        CHECK(owner->state & 0x10, "wearing No-Face: no face");
+        owner->clothing[clothing::FACE] = 0;
+        owner->update_effects();
+        CHECK(!(owner->state & 0x10), "taken off: face is back");
+        owner->clothing[clothing::FACE] = was_face;
+        owner->update_effects();
+    }
+
+    std::puts("\n[JW1] punching a jammer / weather machine switches it on");
+    {
+        const ::pos was_pos = owner->pos;
+        owner->pos = ::pos{ 60 * 32.0f, 20 * 32.0f };
+        auto punch = [&](const ::pos &at) { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = at }); };
+        const ::pos jam{ 61, 20 }, wm{ 62, 20 };
+        w.blocks[cord(61, 20)].fg = 226; // @note Signal Jammer
+        w.blocks[cord(62, 20)].fg = 934; // @note Weather Machine - Night
+        punch(jam);
+        std::printf("  jammer: state2=%02x packets=%zu\n", w.blocks[cord(61, 20)].state[2], outbox.size());
+        CHECK((w.blocks[cord(61, 20)].state[2] & S_TOGGLE) && said("Signal Jammer"), "Signal Jammer on, with its message");
+        Sleep(300); // @note punch_allowed(): not a fast-break hack
+        punch(wm);
+        std::printf("  weather: state2=%02x packets=%zu\n", w.blocks[cord(62, 20)].state[2], outbox.size());
+        CHECK((w.blocks[cord(62, 20)].state[2] & S_TOGGLE) && said("OnSetCurrentWeather"), "Weather Machine on, weather sent");
+        w.blocks[cord(61, 20)] = ::block{}; w.blocks[cord(62, 20)] = ::block{};
+        owner->pos = was_pos;
+    }
+
+    std::puts("\n[LQ2] LEGENDARYMOUNTAIN: the climb and a Legendary Orb once a day (MTTEST rebuilt as it, at the very end)");
+    {
+        CHECK(is_system_world("LEGENDARYMOUNTAIN"), "system world (staff only edits)");
+        w.name = "LEGENDARYMOUNTAIN";
+        CHECK(build_system_world(w), "built");
+        CHECK(w.blocks[cord(93, 6)].fg == 410 && w.blocks[cord(93, 7)].fg == 260, "checkpoint on the golden peak");
+        bool climb = true; // @note every step 3 tiles right, 1 up: same jumps as PARKOUR
+        for (int i = 0; i < 28; ++i) climb &= w.blocks[cord(6 + i * 3, 35 - i)].fg == 186;
+        CHECK(climb && w.blocks[cord(90, 7)].fg == 260, "28 steel steps lead to the peak");
+
+        owner->slots.clear(); pset(*owner, "orb_day", 0);
+        outbox.clear(); system_checkpoint(ev, w, ::pos{ 93, 6 });
+        CHECK(held(*owner, LEGENDARY_ORB) == 1, "Legendary Orb at the peak");
+        outbox.clear(); system_checkpoint(ev, w, ::pos{ 93, 6 });
+        CHECK(held(*owner, LEGENDARY_ORB) == 1 && said("already took"), "only once a day");
+        outbox.clear(); system_checkpoint(ev, w, ::pos{ 27, 28 });
+        CHECK(held(*owner, LEGENDARY_ORB) == 1, "other checkpoints give nothing");
+        pset(*owner, "orb_day", 0);
+        w.name = "MTTEST";
     }
 
     {

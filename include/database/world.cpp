@@ -12,6 +12,7 @@
 #include "tools/boxes.hpp"
 #include "tools/magplant.hpp"
 #include "tools/mannequin.hpp"
+#include "tools/display_block.hpp"
 #include "tools/special_blocks.hpp"
 #include "tools/special_tiles.hpp"
 #include "tools/guild.hpp"
@@ -179,9 +180,7 @@ static void tree_extra(::blob &blob, const ::world &world, const ::pos &pos, boo
             }
             else if (type == '\x17'/*display block*/)
             {
-                /* @note the client always reads the displayed item id here, even 0 - without it the rest of the world is misread */
-                auto display = std::ranges::find(this->displays, block_pos, &::display::pos);
-                blob.u32(display != this->displays.end() ? display->id : 0);
+                display_extra(blob, *this, block_pos);
             }
             else if (type == '\x18'/*vending machine*/)
             {
@@ -388,7 +387,7 @@ world::world(const std::string &name) : name(name)/*DEFAULT*/
         this->mysql_insert("name", this->name); // @note DEFAULT
         if (!build_system_world(*this)) generate_world(*this); // @note START & PARKOUR come with a design
     }
-    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this), load_fossil_preps(*this), load_special_tiles(*this), fossil_spawn(*this);
+    if (!this->name.empty()) load_vendings(*this), load_doors(*this), load_area_locks(*this), load_boxes(*this), load_magplants(*this), load_mannequins(*this), load_displays(*this), load_fossil_preps(*this), load_special_tiles(*this), fossil_spawn(*this);
 }
 world::~world()
 {
@@ -406,7 +405,7 @@ void world::save()
         this->mysql_update("min_level", static_cast<signed>(this->minimum_entry_level));
         this->mysql_update("lock_state", static_cast<signed>(this->lock_state));
     }
-    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_fossil_preps(*this), save_special_tiles(*this);
+    if (!this->name.empty()) save_vendings(*this), save_doors(*this), save_area_locks(*this), save_boxes(*this), save_magplants(*this), save_mannequins(*this), save_displays(*this), save_fossil_preps(*this), save_special_tiles(*this);
     {
         ::blob blob;
 
@@ -486,6 +485,12 @@ void state_visuals(ENetPeer &peer, ::gamePacket &&gamePacket)
 void tile_apply_damage(ENetEvent &event, ::gamePacket gamePacket, block &block, u_int value)
 {
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+
+    /* @note Growtopia Wiki (Fist): break progress resets after a few seconds without punching, per block (items.dat restore time) */
+    const auto now = std::chrono::steady_clock::now();
+    const int hit_reset = id_to_item((block.fg != 0) ? block.fg : block.bg).hit_reset;
+    if (hit_reset > 0 && now - block.hit_at >= std::chrono::seconds(hit_reset)) block.hits[0] = 0, block.hits[1] = 0;
+    block.hit_at = now;
 
     (block.fg == 0) ? ++block.hits[1] : ++block.hits[0];
     gamePacket.type = (value << 24) | 0x000008; // @note 0x{}000008
@@ -614,8 +619,7 @@ void send_tile_update(ENetEvent &event, ::gamePacket gamePacket, ::block &block,
         }
         case type::DISPLAY_BLOCK:
         {
-            auto display = std::ranges::find(world.displays, gamePacket.punch, &::display::pos);
-            blob.u32(display != world.displays.end() ? display->id : 0);
+            display_extra(blob, world, gamePacket.punch);
             break;
         }
         case type::VENDING_MACHINE:
