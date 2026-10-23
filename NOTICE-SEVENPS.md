@@ -4,7 +4,7 @@ SevenPS is a modified version of **Gurotopia** (https://github.com/gurotopia/Gur
 licensed under the Apache License 2.0 (see `LICENSE`). As the license asks, this file lists what was changed.
 
 Made by @Seven. The SevenPS changes are © 2026 Seven, all rights reserved: you may read and study
-them, but using, copying, modifying or hosting them needs permission first (Discord: **feelingsarefake**).
+them, but using, copying, modifying or hosting them needs permission first (Discord: **feelingsarefake or iseven_99**).
 Gurotopia's original code stays under the Apache License 2.0.
 
 ## Changes from Gurotopia
