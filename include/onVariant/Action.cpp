@@ -12,8 +12,8 @@ void on::Action(ENetEvent& event, const std::string_view text)
         (text == "fa") ? "fold" : 
         (text == "stubborn") ? "fold" : text;
 
-    const std::string action = '/' + std::string(to_slang);
-    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer &p)
+    const std::string &action = ('/' + std::string(to_slang));
+    peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&pPeer, &action](ENetPeer &p)
     {
         send_varlist(&p, { "OnAction", action }, pPeer->netid);
     });

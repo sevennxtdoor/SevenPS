@@ -74,7 +74,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
         send_varlist(event.peer, { "OnStoreRequest", StoreRequest });
         return;
     }
-    else for (auto &&[_tab, shouhin] : shouhin_tachi)
+    else for (auto [_tab, shouhin] : shouhin_tachi)
     {
         if (item == shouhin.btn)
         {

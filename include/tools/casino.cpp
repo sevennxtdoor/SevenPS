@@ -38,7 +38,7 @@ void roulette_spin(ENetEvent &event)
     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer &p)
     {
         send_varlist(&p, { "OnTalkBubble", pPeer->netid, bubble, 0u }, -1, SPIN_DELAY);
-        on::ConsoleMessage(&p, console, SPIN_DELAY);
+        on::ConsoleMessage(&p, console, 0, SPIN_DELAY);
     });
 }
 

@@ -98,7 +98,7 @@ public:
     void mysql_update(const std::string &column, const T &value);
 
     template<typename T>
-    T    mysql_select(const std::string &column, const std::string &arg = "");
+    T    mysql_select(const std::string &column, const std::string &arg = "", bool by_user_id = false); // @note by_user_id: WHERE uid instead of WHERE growid
     void mysql_select_all();
     void load_my_worlds(); // @note "My Worlds": every world this peer owns
 
@@ -128,6 +128,7 @@ public:
     bool others_clothes_due{}; // @note just entered a world: the others' skin and clothes go out with our first movement (movement.cpp)
     std::string display_growid{}; // @note use this for displaying growid, never use ::growid
     std::string country{};
+    float game_version{0.0f}; // @note client version from the login packet (tankIDName.cpp)
 
     u_int skin_color{ 2527912447 };
     u_int hair_color = bgra::GREEN | bgra::GREEN | bgra::RED | bgra::ALPHA; // @note value declines for specfic hair colors

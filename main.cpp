@@ -1,7 +1,7 @@
 /*
     @copyright SevenPS (c) 2026 @Seven
     @copyright gurotopia (c) 2024-05-25, Apache-2.0 (see LICENSE & NOTICE-SEVENPS.md)
-    @version parent SHA: 8f2b5977fd057b99e2e2a6f0e65170145decc159 2026-9-30
+    @version parent SHA: c334b19 2026-10-23 (gurotopia master)
 */
 #include "include/pch.hpp"
 #include "include/eventType/_eventType.hpp"
@@ -80,7 +80,7 @@ int main()
     host->checksum = enet_crc32;
     enet_host_compress_with_range_coder(host);
 
-    gDb_config.init();
+    gDb_config.init(); // @note ./mysql_login.txt
     mysql_connect();
     apply_password_reset(); // @note reset_password.txt (forgotten password)
     decode_items();      // @note reads items.dat into legible class members (id, item name, ect)
@@ -111,6 +111,7 @@ int main()
     gSaved = true; // @note console_handler may let Windows close us now
     mysql_close(db); // @note deletes db (MYSQL* allocation)
     mysql_library_end();
+    enet_deinitialize();
 
     if (restarting)
     {

@@ -70,12 +70,12 @@ template void peer::mysql_update<float>(const std::string&, const float&);
 template void peer::mysql_update<std::string>(const std::string&, const std::string&);
 
 template<typename T>
-T peer::mysql_select(const std::string &column, const std::string &arg)
+T peer::mysql_select(const std::string &column, const std::string &arg, bool by_user_id)
 {
     T value{};
-    ::hStmt hStmt{ std::format("SELECT {}({}) FROM peer WHERE growid = ? LIMIT 1", arg, column).c_str() };
+    ::hStmt hStmt{ std::format("SELECT {}({}) FROM peer WHERE {} = ? LIMIT 1", arg, column, by_user_id ? "uid" : "growid").c_str() };
 
-    MYSQL_BIND param = make_bind_in(this->growid); // WHERE
+    MYSQL_BIND param = by_user_id ? make_bind_in(this->user_id) : make_bind_in(this->growid); // WHERE
     hStmt.bind_param(&param);
 
     u_long length = 0;
@@ -91,6 +91,7 @@ T peer::mysql_select(const std::string &column, const std::string &arg)
     return value;
 }
 /* since we will only select during mysql_select_all */ // @note add templates here if use select outside of this file.
+template std::string peer::mysql_select<std::string>(const std::string&, const std::string&, bool); // @note tile_change.cpp (World Lock owner name)
 
 void peer::mysql_select_all()
 {
@@ -203,7 +204,7 @@ std::string peer::name_as(std::string_view color) const
 
 void peer::load(const std::string &growid, const std::string &password)
 {
-    if (!this->exists(growid)) 
+    if (!this->exists(growid))
     {
         this->mysql_insert("growid", growid);
         this->mysql_update("password", hash_password(password)); // @note never plain text
@@ -389,7 +390,7 @@ std::vector<ENetPeer*> peers(const std::string &world, peer_condition condition,
     return _peers;
 }
 
-void safe_disconnect_peers(int code)
+void safe_disconnect_peers(int signal)
 {
     enet_host_flush(host); // @note send anything still queued (e.g. restart notice) before disconnect drops the queues
     peers("", peer_condition::PEER_ALL, [](ENetPeer &p)
@@ -409,7 +410,6 @@ void safe_disconnect_peers(int code)
     
     enet_host_destroy(host);
     host = nullptr; // @todo clean this up better
-    enet_deinitialize();
 }
 
 gamePacket make_gamePacket(const enet_uint8 *data) 

@@ -299,6 +299,12 @@ void https::listener()
     {
         ERR_print_errors_fp(stderr);
     }
+    else if (X509 *cert = SSL_CTX_get0_certificate(ctx); cert != nullptr) // @note gurotopia: warn before the certificate runs out
+    {
+        int day{}, sec{};
+        ASN1_TIME_diff(&day, &sec, nullptr, X509_get0_notAfter(cert));
+        std::printf("[web] certificate expires in %d days\n", day);
+    }
 
 #ifdef SIGPIPE // @note unix
     std::signal(SIGPIPE, SIG_IGN);

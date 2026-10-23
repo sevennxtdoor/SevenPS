@@ -779,6 +779,8 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     }
                     case type::SEED:
                     {
+                        if (item.type != type::SEED) break; // @note only allow another seed to be placed ontop
+
                         auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
                         if (tree == world->trees.end()) // @note a seed without its timer crashed the server when spliced
                             tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 3), gamePacket.punch);

@@ -22,6 +22,7 @@ void lock_edit(ENetEvent& event, const ::hPipe &hPipe)
     pos.x = atoi(hPipe["tilex"].c_str());
     pos.y = atoi(hPipe["tiley"].c_str());
     if (!in_world(*world, pos.x_int(), pos.y_int())) return;
+    if (id_to_item(world->blocks[cord(pos.x_int(), pos.y_int())].fg).type != type::LOCK) return; // @note the tile must really be the lock
     guild_lock_edit(*world, hPipe); // @note guild ranks with access (only a guild's home world)
 
     /* @note access list: unticked names are removed, the player picker adds someone in this world (like Small/Big/Huge Locks) */

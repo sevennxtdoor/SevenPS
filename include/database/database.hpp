@@ -79,10 +79,10 @@ struct blob
         
         mData.insert(mData.end(), data.cbegin(), data.cend());
     }
-    const std::vector<u_char> &data() const noexcept { 
+    [[nodiscard]] const std::vector<u_char> &data() const noexcept { 
         return mData; 
     }
-    std::vector<u_char> &data() noexcept {
+    [[nodiscard]] std::vector<u_char> &data() noexcept {
         return mData;
     }
     [[nodiscard]] constexpr std::size_t size() const noexcept { 

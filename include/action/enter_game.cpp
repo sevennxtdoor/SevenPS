@@ -26,11 +26,13 @@ void action::enter_game(ENetEvent& event, const std::string& header)
     const bool new_player = announce_join(event);
     if (pPeer->role >= MODERATOR)
         on::ConsoleMessage(event.peer, "`5Super Supporter`` status active! Perks: `$/nick {name}``, all titles (wrench yourself > `wTitle``)");
-    
+
     mentor_login(event); // @note tickets that waited for a free slot or for this login
     send_inventory_state(event);
+
     on::SetBux(event);
-    send_varlist(event.peer, { "SetHasGrowID", 1, pPeer->growid.c_str(), "" });
+    send_varlist(event.peer, { "OnSetVouchers", 0 });
+    send_varlist(event.peer, { "SetHasGrowID", 1u, pPeer->growid.c_str(), "" });
     {
         std::tm time = localtime();
 
@@ -43,6 +45,8 @@ void action::enter_game(ENetEvent& event, const std::string& header)
         });
     } // @note delete time
 
+    send_varlist(event.peer, { "OnRequestHoustonPricing" });
+
     on::RequestWorldSelectMenu(event);
     on::RequestGazette(event);
 
@@ -50,7 +54,7 @@ void action::enter_game(ENetEvent& event, const std::string& header)
     /* for v5.47+ client */
     send_varlist(event.peer, {
         "OnSetFeatureEnableFlags",
-        "EA8DEAcGAgEOBQgKCQ0MEQQ=" // @todo Dw0JEQQMEAMPAgYBDgUICg==
+        "EA4NBQgJAQoPAgQRBwYDEAw=" // @todo Dw0JEQQMEAMPAgYBDgUICg==
     });
     if (new_player) queue_start_join(*event.peer); // @note a new player lands in the hub instead of the world menu (joining right here lost to the menu)
 }

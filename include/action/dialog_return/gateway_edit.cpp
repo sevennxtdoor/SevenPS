@@ -17,6 +17,9 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
     if (!can_build(*pPeer, *world, ::pos{ tilex, tiley })) return; // @note never trust the dialog: bounds + who may edit (a faked dialog could rename START's doors or write outside the world)
     if (hPipe["dialog_name"] != "gateway_edit" && tape_blocks(*event.peer)) return; // @note duct tape: no editing doors or signs
 
+    if (tilex < 0 || tilex >= 100 || tiley < 0 || cord(tilex, tiley) >= world->blocks.size()) return;
+    if (world->owner != 0 && world->owner != pPeer->user_id && std::ranges::find(world->access, pPeer->user_id) == world->access.end()) return; // @note same rule as building here
+
     block &block = world->blocks[cord(tilex, tiley)];
 
     /* @note the dialog caps these, a proxy doesn't: the world saves lengths as i16, so 32 KB of text went negative and

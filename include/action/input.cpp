@@ -2,6 +2,7 @@
 #include "commands/__command.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/time.hpp"
+#include "tools/random.hpp"
 #include "tools/social.hpp"
 #include "tools/cps.hpp"
 #include "commands/gtos.hpp"
@@ -63,27 +64,10 @@ void action::input(ENetEvent& event, const std::string& header)
     {
         if (pPeer->state & S_DUCT_TAPE)
         {
-            static constexpr std::array<std::string_view, 4ull> muffled{ "mfmm", "mmfmfm", "mffm", "mfmfmm" };
-
-            std::string muffled_text{};
-            muffled_text.reserve(text.size());
-
-            std::size_t word_index{};
-            for (std::size_t i = 0ull; i < text.size();)
+            for (char &c : text)
             {
-                if (std::isspace(text[i]))
-                {
-                    muffled_text += text[i++];
-                    continue;
-                }
-
-                while (i < text.size() && !std::isspace(text[i]))
-                    ++i;
-
-                muffled_text += muffled[word_index % muffled.size()];
-                ++word_index;
+                if (c != ' ') c = (RandomRange(1, 3) == 1) ? 'm' : 'f';
             }
-            text = std::move(muffled_text);
         }
         /* @note staff chat color: owner `9 (gold), developer `5 (pink), moderator `^ (lime) */
         const std::string_view staff_color = !pPeer->nick.empty() ? "" : // @note /nick = undercover, chat like a normal player
@@ -93,8 +77,8 @@ void action::input(ENetEvent& event, const std::string& header)
         peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&event, &pPeer, player_chat, message](ENetPeer& p) 
         {
             if (is_ignoring(*static_cast<::peer*>(p.data), pPeer->growid)) return; // @note they ignored us
-            send_varlist(&p, { "OnTalkBubble", pPeer->netid, player_chat });
-            on::ConsoleMessage(&p, message);
+            send_varlist(&p, { "OnTalkBubble", pPeer->netid, player_chat, 0u });
+            on::ConsoleMessage(&p, message, 2);
         });
         check_quiz(event, text); // @note chat quiz answer
     }

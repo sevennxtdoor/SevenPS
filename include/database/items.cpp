@@ -285,7 +285,17 @@ static void parse_items()
             }
             pos += sizeof(int); // @note default: 0x00 0x00 0x00 0x00
         }
-        if (version == 0x1a) pos += sizeof(std::byte); // May 2026
+        if (version >= 0x1a) pos += sizeof(u_char); // May 2026
+        if (version == 0x1b) // September 2026 | Immortal items
+        {
+            len = *reinterpret_cast<short*>(&im_data[pos]);
+            pos += sizeof(short);
+            if (len > 0) 
+            {
+                /* 0x36 */
+                pos += sizeof(u_char);
+            }
+        }
 
         items.emplace_back(item);
     }

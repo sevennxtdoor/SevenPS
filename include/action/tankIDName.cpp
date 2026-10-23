@@ -15,7 +15,10 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
     if (pPeer->loaded) return;
 
     std::vector<std::string> pipes = readch(header, '|');
-    if (pipes.empty() || pipes.size() < 41ull) enet_peer_disconnect_later(event.peer, 0);
+    if (pipes.empty() || pipes.size() < 10ull) {
+        enet_peer_disconnect_later(event.peer, 0);
+        return;
+    }
 
     /* @todo instead of setting these values we should check if there valid from SQL.*/
     std::string protocol{};
@@ -25,7 +28,8 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
         else if (pipes[i] == "tankIDPass") pPeer->password = pipes[i+1];
         else if (pipes[i] == "protocol")   protocol = pipes[i+1];
         else if (pipes[i] == "country")    pPeer->country = pipes[i+1];
-        else if (pipes[i] == "user")       pPeer->user_id = atoi(pipes[i+1].c_str()); // @note std::stoi threw on "user|x" and crashed the server @todo validate user_id
+        else if (pipes[i] == "user")       pPeer->user_id = atoi(pipes[i+1].c_str()); // @note std::stoi threw on "user|x" and crashed the server. never trusted: load() reads the real id
+        else if (pipes[i] == "game_version") pPeer->game_version = static_cast<float>(atof(pipes[i+1].c_str())); // @note v5.61+ wants OnSetBux as int64 (SetBux.cpp)
     }
     if (atoi(protocol.c_str()) == 0) return; // @todo <226
 
@@ -78,12 +82,12 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
 
     send_varlist(event.peer, { "OnOverrideGDPRFromServer", 18, 1, 0, 1 });
 
-    /* v5.58 */
+    /* v5.61 */
     send_varlist(event.peer, {
         "OnSuperMainStartAcceptLogonHrdxs47254722215a",
         items_hash, // @note items.dat hash, computed at startup (was a fixed number that no longer matched the file)
         "ubistatic-a.akamaihd.net",
-        "0098/024920264/cache/",
+        "0098/141020263/cache/",
         "cc.cz.madkite.freedom org.aqua.gg idv.aqua.bulldog com.cih.gamecih2 com.cih.gamecih com.cih.game_cih cn.maocai.gamekiller com.gmd.speedtime org.dax.attack com.x0.strai.frep com.x0.strai.free org.cheatengine.cegui org.sbtools.gamehack com.skgames.traffikrider org.sbtoods.gamehaca com.skype.ralder org.cheatengine.cegui.xx.multi1458919170111 com.prohiro.macro me.autotouch.autotouch com.cygery.repetitouch.free com.cygery.repetitouch.pro com.proziro.zacro com.slash.gamebuster",
         std::format(
             "proto={}|choosemusic=audio/mp3/about_theme.mp3|active_holiday={}|wing_week_day=0|ubi_week_day=0|server_tick=0|game_theme={}|clash_active=0|drop_lavacheck_faster=1|isPayingUser=1|usingStoreNavigation=1|enableInventoryTab=1|bigBackpack=1|seed_diary_hash=4266294761", 

@@ -158,6 +158,11 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
         send_area_locks(*event.peer, world); // @note Small/Big/Huge/Builder's Lock areas
         magplant_on_join(event, world); // @note drops the remote from the last world, shows the building machine
         fishing_reset(*static_cast<::peer*>(event.peer->data)); // @note a line left in the last world is gone
+
+        send_varlist(event.peer, {
+            "OnSetFeatureEnableFlags",
+            "EAwQAw4BDQUICQoPAgQRBwY=" // @note gurotopia (v5.61 client)
+        });
     }
     catch (const std::exception& exc)
     {
