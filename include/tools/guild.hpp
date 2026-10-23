@@ -28,7 +28,7 @@ constexpr short GUILD_LOCK = 5814;
 constexpr bool GUILD_LOCK_TILE = true;
 
 extern bool is_guild_home(const ::world &world);
-/* @note world load: a Guild Lock tile that isn't a guild's home (or GUILD_LOCK_TILE off) turns back into the lock it replaced */
+/* @note world load: a Guild Lock tile that isn't a guild's home (or GUILD_LOCK_TILE off) turns back into a World Lock */
 extern void guild_lock_fix(::world &world);
 
 /* @note a guild member whose rank the leader ticked may build in the guild's home world */

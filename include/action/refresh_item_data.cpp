@@ -5,6 +5,12 @@
 
 void action::refresh_item_data(ENetEvent& event, const std::string& header)
 {
+    /* @note once per connection: the game asks once at login. each request queued 5.7 MB, so a modded client sending it
+     * 40 times a second (the guard's text limit) filled the server's memory */
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
+    if (pPeer->items_sent) return;
+    pPeer->items_sent = true;
+
     std::printf("[items] %s asked for items.dat (%zu bytes)\n", peer_ip(*event.peer).c_str(), im_data.size());
     on::ConsoleMessage(event.peer, "One moment, updating item data...");
     /* @note 5.7 MB over a slow link (a VPN like Radmin) took longer than ENet's 30 s timeout and the player was cut off at "Updating items (8/10)".

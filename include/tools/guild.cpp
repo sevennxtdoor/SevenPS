@@ -36,7 +36,7 @@ namespace
         std::vector<member> members{};
         std::string world{}; // @note home world, where the Guild Lock is
         int access{};        // @note bit per rank: guild members of that rank may build in the home world (none by default, a guess)
-        int lock{ WORLD_LOCK }; // @note the lock the Guild Lock replaced (World, Diamond, Blue Gem Lock...), it comes back on disband
+        int lock{ WORLD_LOCK }; // @note the lock the Guild Lock replaced, kept in the database only. a disband always gives a World Lock (erase)
         int level{ 1 };
         long long xp{};         // @note toward the next level, from the members' XP
         bool unsaved{};         // @note XP changed since the last save (saved with the autosave)
@@ -170,7 +170,7 @@ namespace
     {
         const guild *g = guild_named(name);
         const std::string home = g ? g->world : "";
-        const short lock = static_cast<short>((g && g->lock > 0) ? g->lock : WORLD_LOCK);
+        const short lock = WORLD_LOCK; // @note never g->lock: the lock was already given back on Create Guild, a Diamond/Blue Gem Lock here was a free copy every create + disband
         ::hStmt hStmt{ "DELETE FROM guild WHERE name = ?" };
         MYSQL_BIND param = make_bind_in(name);
         hStmt.bind_param(&param);
@@ -436,7 +436,8 @@ void guild_return(ENetEvent &event, const ::hPipe &hPipe)
     if (p.gems < CREATE_COST) return fail(std::format("`4Creating a guild costs {} gems.``", gems_text(CREATE_COST)));
 
     /* @note the world lock of a world you own becomes the Guild Lock and goes back to your backpack (growtopiawiki.com/w/Guild_Lock).
-     * SevenPS also takes the bigger world locks (Diamond, Blue Gem Lock...). with GUILD_LOCK_TILE off the lock stays where it is */
+     * only a World Lock, like Growtopia: a disbanded guild's lock turns back into a World Lock, so a Diamond or Blue Gem Lock would
+     * come back as a copy. with GUILD_LOCK_TILE off the lock stays where it is */
     auto world = std::ranges::find(worlds, p.recent_worlds.back(), &::world::name);
     if (p.netid == 0 || world == worlds.end() || is_system_world(world->name) || world->owner != p.user_id)
         return fail("`4A guild can only be created in a world owned by you and locked with a World Lock!``");
@@ -444,6 +445,7 @@ void guild_return(ENetEvent &event, const ::hPipe &hPipe)
     const ::pos lock = world_lock_of(*world);
     if (lock.x < 0) return fail("`4A guild can only be created in a world owned by you and locked with a World Lock!``");
     const short old_lock = world->blocks[cord(lock.x_int(), lock.y_int())].fg;
+    if (old_lock != WORLD_LOCK) return fail("`4A guild can only be created in a world owned by you and locked with a World Lock!``");
     const auto held = std::ranges::find(p.slots, old_lock, &::slot::id);
     if (GUILD_LOCK_TILE && ((held != p.slots.end() && held->count >= 200) || (held == p.slots.end() && static_cast<int>(p.slots.size()) >= p.slot_size)))
         return fail(std::format("`4Make room in your backpack for the {} first.``", id_to_item(old_lock).raw_name));
@@ -475,10 +477,7 @@ void guild_lock_fix(::world &world)
 {
     if (GUILD_LOCK_TILE && is_guild_home(world)) return;
     for (::pos tile = tile_of(world, GUILD_LOCK); tile.x >= 0; tile = tile_of(world, GUILD_LOCK))
-    {
-        auto g = std::ranges::find(guilds, world.name, &guild::world);
-        world.blocks[cord(tile.x_int(), tile.y_int())].fg = static_cast<short>((g != guilds.end() && g->lock > 0) ? g->lock : WORLD_LOCK);
-    }
+        world.blocks[cord(tile.x_int(), tile.y_int())].fg = WORLD_LOCK; // @note same as disbanding (erase): never the bigger lock it once replaced
 }
 
 bool guild_access(const ::peer &p, const ::world &world)

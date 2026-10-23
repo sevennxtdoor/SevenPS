@@ -60,6 +60,7 @@
 #include "action/dialog_return/create_blast.hpp"
 #include "action/trade.hpp"
 #include "action/wrench.hpp"
+#include "action/refresh_item_data.hpp"
 #include "action/trash.hpp"
 #include "action/drop.hpp"
 #include "action/itemfavourite.hpp"
@@ -770,10 +771,14 @@ int main()
         w.owner = w_owner;
         mk(ev, "MTTESTG"); CHECK(said("World Lock!") && !in_guild("MTOWNER"), "My First World Lock can't become a Guild Lock");
         w.blocks[cord(90, 25)].fg = 1796;
-        const int wl_before = held(*owner, 1796);
+        const int dl_before = held(*owner, 1796);
+        mk(ev, "MTTESTG"); CHECK(said("World Lock!") && !in_guild("MTOWNER") && held(*owner, 1796) == dl_before && w.blocks[cord(90, 25)].fg == 1796,
+            "a Diamond Lock world is refused (create + disband gave a free Diamond/Blue Gem Lock)");
+        w.blocks[cord(90, 25)].fg = 242;
+        const int wl_before = held(*owner, 242);
         mk(ev, "MTTESTG");
         CHECK(in_guild("MTOWNER") && owner->gems == 60000, "created, 200000 gems paid");
-        CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK && held(*owner, 1796) == wl_before + 1 && is_guild_home(w), "the Diamond Lock became the Guild Lock, Diamond Lock back in the backpack");
+        CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK && held(*owner, 242) == wl_before + 1 && is_guild_home(w), "the World Lock became the Guild Lock, World Lock back in the backpack");
         guild_lock_fix(w); CHECK(w.blocks[cord(90, 25)].fg == GUILD_LOCK, "the home world's Guild Lock stays on load");
         {
             auto update_size = [&](short fg) {
@@ -840,13 +845,14 @@ int main()
         g(ev, "guild disband confirm"); CHECK(in_guild("MTOWNER") && said("Only the leader"), "ex-leader can't disband");
 
         std::puts("\n[G4] saved, then disbanded");
+        { ::hStmt old{ "UPDATE guild SET lock_item = 7188 WHERE name = 'MTTESTG'" }; old.execute(); } // @note like a guild made before the fix, with a Blue Gem Lock
         load_guilds();
         CHECK(in_guild("MTOWNER") && in_guild("MTVISIT"), "still there after reload from the database");
         CHECK(guild_lock_section(w).find("guild_access_0|Members|1") != std::string::npos, "home world and rank access saved");
         g(ev2, "guild kick MTOWNER"); CHECK(!in_guild("MTOWNER"), "new leader kicks the old one");
         g(ev2, "guild disband"); CHECK(in_guild("MTVISIT") && said("confirm"), "disband asks to confirm");
         g(ev2, "guild disband confirm"); CHECK(!in_guild("MTVISIT"), "disbanded");
-        CHECK(w.blocks[cord(90, 25)].fg == 1796 && !is_guild_home(w), "disbanded: the Guild Lock turned back into the Diamond Lock");
+        CHECK(w.blocks[cord(90, 25)].fg == 242 && !is_guild_home(w), "disbanded: the Guild Lock turned back into a World Lock, not the Blue Gem Lock saved for it");
         w.blocks[cord(90, 25)].fg = GUILD_LOCK; guild_lock_fix(w);
         CHECK(w.blocks[cord(90, 25)].fg == 242, "a Guild Lock outside a guild's home turns back on load");
         load_guilds();
@@ -856,8 +862,8 @@ int main()
         w.blocks[cord(90, 25)].fg = 0;
         w.owner = w_owner; w.access = w_access;
         owner->my_worlds = owner_worlds; visitor->my_worlds = visitor_worlds;
-        for (::slot &s : owner->slots) if (s.id == 1796) s.count = static_cast<short>(wl_before); // @note the Diamond Lock Create Guild gave back
-        std::erase_if(owner->slots, [](const ::slot &s) { return s.id == 1796 && s.count <= 0; });
+        for (::slot &s : owner->slots) if (s.id == 242) s.count = static_cast<short>(wl_before); // @note the World Lock Create Guild gave back
+        std::erase_if(owner->slots, [](const ::slot &s) { return s.id == 242 && s.count <= 0; });
     }
 
     std::puts("\n[SL1] /setlevel: owner only, 1-125, online players");
@@ -2672,6 +2678,19 @@ int main()
     CHECK(said("SevenPS Rules") && said("I Understand"), "button opens the rules");
     outbox.clear(); gazette_return(ev, ::hPipe("dialog_name|gazette|buttonClicked|"));
     CHECK(outbox.empty(), "OK button does nothing");
+
+    std::puts("\n[IT1] items.dat only once per connection");
+    {
+        auto items_packets = [&] { return std::ranges::count_if(outbox, [](const sent &s) { return s.data.size() == im_data.size(); }); };
+        const bool was = owner->items_sent;
+        owner->items_sent = false;
+        outbox.clear(); action::refresh_item_data(ev, "action|refresh_item_data");
+        CHECK(items_packets() == 1, "first request: items.dat sent");
+        outbox.clear();
+        for (int k = 0; k < 40; ++k) action::refresh_item_data(ev, "action|refresh_item_data");
+        CHECK(items_packets() == 0, "40 more requests: nothing queued (was 5.7 MB each)");
+        owner->items_sent = was;
+    }
 
     {
         ::hStmt del{ "DELETE FROM world WHERE name = 'MTTEST'" }; del.execute();
