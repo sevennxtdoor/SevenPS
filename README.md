@@ -102,6 +102,6 @@ SevenPS is a modified version of Gurotopia (© gurotopia, 2024). Gurotopia's ori
 under the Apache License 2.0, see [`LICENSE`](LICENSE).
 
 The SevenPS changes (© 2026 Seven, all rights reserved) may be read and studied, but **using, copying,
-modifying or hosting them needs permission first**. Ask on Discord: **feelingsarefake**.
+modifying or hosting them needs permission first**. Ask on Discord: **feelingsarefake or iseven_99**.
 
 The changes and other credits are in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
