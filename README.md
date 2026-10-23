@@ -1,6 +1,6 @@
 # SevenPS
 
-**Seven Private Server**: a Growtopia private server written in C++20, made by @Seven (me).
+**Seven Private Server**: a Growtopia private server written in C++20, made by @Seven.
 
 Everything SevenPS adds or changes (roles, trade, vending, surgery, ranks, guilds, events, login security,
 backups...) is listed in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
