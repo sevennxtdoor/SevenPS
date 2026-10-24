@@ -16,6 +16,15 @@ void tile_activate(ENetEvent& event, ::gamePacket gamePacket)
 
     ::block &block = world->blocks[cord(gamePacket.punch.x, gamePacket.punch.y)];
     const ::item &item = id_to_item(block.fg);
+
+    /* @note the game only sends this when you touch the tile: a modded client sent it from anywhere and took the LEGENDARYMOUNTAIN
+     * Legendary Orb / PARKOUR gems without climbing, or went through doors it couldn't reach. the server's pos is kept honest by
+     * tools/anticheat.cpp; 3 tiles leaves room for lag (same as the Telephone) */
+    if (item.type == type::CHECKPOINT || item.type == type::DOOR || item.type == type::PORTAL)
+    {
+        const ::pos at = pPeer->pos.by_32(true);
+        if (std::abs(at.x - gamePacket.punch.x) > 3.0f || std::abs(at.y - gamePacket.punch.y) > 3.0f) return;
+    }
     switch (item.type)
     {
         case type::MAIN_DOOR:

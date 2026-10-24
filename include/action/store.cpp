@@ -23,7 +23,7 @@ void action::store(ENetEvent& event, const std::string& header)
             "add_tab_button|token_menu|Growtoken Items|interface/large/btn_shop.rttex||0|2|0|0||||-1|-1|||0|0|CustomParams:|\n"
 
             "add_banner|interface/large/gui_shop_featured_header.rttex|0|1|\n"
-            "add_button|pet_battle_pack|`oPet Battle Pack``|interface/large/store_buttons/store_buttons42.rttex|`2You Get:`` 1 Pet Battle Supply Crate, 1 Battle Leash and 1 Battle Pet Cage.<CR><CR>`5Description:`` When a Growtopian plucks up the courage, they can get their own battle pet. This pack contains all the ingredients to create your very own starter Battle Pet and get you ready for your very first Pet Battle. Splicing new battle abilities will cost 10 World Locks per ability, World Locks not included!<CR><CR>`4This pack can be only be purchased once.``|1|6|40000|0|||-1|-1||-1|-1||1||||||0|0|CustomParams:|\n"
+            /* @note the Pet Battle Pack button was taken out: nothing in the store sold it (a click did nothing). put it back with Battle Pets */
             "add_button|redeem_code|Redeem Code|interface/large/store_buttons/store_buttons40.rttex||1|5|0|0|||-1|-1||-1|-1|`2Redeem a SevenPS code`` from an event, the Discord or the owner.|1||||||0|0|CustomParams:|\n" // @note was OPENDIALOG&showredeemcodewindow: the game's own window, its answer is unknown
         });
     }

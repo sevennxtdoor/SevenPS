@@ -172,6 +172,9 @@ extern void send_data(ENetPeer &peer, const ::blob &blob);
 
 extern void state_visuals(ENetPeer &peer, gamePacket &&gamePacket);
 
+/* @note before a punch is handled: forgets old damage after the block's restore time. it ran inside tile_apply_damage(), after
+ * a ripe tree (or a developer on bedrock) had set hits to 99 on a first punch, and wiped that: the tree didn't break and was harvested twice */
+extern void tile_damage_reset(block &block);
 extern void tile_apply_damage(ENetEvent &event, gamePacket gamePacket, block &block, u_int value);
 
 /*

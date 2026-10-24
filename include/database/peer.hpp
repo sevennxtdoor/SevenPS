@@ -86,7 +86,7 @@ class peer {
 public:
     ~peer();
 
-    void load(const std::string &growid, const std::string &password);
+    void load(const std::string &growid, const std::string &password, const std::string &hashed = {}); // @note `hashed`: a new account's hash_password(), made off the main thread
     void save(); // @note writes the player to the database (the destructor and the autosave call this)
 
     bool exists(const std::string &growid);

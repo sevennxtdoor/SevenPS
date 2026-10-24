@@ -7,16 +7,17 @@
  * (64 random hex characters). the game only ever sees that token (ltoken, then tankIDPass), never the password.
  * tokens live in memory for 7 days (a server restart logs everyone out of the page, nothing else), at most 5 per account,
  * and only their SHA-256 is kept, so even a memory dump doesn't give working tokens.
- * threads: the web server runs on its own thread, but the database and auth.cpp aren't thread safe, so a login is queued
- * and answered by the main loop (web_login_tick). sessions themselves are behind a mutex */
+ * threads: the web server runs on its own thread, but the database and auth.cpp aren't thread safe, so the database steps
+ * of a login are queued and run by the main loop (web_login_tick); the PBKDF2 hashing in between stays on the https thread,
+ * so logins don't freeze the game. sessions themselves are behind a mutex */
 
 /* @note https thread: blocks until the main loop answered (at most ~15 s). `form` = the url-encoded POST body. @return JSON */
 extern std::string web_login_request(const std::string &form, const std::string &ip);
 
-/* @note main loop: answers queued logins */
+/* @note main loop: runs the queued database steps of logins */
 extern void web_login_tick();
 
-/* @note main thread: what web_login_tick does for one request (also used by the tests). @return JSON */
+/* @note main thread: a whole request, every step on this thread (the tests). @return JSON */
 extern std::string web_login_handle(const std::string &form, const std::string &ip);
 
 /* @return a new token for this account */

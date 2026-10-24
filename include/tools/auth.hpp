@@ -8,12 +8,28 @@
 extern std::string hash_password(const std::string &password);
 extern bool check_password(const std::string &stored, const std::string &password);
 
-/* @return empty if the login is allowed, else the reason to show. `may_register`: an unknown GrowID becomes a new account */
 /* @note forgotten password: put "growid|new password" in reset_password.txt next to main.exe and start the server.
  * only someone with access to the server's files can do this; the file is deleted right after */
 extern void apply_password_reset();
 
-/* `ip`: the player's IP, for the per-IP limits in tools/guard.hpp */
+/* @note a login in two main thread steps around the slow part (check_password()/hash_password(), any thread):
+ * PBKDF2 took ~50-100 ms on the main loop per login and froze the game while players logged in.
+ * `ip`: the player's IP, for the per-IP limits in tools/guard.hpp */
+struct login_check
+{
+    std::string error{};                 // @note not empty: refused, the reason to show
+    std::optional<std::string> stored{}; // @note the account's stored password; nullopt = no such account (a new one when registering)
+};
+extern login_check login_begin(const std::string &growid, const std::string &password, bool may_register, const std::string &ip);
+
+/* @note after check_password(): `rehash` = hash_password() when the stored one was old plain text. @return empty if the login is allowed */
+extern std::string login_end(const std::string &growid, bool password_ok, const std::string &rehash, const std::string &ip);
+
+/* @note a new account is about to be made: counts it for the per-IP limit. @return empty if allowed */
+extern std::string register_end(const std::string &ip);
+
+/* @note every step at once, on the main thread (the tests). @return empty if the login is allowed, else the reason to show.
+ * `may_register`: an unknown GrowID becomes a new account */
 extern std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip);
 
 /* @return the GrowID as stored (its real upper/lower case), empty if there is no such account */

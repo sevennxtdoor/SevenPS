@@ -368,8 +368,11 @@ int main()
     { ::blob wb = w.serialize(); const auto &d = wb.data(); std::string raw(d.begin(), d.end()); CHECK(raw.find("ABC1") == std::string::npos, "ABC1 not in world data"); CHECK(raw.find("Secret") != std::string::npos, "label is"); }
 
     std::puts("\n[D5] enter -> asks password");
-    visitor->pos = pdoor.by_32();
     ENetEvent &vev = ev2;
+    visitor->pos = ::pos{ pdoor.x + 10, pdoor.y }.by_32();
+    outbox.clear(); tile_activate(vev, ::gamePacket{ .type = 7, .punch = pdoor });
+    CHECK(!said("requires a password") && outbox.empty(), "a door 10 tiles away can't be entered (doors, checkpoints: no touching from afar)");
+    visitor->pos = pdoor.by_32();
     outbox.clear(); tile_activate(vev, ::gamePacket{ .type = 7, .punch = pdoor });
     CHECK(said("requires a password"), "asks for password");
     CHECK(visitor->pass_door == pdoor, "server remembers which door");
@@ -1713,6 +1716,21 @@ int main()
         harvest(16104);
         CHECK(said("doesn't know its prizes"), "Gumball Machine: no prize list yet");
         w.blocks[cord(28, 20)] = ::block{};
+
+        std::puts("\n[Y12] a grown tree drops the fruit it shows, plus gems");
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == pv; });
+        std::erase_if(w.trees, [&](const ::tree &t) { return t.pos == pv; });
+        w.blocks[cord(28, 20)].fg = 3; // @note Dirt Seed
+        w.trees.emplace_back(ticks(), 3, pv); // @note shows 3 fruit
+        {
+            const int tick = items[3].tick; items[3].tick = 0;
+            punch(pv);
+            items[3].tick = tick;
+        }
+        CHECK(on_tile(pv, 2) == 3, "exactly the 3 Dirt the tree showed (was 1-8)");
+        CHECK(on_tile(pv, 112) >= 1, "and some gems (there were none)");
+        CHECK(w.blocks[cord(28, 20)].fg == 0, "the tree is gone on the first punch (the damage reset wiped the harvest hit: a 2nd harvest)");
+        std::erase_if(w.objects, [&](const ::object &o) { return o.pos.by_32(true) == pv; });
 
         w.is_public = was_public;
         owner->role = owner_role;

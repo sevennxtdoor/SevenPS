@@ -68,6 +68,11 @@ void setrole(ENetEvent& event, const std::string_view text)
         send_action(*event.peer, "log", std::format("msg|`4You can't change `w{}``'s role.`` `4(equal or higher than yours)``", growid));
         return;
     }
+    if (current >= MODERATOR && role < MODERATOR) // @note a staff account keeps the items/gems it spawned: as a player they'd go into the economy
+    {
+        send_action(*event.peer, "log", std::format("msg|`4Staff accounts can't become players.`` Ban `w{}`` instead; to play, use a new account.", growid));
+        return;
+    }
     {
         const signed value = role;
         ::hStmt hStmt{ "UPDATE peer SET role = ? WHERE growid = ?" };

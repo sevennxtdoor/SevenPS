@@ -5,6 +5,7 @@
 #include "database/shouhin.hpp"
 #include "tools/economy.hpp"
 #include "tools/rewards.hpp"
+#include "tools/rank.hpp"
 #include "buy.hpp"
 #include <map>
 
@@ -15,7 +16,9 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
 
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
-    int No = (pPeer->slot_size - 16) / 10 + 1; // @note number of upgrades | credits: https://growtopia.fandom.com/wiki/Backpack_Upgrade
+    const ::rank *rank = get_rank(*pPeer);
+    int No = (pPeer->slot_size - (rank ? rank->slots : 0) - 16) / 10 + 1; // @note number of upgrades | credits: https://growtopia.fandom.com/wiki/Backpack_Upgrade (rank slots aren't upgrades: they made the next one cost more)
+    const bool backpack_maxed = No > 38 || pPeer->slot_size + 10 > 396; // @note 396 = the most peer::load keeps: slots past it were paid for, then lost
     int backpack_cost = (100 * No * No - 200 * No + 200);
 
     auto growtoken = std::ranges::find(pPeer->slots, 1486, &::slot::id);
@@ -60,7 +63,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
             {
                 if (shouhin.btn == "upgrade_backpack") 
                 {
-                    if (No > 38) continue; // @note hide upgrade_backpack in store if maxed out
+                    if (backpack_maxed) continue; // @note hide upgrade_backpack in store if maxed out
                     shouhin.cost = backpack_cost;
                 }
                 StoreRequest.append(std::format(
@@ -81,7 +84,7 @@ void action::buy(ENetEvent& event, const std::string& header, const std::string_
             int growtoken_cost = std::abs(shouhin.cost);
             if (shouhin.btn == "upgrade_backpack")
             {
-                if (No > 38) return; // @note maxed out: only hidden in the store, a proxy could still buy it
+                if (backpack_maxed) return; // @note maxed out: only hidden in the store, a proxy could still buy it
                 shouhin.cost = backpack_cost;
             }
             const int tokens_had = (growtoken == pPeer->slots.end()) ? 0 : growtoken->count; // @note the iterator dies when a new slot is added below

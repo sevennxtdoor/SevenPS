@@ -44,7 +44,30 @@
 #include "tools/guild.hpp"
 #include "tools/home.hpp"
 #include "tile_change.hpp"
-#include <fstream> // @todo TEMPORARY debug
+
+/* @note the most gems one break/harvest may give: higher rarity, more gems ("roughly one gem every additional 4 rarity",
+ * growtopiawiki.com/w/Rarity - for blocks and trees). a value above 1 also marks a farmable */
+static u_char rarity_to_gem(short rarity)
+{
+    return (rarity >= 87) ? 22 :
+           (rarity >= 68) ? 18 :
+           (rarity >= 53) ? 14 :
+           (rarity >= 41) ? 11 :
+           (rarity >= 36) ? 10 :
+           (rarity >= 32) ? 9 :
+           (rarity >= 24) ? 5 : 1;
+}
+
+/* @note gems with the rank bonus, Gems x2 event and Lucky! (Four Leaf Clover...: 10% chance of 2-5x), dropped as gem items */
+static void drop_gems(ENetEvent &event, ::peer &p, ::world &world, ::pos tile, int most)
+{
+    int gems = gem_bonus(p, RandomRange(1, most)) * (event_on(event_type::GEMS) ? 2 : 1);
+    if (buff_lucky(p) && !RandomRange(0, 10)) gems *= RandomRange(2, 6);
+    /* @todo merge gems more effectively */
+    for (short i : {10, 5, 1}/* gem type */)
+        for (; gems >= i; gems -= i/* downgrade type */)
+            magplant_drop(event, {112, i}, tile, world);
+}
 
 float max_reach = 4.0f; // @note Growtopia reaches 3 tiles (wiki: Fist), +1 for lag. playmods ('pr+N'/'br+N') add on top
 
@@ -171,6 +194,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 punch = false;
             }
             u_char apply_damage_value{}; // @note used to change a tile value without using send_tile_update() 
+            tile_damage_reset(block); // @note first: the cases below may set the hits themselves
 
             if (pPeer->clothing[clothing::HAND] == 2952/*Digger's Spade*/)
             {
@@ -251,12 +275,17 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 {
                     auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
                     if (tree == world->trees.end()) // @note a seed without its timer (old save, made by a machine...) crashed the server here
-                        tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 3), gamePacket.punch);
+                        tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 5), gamePacket.punch);
                     if (ticks() - tree->tick >= item.tick) // @todo limit this check.
                     {
                         block.hits[0] = 99;
-                        const short fruit = static_cast<short>(RandomRange(1, std::max<int>(tree->fruit, 1) * 3));
+                        /* @note "When a tree is broken, it will drop its fruit and some gems. Rarely, the item's seed can also be dropped."
+                         * (growtopiawiki.com/w/Dropping). the fruit is what the tree shows (tree::fruit, sent to the client): it gave
+                         * a random 1 to 3x-1 of that before (1-8 from a tree showing 3), and no gems at all */
+                        const short fruit = std::max<short>(tree->fruit, 1);
                         magplant_drop(event, ::slot(item.id - 1, fruit), gamePacket.punch.by_32(), *world); // @note fruit (from tree)
+                        drop_gems(event, *pPeer, *world, gamePacket.punch.by_32(), rarity_to_gem(item.rarity)); // @note amount: the block table, a guess (the wiki says "some")
+                        if (!RandomRange(0, 8)) magplant_drop(event, ::slot(item.id, 1), gamePacket.punch.by_32(), *world); // @note "rarely": 1 in 8 is a guess (RandomRange never returns its top)
                         add_stat(event, "harvested");
                         add_stat(event, "fruit_rarity", fruit * std::max<int>(item.rarity, 0)); // @note Legendary Quest step (tools/legendary.cpp)
                     }
@@ -291,8 +320,6 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                     clear_weather_override(world->name); // @note the machine wins over /weather
 
                     const int weather_id = on ? get_weather_id(item.id) : 0;
-                    if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
-                        log << std::format("{} weather toggled on={} weather_id={} item={}\n", std::time(nullptr), on, weather_id, item.id);
                     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [weather_id](ENetPeer& p)
                     {
                         send_varlist(&p, { "OnSetCurrentWeather", weather_id });
@@ -306,8 +333,6 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 {
                     block.state[2] ^= S_TOGGLE;
                     if (is_jammer(block.fg)) jammer_toggled(event, *world, block, gamePacket.punch);
-                    if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
-                        log << std::format("{} toggle item={} state2={:#04x}\n", std::time(nullptr), block.fg, block.state[2]);
                     break;
                 }
                 case type::RANDOM:
@@ -387,25 +412,10 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             {
                 if (item.type != type::SEED)
                 { /* gem drop */
-                    /* if greater than 1, assume it's a farmable.*/
-                    u_char rarity_to_gem =
-                        (item.rarity >= 87) ? 22 : 
-                        (item.rarity >= 68) ? 18 : 
-                        (item.rarity >= 53) ? 14 : 
-                        (item.rarity >= 41) ? 11 : 
-                        (item.rarity >= 36) ? 10 :
-                        (item.rarity >= 32) ? 9 :
-                        (item.rarity >= 24) ? 5 : 1;
+                    const u_char rarity_to_gem = ::rarity_to_gem(item.rarity); // @note if greater than 1, assume it's a farmable.
 
                     if (!RandomRange(0, (rarity_to_gem > 1) ? 1 : 4)) // @note double chances if farmable.
-                    {
-                        /* @todo merge gems more effectively */
-                        int gems = gem_bonus(*pPeer, RandomRange(1, rarity_to_gem)) * (event_on(event_type::GEMS) ? 2 : 1); // @note rank bonus, Gems x2 event
-                        if (buff_lucky(*pPeer) && !RandomRange(0, 10)) gems *= RandomRange(2, 6); // @note Lucky! (Four Leaf Clover...): 10% chance of 2-5x
-                        for (short i : {10, 5, 1}/* gem type */)
-                            for (; gems >= i; gems -= i/* downgrade type */)
-                                magplant_drop(event, {112, i}, gamePacket.punch.by_32(), *world);
-                    }
+                        drop_gems(event, *pPeer, *world, gamePacket.punch.by_32(), rarity_to_gem);
                     if (!RandomRange(0, (rarity_to_gem > 1) ? 2 : 4)) magplant_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); 
                     else if (!RandomRange(0, (rarity_to_gem > 1) ? 4 : 8)) magplant_drop(event, ::slot(item.id, 1), gamePacket.punch.by_32(), *world);
                     if (event_on(event_type::LUCKY) && !RandomRange(0, 2)) magplant_drop(event, ::slot(item.id + 1, 1), gamePacket.punch.by_32(), *world); // @note Lucky Drops event
@@ -466,6 +476,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 case 1404: // @note Door Mover
                 {
                     if (!door_mover(*world, gamePacket.punch)) throw std::runtime_error("There's no room to put the door there! You need 2 empty spaces vertically.");
+                    modify_item_inventory(event, ::slot(item.id, -1)); // @note used up (wiki: consumable); the early return below skipped it, so one Door Mover lasted forever
 
                     std::string remember_name = world->name;
                     peers(pPeer->recent_worlds.back(), PEER_SAME_WORLD, [&](ENetPeer& p) 
@@ -801,7 +812,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
 
                         auto tree = std::ranges::find(world->trees, gamePacket.punch, &::tree::pos);
                         if (tree == world->trees.end()) // @note a seed without its timer crashed the server when spliced
-                            tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 3), gamePacket.punch);
+                            tree = world->trees.emplace(world->trees.end(), ticks(), RandomRange(1, 5), gamePacket.punch);
                         if (block.state[2] == S_SPLICED) throw std::runtime_error("It would be too dangerous to try to mix three seeds.");
                         for (::item &item : items)
                         {
@@ -908,7 +919,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
                 }
                 case type::SEED:
                 {
-                    world->trees.emplace_back(ticks(), RandomRange(1, 3), gamePacket.punch);
+                    world->trees.emplace_back(ticks(), RandomRange(1, 5), gamePacket.punch); // @note 1-4 fruit: "a normal tree can display four fruit" (growtopia.fandom.com/wiki/Drop_Chance); was 1-2 (RandomRange never returns its top)
                     block.state[2] = 0x11; // @todo
                     tile_update = true;
                     add_stat(event, "planted"); // @note tutorial
@@ -954,8 +965,6 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
     }
     catch (const std::exception& exc)
     {
-        if (std::ofstream log{ "debug_toggle.log", std::ios::app }; log) // @todo TEMPORARY debug, remove after
-            log << std::format("{} user={} tile_change refused id={} punch={},{}: {}\n", std::time(nullptr), pPeer->user_id, gamePacket.id, gamePacket.punch.x, gamePacket.punch.y, exc.what());
         send_varlist(event.peer, { "OnTalkBubble", pPeer->netid, exc.what(), 0u, 1u });
         return;
     }

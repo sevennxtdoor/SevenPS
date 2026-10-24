@@ -202,12 +202,12 @@ std::string peer::name_as(std::string_view color) const
     return blob;
 }
 
-void peer::load(const std::string &growid, const std::string &password)
+void peer::load(const std::string &growid, const std::string &password, const std::string &hashed)
 {
     if (!this->exists(growid))
     {
         this->mysql_insert("growid", growid);
-        this->mysql_update("password", hash_password(password)); // @note never plain text
+        this->mysql_update("password", hashed.empty() ? hash_password(password) : hashed); // @note never plain text
 
         this->slots.resize(3ull); // @note since it's pre-determined we don't need do peer::emplace, and less iteration
         this->slots[0ull] = ::slot{18, 1};   // @note Fist

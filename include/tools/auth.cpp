@@ -217,32 +217,52 @@ void apply_password_reset()
     std::printf("[login] password of %s was reset\n", growid.c_str());
 }
 
-std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip)
+login_check login_begin(const std::string &growid, const std::string &password, bool may_register, const std::string &ip)
 {
-    if (const std::string why = guard_login_blocked(ip); !why.empty()) return why; // @note before hashing: a bot can't burn our CPU either
-    if (!valid_growid(growid)) return "GrowIDs are 3-18 letters or numbers.";
-    if (password.empty() || password.size() > 64) return "Wrong password.";
+    if (const std::string why = guard_login_blocked(ip); !why.empty()) return { why }; // @note before hashing: a bot can't burn our CPU either
+    if (!valid_growid(growid)) return { "GrowIDs are 3-18 letters or numbers." };
+    if (password.empty() || password.size() > 64) return { "Wrong password." };
 
-    fails &f = failed[lower(growid)];
+    const fails &f = failed[lower(growid)];
     const std::time_t now = std::time(nullptr);
-    if (f.locked_until > now) return std::format("Too many wrong passwords. Try again in {} seconds.", f.locked_until - now);
+    if (f.locked_until > now) return { std::format("Too many wrong passwords. Try again in {} seconds.", f.locked_until - now) };
 
-    const std::optional<std::string> stored = stored_password(growid);
-    if (!stored)
+    login_check check{ .stored = stored_password(growid) };
+    if (!check.stored)
     {
-        if (!may_register) return "That account doesn't exist.";
-        if (password.size() < 4) return "Pick a password with at least 4 characters.";
-        if (!guard_may_register(ip)) return "Too many new accounts from your connection today. Try again tomorrow.";
-        guard_registered(ip);
-        return {}; // @note peer::load() creates it with hash_password()
+        if (!may_register) check.error = "That account doesn't exist.";
+        else if (password.size() < 4) check.error = "Pick a password with at least 4 characters.";
+        else if (!guard_may_register(ip)) check.error = "Too many new accounts from your connection today. Try again tomorrow.";
     }
-    if (!check_password(*stored, password))
+    return check; // @note peer::load() creates a new account, with the hash made on the https thread
+}
+
+std::string login_end(const std::string &growid, bool password_ok, const std::string &rehash, const std::string &ip)
+{
+    fails &f = failed[lower(growid)];
+    if (!password_ok)
     {
-        if (++f.count >= MAX_FAILS) { f.count = 0; f.locked_until = now + LOCK_SECONDS; } // @note slows down password guessing
+        if (++f.count >= MAX_FAILS) { f.count = 0; f.locked_until = std::time(nullptr) + LOCK_SECONDS; } // @note slows down password guessing
         guard_login_failed(ip); // @note ...and a bot trying many accounts from one IP
         return "Wrong password.";
     }
     f = {};
-    if (!stored->starts_with("pbkdf2$")) store_password(growid, hash_password(password)); // @note upgrade the old plain text
+    if (!rehash.empty()) store_password(growid, rehash); // @note upgrade the old plain text
     return {};
+}
+
+std::string register_end(const std::string &ip)
+{
+    if (!guard_may_register(ip)) return "Too many new accounts from your connection today. Try again tomorrow."; // @note again: others may have registered meanwhile
+    guard_registered(ip);
+    return {};
+}
+
+std::string authenticate(const std::string &growid, const std::string &password, bool may_register, const std::string &ip)
+{
+    const login_check check = login_begin(growid, password, may_register, ip);
+    if (!check.error.empty()) return check.error;
+    if (!check.stored) return register_end(ip); // @note peer::load() creates it with hash_password()
+    const bool ok = check_password(*check.stored, password);
+    return login_end(growid, ok, (ok && !check.stored->starts_with("pbkdf2$")) ? hash_password(password) : std::string{}, ip);
 }

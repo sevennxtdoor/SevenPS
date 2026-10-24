@@ -482,15 +482,18 @@ void state_visuals(ENetPeer &peer, ::gamePacket &&gamePacket)
     });
 }
 
-void tile_apply_damage(ENetEvent &event, ::gamePacket gamePacket, block &block, u_int value)
+void tile_damage_reset(block &block)
 {
-    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
-
     /* @note Growtopia Wiki (Fist): break progress resets after a few seconds without punching, per block (items.dat restore time) */
     const auto now = std::chrono::steady_clock::now();
     const int hit_reset = id_to_item((block.fg != 0) ? block.fg : block.bg).hit_reset;
     if (hit_reset > 0 && now - block.hit_at >= std::chrono::seconds(hit_reset)) block.hits[0] = 0, block.hits[1] = 0;
     block.hit_at = now;
+}
+
+void tile_apply_damage(ENetEvent &event, ::gamePacket gamePacket, block &block, u_int value)
+{
+    ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
     (block.fg == 0) ? ++block.hits[1] : ++block.hits[0];
     gamePacket.type = (value << 24) | 0x000008; // @note 0x{}000008

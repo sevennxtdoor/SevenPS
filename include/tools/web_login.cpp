@@ -2,6 +2,7 @@
 #include <future>
 #include <mutex>
 #include <deque>
+#include <functional>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
 
@@ -17,7 +18,7 @@ namespace
     std::mutex session_mutex;
     std::unordered_map<std::string, session> sessions{}; // @note key = SHA-256 of the token (hex)
 
-    struct job { std::string form, ip; std::promise<std::string> answer; };
+    struct job { std::function<void()> work; std::promise<void> done; };
     std::mutex job_mutex;
     std::deque<std::shared_ptr<job>> jobs{};
 
@@ -133,47 +134,84 @@ std::string token_json(const std::string &token)
     return std::format("{{\"status\":\"success\",\"message\":\"Account Validated.\",\"token\":\"{}\",\"url\":\"\",\"accountType\":\"growtopia\"}}", json_text(token));
 }
 
+namespace
+{
+    /* @note runs `work` on the main thread. @return empty when it ran, else the reason to show */
+    using main_thread = std::function<std::string(std::function<void()>)>;
+
+    struct login_state { login_check check{}; bool password_ok{}; std::string hashed{}, answer{}; };
+
+    std::string handle(const std::string &form, const std::string &ip, const main_thread &on_main)
+    {
+        const std::string growid = form_value(form, "growId"), password = form_value(form, "password");
+        const bool registering = form_value(form, "mode") == "register";
+        if (growid.empty() || password.empty()) return error_json("Fill in your GrowID and password.");
+        if (registering && password != form_value(form, "confirm")) return error_json("The two passwords are not the same.");
+
+        /* @note shared: after a timeout the main thread may still run a step, the https thread's stack is gone by then */
+        auto s = std::make_shared<login_state>();
+        if (const std::string why = on_main([s, growid, password, ip, registering]
+            {
+                if (registering && account_name(growid)) s->check.error = "That GrowID is already taken.";
+                else s->check = login_begin(growid, password, registering, ip);
+            }); !why.empty()) return error_json(why);
+        if (!s->check.error.empty())
+        {
+            if (!registering) std::printf("[web login] %s refused: %s\n", growid.c_str(), s->check.error.c_str()); // @note never the password
+            return error_json(s->check.error);
+        }
+
+        /* @note the slow part, on this (https) thread: PBKDF2 */
+        if (registering) s->hashed = hash_password(password);
+        else if ((s->password_ok = s->check.stored && check_password(*s->check.stored, password)) && !s->check.stored->starts_with("pbkdf2$"))
+            s->hashed = hash_password(password); // @note old plain text, upgraded in login_end()
+
+        if (const std::string why = on_main([s, growid, password, ip, registering]
+            {
+                if (registering)
+                {
+                    if (account_name(growid)) return (void)(s->answer = error_json("That GrowID is already taken.")); // @note made meanwhile
+                    if (const std::string why = register_end(ip); !why.empty()) return (void)(s->answer = error_json(why));
+                    ::peer account{};
+                    account.growid = growid;
+                    account.load(growid, password, s->hashed); // @note makes the account (hashed password, starter backpack)
+                    account.loaded = false; // @note nothing to save: it was just made
+                    std::printf("[web login] new account %s from %s\n", growid.c_str(), ip.c_str());
+                    s->answer = token_json(session_new(growid));
+                    return;
+                }
+                if (const std::string why = login_end(growid, s->password_ok, s->hashed, ip); !why.empty())
+                {
+                    std::printf("[web login] %s refused: %s\n", growid.c_str(), why.c_str()); // @note never the password
+                    s->answer = error_json(why);
+                    return;
+                }
+                s->answer = token_json(session_new(account_name(growid).value_or(growid))); // @note the stored spelling: "mike" logs in as Mike
+            }); !why.empty()) return error_json(why);
+        return s->answer;
+    }
+}
+
 std::string web_login_handle(const std::string &form, const std::string &ip)
 {
-    const std::string growid = form_value(form, "growId"), password = form_value(form, "password");
-    const bool registering = form_value(form, "mode") == "register";
-    if (growid.empty() || password.empty()) return error_json("Fill in your GrowID and password.");
-
-    if (registering)
-    {
-        if (password != form_value(form, "confirm")) return error_json("The two passwords are not the same.");
-        if (account_name(growid)) return error_json("That GrowID is already taken.");
-        if (const std::string why = authenticate(growid, password, true, ip); !why.empty()) return error_json(why);
-
-        ::peer account{};
-        account.growid = growid;
-        account.load(growid, password); // @note makes the account (hashed password, starter backpack)
-        account.loaded = false; // @note nothing to save: it was just made
-        std::printf("[web login] new account %s from %s\n", growid.c_str(), ip.c_str());
-        return token_json(session_new(growid));
-    }
-
-    if (const std::string why = authenticate(growid, password, false, ip); !why.empty())
-    {
-        std::printf("[web login] %s refused: %s\n", growid.c_str(), why.c_str()); // @note never the password
-        return error_json(why);
-    }
-    return token_json(session_new(account_name(growid).value_or(growid))); // @note the stored spelling: "mike" logs in as Mike
+    return handle(form, ip, [](std::function<void()> work) { work(); return std::string{}; });
 }
 
 std::string web_login_request(const std::string &form, const std::string &ip)
 {
-    auto j = std::make_shared<job>();
-    j->form = form;
-    j->ip = ip;
-    std::future<std::string> answer = j->answer.get_future();
+    return handle(form, ip, [](std::function<void()> work) -> std::string
     {
-        std::lock_guard lock(job_mutex);
-        if (jobs.size() >= 20) return error_json("The server is busy, try again in a moment.");
-        jobs.push_back(j);
-    }
-    if (answer.wait_for(std::chrono::seconds(15)) != std::future_status::ready) return error_json("The server didn't answer, try again.");
-    return answer.get();
+        auto j = std::make_shared<job>();
+        j->work = std::move(work);
+        std::future<void> done = j->done.get_future();
+        {
+            std::lock_guard lock(job_mutex);
+            if (jobs.size() >= 20) return "The server is busy, try again in a moment.";
+            jobs.push_back(j);
+        }
+        if (done.wait_for(std::chrono::seconds(15)) != std::future_status::ready) return "The server didn't answer, try again.";
+        return {};
+    });
 }
 
 void web_login_tick()
@@ -187,6 +225,7 @@ void web_login_tick()
             j = jobs.front();
             jobs.pop_front();
         }
-        j->answer.set_value(web_login_handle(j->form, j->ip));
+        j->work();
+        j->done.set_value();
     }
 }

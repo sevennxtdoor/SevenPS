@@ -371,8 +371,11 @@ void trade_confirm(ENetEvent& event, const ::hPipe &hPipe)
     if (std::ranges::find(pPartner->trade_items, world_key_id(), &::slot::id) != pPartner->trade_items.end()) world_key_traded(*partner, *event.peer);
 
     log_trade(pPeer->growid, pPartner->growid, items_for_message(*pPeer), items_for_message(*pPartner));
-    add_stat(mine, "trades");
-    add_stat(theirs, "trades");
+    if (!pPeer->trade_items.empty() && !pPartner->trade_items.empty()) // @note an empty trade (or a gift) isn't a trade: it farmed the "trades" goal/mission/achievements
+    {
+        add_stat(mine, "trades");
+        add_stat(theirs, "trades");
+    }
 
     reset(*pPeer); reset(*pPartner);
 }
