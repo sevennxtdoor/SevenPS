@@ -6,6 +6,7 @@
 #include <openssl/rand.h>
 
 #include "guard.hpp"
+#include "bad_words.hpp"
 #include "web_login.hpp" // @note session_drop()
 #include "auth.hpp"
 
@@ -228,6 +229,13 @@ login_check login_begin(const std::string &growid, const std::string &password, 
         return { std::format("Too many wrong passwords. Try again in {} seconds.", f->second.locked_until - now) };
 
     login_check check{ .stored = stored_password(growid) };
+    /* @note SevenPS rude-name filter (resources/bad_words.txt): no new account with such a name, and old ones can't log in either.
+     * text is a guess: the Growtopia wiki doesn't give the original message */
+    if (is_bad_name(growid))
+    {
+        check.error = check.stored ? "This GrowID is not allowed. Ask staff on Discord for help." : "That GrowID is not allowed. Pick another one.";
+        return check;
+    }
     if (!check.stored)
     {
         if (!may_register) check.error = "That account doesn't exist.";

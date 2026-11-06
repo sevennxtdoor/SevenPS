@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "commands/moderation.hpp" // @note is_nuked()
+#include "tools/bad_words.hpp"
 
 #include "action/quit_to_exit.hpp" // @note peer leave world
 #include "action/join_request.hpp" // @note peer enter (blast) world
@@ -25,6 +26,8 @@ void create_blast(ENetEvent& event, const ::hPipe &hPipe)
             if (blast == pPeer->slots.end() || blast->count < 1) return;
             if (world_name.empty() || world_name.length() > 24 || !alnum(world_name))
                 return on::ConsoleMessage(event.peer, "`4World names can only have letters and numbers (max 24).``");
+            if (is_bad_name(world_name)) // @note before the blast is taken. SevenPS rude-name filter, text is a guess (not on the wiki)
+                return on::ConsoleMessage(event.peer, "`4That world name is not allowed.`` Please pick another one.");
             if (is_nuked(world_name) || std::ranges::find(worlds, world_name, &::world::name) != worlds.end() || ::world::exists(world_name))
                 return on::ConsoleMessage(event.peer, std::format("`4A world named `w{}`` already exists.`` Pick a unique name.", world_name));
 

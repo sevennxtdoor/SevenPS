@@ -20,6 +20,7 @@
 #include "tools/auth.hpp"
 #include "tools/system_worlds.hpp"
 #include "tools/anticheat.hpp"
+#include "tools/bad_words.hpp"
 
 #include "join_request.hpp"
 
@@ -46,6 +47,9 @@ void action::join_request(ENetEvent& event, const std::string& header, const std
             name = "HELL";
         }
         if (pPeer->role < MODERATOR && is_nuked(name)) throw std::runtime_error("That world is inaccessible.");
+        /* @note SevenPS rude-name filter (resources/bad_words.txt): no new world with such a name, and old ones are closed too.
+         * staff may still go in to clean up. text is a guess: the Growtopia wiki doesn't give the original message */
+        if (pPeer->role < MODERATOR && is_bad_name(name)) throw std::runtime_error("`4That world name is not allowed.`` Please pick another one.");
         if (pPeer->role < MODERATOR)
             if (const int left = world_ban_left(name, pPeer->user_id); left > 0)
                 throw std::runtime_error(std::format("`4Oh no! ``You've been banned from that world by its owner! Try again in `w{}`` minute{}.", left, (left == 1) ? "" : "s"));

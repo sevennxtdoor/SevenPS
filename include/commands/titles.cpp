@@ -1,5 +1,6 @@
 #include "pch.hpp"
 #include "tools/rank.hpp"
+#include "tools/bad_words.hpp"
 #include <sstream>
 #include "onVariant/CountryState.hpp"
 #include "onVariant/SetClothing.hpp"
@@ -174,6 +175,12 @@ void nick(ENetEvent& event, const std::string_view text)
     if (!name.empty() && (name.size() < 3 || name.size() > 18 || !alnum(name)))
     {
         send_action(*event.peer, "log", "msg|`4Nick must be 3-18 letters/numbers.``");
+        return;
+    }
+    /* @note SevenPS rude-name filter (resources/bad_words.txt), the owner is trusted. text is a guess (not on the wiki) */
+    if (!name.empty() && pPeer->role < OWNER && is_bad_name(name))
+    {
+        send_action(*event.peer, "log", "msg|`4That nick is not allowed.`` Pick another one.");
         return;
     }
     pPeer->nick = name;

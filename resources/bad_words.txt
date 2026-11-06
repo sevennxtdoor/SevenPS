@@ -1,0 +1,68 @@
+# SevenPS rude-name filter: world names, GrowIDs and guild names with one of these words are refused.
+# One word per line, lowercase letters only. Lines starting with # are ignored. You can edit this file while the server runs
+# (it is read again within a minute).
+# A plain word also matches inside a longer name: "pepek" blocks PEPEK, XPEPEKX, P3P3K and PEEPEK.
+# Start a line with = to block only that exact name: use it for short words that hide in normal words
+# ("=tai" blocks TAI but not MOUNTAIN).
+
+# Indonesian
+pepek
+memek
+kontol
+ngentot
+ngewe
+jembut
+bangsat
+bajingan
+keparat
+brengsek
+goblok
+tolol
+kampret
+lonte
+pelacur
+perek
+jablay
+jancok
+jancuk
+pukimak
+pantek
+peler
+toket
+bokep
+colmek
+bencong
+anjing
+=asu
+=babi
+=tai
+=coli
+=ewe
+=itil
+=sange
+=bego
+
+# English
+fuck
+shit
+bitch
+cunt
+pussy
+penis
+vagina
+porn
+nigger
+nigga
+faggot
+retard
+whore
+slut
+asshole
+bastard
+hitler
+=dick
+=cock
+=sex
+=fag
+=rape
+=boobs

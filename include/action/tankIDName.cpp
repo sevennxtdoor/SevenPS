@@ -2,6 +2,7 @@
 #include "tools/web_login.hpp"
 #include "action/quit.hpp"
 #include "automate/holiday.hpp"
+#include "tools/bad_words.hpp"
 
 #include "tankIDName.hpp"
 
@@ -54,6 +55,16 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
         return;
     }
     pPeer->growid = owner; // @note the stored spelling
+    /* @note a login token saved before the name was on resources/bad_words.txt skips the login page: refused here too, before load() */
+    if (is_bad_name(pPeer->growid))
+    {
+        std::printf("[login] %s refused: GrowID on the bad word list\n", pPeer->growid.c_str());
+        send_action(*event.peer, "log", "msg|`4This GrowID is not allowed.`` Ask staff on Discord for help.");
+        send_action(*event.peer, "logon_fail", "");
+        pPeer->growid.clear();
+        enet_peer_disconnect_later(event.peer, 0);
+        return;
+    }
     /* @note same account already online: two copies of one inventory could trade/drop the same items (duplication).
      * the old session is saved and closed first, then this one loads what it saved */
     peers("", PEER_ALL, [&event, pPeer](ENetPeer &p)

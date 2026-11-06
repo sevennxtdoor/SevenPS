@@ -8,6 +8,7 @@
 #include "action/friends.hpp"     // @note Back -> Social Portal
 #include "tools/system_worlds.hpp"
 #include "tools/guild_level.hpp"
+#include "tools/bad_words.hpp"
 
 #include "guild.hpp"
 
@@ -431,6 +432,7 @@ void guild_return(ENetEvent &event, const ::hPipe &hPipe)
     if (statement == "Enter a Guild statement here!") statement.clear();
     auto fail = [&](const std::string &error) { creation(error, name, statement); };
     if (!valid_name(name)) return fail("`4Guild names are 3-15 letters or numbers.``");
+    if (is_bad_name(name)) return fail("`4That guild name is not allowed.``"); // @note SevenPS rude-name filter, text is a guess (not on the wiki)
     if (guild_named(name)) return fail("`4That guild name is taken.``");
     if (p.level[0] < CREATE_LEVEL) return fail(std::format("`4You need level {} to create a guild.``", CREATE_LEVEL));
     if (p.gems < CREATE_COST) return fail(std::format("`4Creating a guild costs {} gems.``", gems_text(CREATE_COST)));
