@@ -7,161 +7,225 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1d3a'/%3E%3Ctext x='32' y='50' font-family='Segoe UI,Arial,sans-serif' font-size='48' font-weight='800' text-anchor='middle' fill='%23a3700a'%3E7%3C/text%3E%3Ctext x='32' y='47' font-family='Segoe UI,Arial,sans-serif' font-size='48' font-weight='800' text-anchor='middle' fill='%23ffd34d'%3E7%3C/text%3E%3C/svg%3E">
 <meta name="description" content="SevenPS (Seven Private Server): a fan-made, non-commercial Growtopia private server. Features, ranks, events, rules and how to join.">
 <meta name="color-scheme" content="dark">
-<!-- SevenPS website (docs/ = GitHub Pages, served from branch sevenps): one static file, no external scripts, fonts or images (host it anywhere, e.g. GitHub Pages).
-     Same colors as the login page (resources/login.html). Numbers come from resources/ranks.txt, /rules (commands/gtos.cpp)
-     and NOTICE-SEVENPS.md: update them here when those change.
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Sora:wght@600;700;800&display=swap">
+<!-- SevenPS website (docs/ = GitHub Pages, served from branch sevenps): one static file, no scripts or images; the only external request is Google Fonts
+     (Sora for headings, Inter for text; system fonts take over when it can't load).
+     Numbers come from resources/ranks.txt, /rules (commands/gtos.cpp) and NOTICE-SEVENPS.md: update them here when those change.
      @todo when the VPS is there: live server status + leaderboard (needs a public endpoint on the server) -->
 <style>
-  :root { --bg1: #0b1d3a; --bg2: #1d4f8c; --card: #102a52; --line: #2c5a96; --text: #eef5ff; --muted: #9fb7d9;
-          --gold: #ffd34d; --gold-dark: #a3700a; --green: #3ccf6e; --green-dark: #1f8a45; --red: #ff6b6b; --field: #0a1f40;
-          --radius: 16px; --wrap: 1080px; }
+  :root { --bg: #060b16; --bg-2: #0a1428; --surface: rgba(255, 255, 255, .035); --surface-2: rgba(255, 255, 255, .06);
+          --border: rgba(255, 255, 255, .09); --border-2: rgba(255, 255, 255, .16);
+          --text: #edf2fa; --muted: #93a3bd; --faint: #64748e;
+          --gold: #f5c84c; --gold-1: #fff0bd; --gold-3: #b8862a; --gold-soft: rgba(245, 200, 76, .12); --red: #ff7676;
+          --radius: 18px; --wrap: 1120px;
+          --display: "Sora", "Segoe UI", Tahoma, Arial, sans-serif; --body: "Inter", "Segoe UI", Tahoma, Arial, sans-serif; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
-  body { margin: 0; font-family: "Segoe UI", Tahoma, Arial, sans-serif; color: var(--text); line-height: 1.55;
-         background: var(--bg1); background-image: linear-gradient(180deg, var(--bg2) 0, var(--bg1) 720px); }
-  a { color: var(--gold); }
-  .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; }
+  body { margin: 0; font-family: var(--body); font-size: 16px; color: var(--text); line-height: 1.6; background: var(--bg);
+         -webkit-font-smoothing: antialiased; }
+  a { color: var(--gold); text-decoration-color: rgba(245, 200, 76, .4); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: var(--gold); }
+  .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: var(--display); }
+  svg.ico { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   /* top bar */
-  nav { position: sticky; top: 0; z-index: 10; background: rgba(11, 29, 58, .88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
-  nav .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
-  .brand { font-weight: 800; font-size: 20px; color: var(--gold); text-decoration: none; text-shadow: 0 2px 0 var(--gold-dark); letter-spacing: .5px; }
-  nav ul { display: flex; gap: 4px; list-style: none; margin: 0 0 0 auto; padding: 0; overflow-x: auto; scrollbar-width: none; }
-  nav ul::-webkit-scrollbar { display: none; }
-  nav ul a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
-  nav ul a:hover { color: var(--text); background: var(--card); }
+  nav { position: sticky; top: 0; z-index: 10; background: rgba(6, 11, 22, .72); backdrop-filter: blur(14px) saturate(140%);
+        -webkit-backdrop-filter: blur(14px) saturate(140%); border-bottom: 1px solid var(--border); }
+  nav .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; color: var(--text);
+           text-decoration: none; letter-spacing: -.01em; }
+  .mark { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 9px; font-weight: 800; font-size: 18px; color: #1d1404;
+          background: linear-gradient(160deg, var(--gold-1), var(--gold) 50%, var(--gold-3)); box-shadow: 0 4px 16px -4px rgba(245, 200, 76, .55); }
+  nav ul { display: flex; gap: 2px; list-style: none; margin: 0 0 0 auto; padding: 0; }
+  nav ul a { display: block; padding: 7px 12px; border-radius: 9px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; white-space: nowrap;
+             transition: color .15s, background .15s; }
+  nav ul a:hover { color: var(--text); background: var(--surface-2); }
+  nav ul a.cta { color: #1d1404; background: linear-gradient(180deg, var(--gold-1), var(--gold)); font-weight: 600; margin-left: 6px; }
+  nav ul a.cta:hover { filter: brightness(1.06); }
 
   /* hero */
-  header.hero { text-align: center; padding: 72px 0 56px; }
-  .hero h1 { margin: 0; font-size: clamp(44px, 9vw, 76px); line-height: 1.05; color: var(--gold); text-shadow: 0 5px 0 var(--gold-dark); letter-spacing: 1px; }
-  .hero .full { margin: 10px 0 0; color: var(--muted); font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
-  .hero .pitch { max-width: 620px; margin: 20px auto 0; font-size: 18px; }
-  .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
-  .btn { display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 16px; text-decoration: none; }
-  .btn.go { background: var(--green); color: #06301a; box-shadow: 0 4px 0 var(--green-dark); }
-  .btn.go:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-dark); }
-  .btn.ghost { border: 2px solid var(--line); color: var(--text); background: var(--card); }
-  .btn.ghost:hover { border-color: var(--gold); }
-  .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 36px; padding: 0; list-style: none; }
-  .facts li { background: var(--field); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--muted); }
-  .facts b { color: var(--text); }
+  header.hero { position: relative; overflow: hidden; text-align: center; padding: 110px 0 88px; isolation: isolate; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -2;
+                  background: radial-gradient(520px 280px at 50% 8%, rgba(245, 200, 76, .20), transparent 70%),
+                              radial-gradient(900px 520px at 50% 22%, rgba(56, 104, 214, .30), transparent 70%),
+                              linear-gradient(180deg, var(--bg-2), var(--bg)); }
+  .hero::after { content: ""; position: absolute; inset: 0; z-index: -1;
+                 background-image: linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+                 background-size: 56px 56px; background-position: center top;
+                 -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 25%, #000 20%, transparent 75%);
+                 mask-image: radial-gradient(ellipse 70% 60% at 50% 25%, #000 20%, transparent 75%); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 10px; border-radius: 999px; border: 1px solid var(--border-2);
+          background: var(--surface); color: var(--muted); font-size: 13px; font-weight: 500; letter-spacing: .02em; }
+  .pill i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+  .hero h1 { margin: 22px 0 0; font-size: clamp(56px, 12vw, 116px); font-weight: 800; line-height: 1; letter-spacing: -.035em;
+             background: linear-gradient(180deg, var(--gold-1) 10%, var(--gold) 55%, var(--gold-3) 100%); -webkit-background-clip: text; background-clip: text;
+             color: transparent; filter: drop-shadow(0 10px 40px rgba(245, 200, 76, .25)); }
+  .hero .pitch { max-width: 600px; margin: 24px auto 0; font-size: 18px; color: #c4d0e3; }
+  .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 36px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 24px; border-radius: 12px; font-weight: 600; font-size: 15px; text-decoration: none;
+         transition: transform .15s, box-shadow .15s, border-color .15s, background .15s; }
+  .btn.go { color: #1d1404; background: linear-gradient(180deg, var(--gold-1), var(--gold) 60%, #e3ac35);
+            box-shadow: 0 10px 30px -10px rgba(245, 200, 76, .7), inset 0 1px 0 rgba(255, 255, 255, .6); }
+  .btn.go:hover { transform: translateY(-1px); box-shadow: 0 14px 36px -10px rgba(245, 200, 76, .8), inset 0 1px 0 rgba(255, 255, 255, .6); }
+  .btn.ghost { color: var(--text); background: var(--surface); border: 1px solid var(--border-2); }
+  .btn.ghost:hover { background: var(--surface-2); border-color: rgba(255, 255, 255, .28); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); max-width: 860px; margin: 64px auto 0; padding: 0; list-style: none;
+           border: 1px solid var(--border); border-radius: var(--radius); background: rgba(10, 20, 40, .55); backdrop-filter: blur(8px); }
+  .stats li { padding: 20px 16px; }
+  .stats li + li { border-left: 1px solid var(--border); }
+  .stats b { display: block; font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--gold); letter-spacing: -.02em; line-height: 1.2; }
+  .stats span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; }
 
   /* sections */
-  section { padding: 56px 0; scroll-margin-top: 56px; } /* @note the sticky top bar must not cover the heading after a menu jump */
-  section h2 { margin: 0 0 6px; font-size: 30px; }
-  section .lead { margin: 0 0 28px; color: var(--muted); max-width: 680px; }
-  .card { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  section { padding: 96px 0; scroll-margin-top: 64px; } /* @note the sticky top bar must not cover the heading after a menu jump */
+  section + section { border-top: 1px solid rgba(255, 255, 255, .05); }
+  .eyebrow { margin: 0 0 12px; color: var(--gold); font-size: 13px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+  section h2 { margin: 0 0 12px; font-size: clamp(30px, 4.5vw, 42px); font-weight: 700; letter-spacing: -.025em; line-height: 1.15; }
+  section .lead { margin: 0 0 40px; color: var(--muted); max-width: 620px; font-size: 17px; }
+  .card { position: relative; background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02)); border: 1px solid var(--border);
+          border-radius: var(--radius); padding: 24px; transition: border-color .2s, transform .2s, background .2s; }
+  .card:hover { border-color: var(--border-2); }
   .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); } /* @note 9 cards: 3 x 3 on a wide screen */
-  .card h3 { margin: 0 0 6px; font-size: 17px; color: var(--gold); }
+  .grid .card:hover { transform: translateY(-3px); background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .025)); }
+  .icon { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 18px; border-radius: 12px; color: var(--gold);
+          background: var(--gold-soft); border: 1px solid rgba(245, 200, 76, .22); }
+  .card h3 { margin: 0 0 8px; font-size: 17px; font-weight: 600; letter-spacing: -.01em; color: var(--text); }
   .card p { margin: 0; color: var(--muted); font-size: 15px; }
 
   /* ranks */
-  .table-wrap { overflow-x: auto; border: 2px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .015)); }
   table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 15px; }
-  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
-  th { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; background: var(--field); }
+  th, td { padding: 16px 18px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--faint); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; }
+  tbody tr { transition: background .15s; }
+  tbody tr:hover { background: rgba(255, 255, 255, .03); }
   tr:last-child td { border-bottom: 0; }
-  td.num { font-variant-numeric: tabular-nums; }
-  .rank { font-weight: 800; }
+  td.num { font-variant-numeric: tabular-nums; color: #d4deee; }
+  .rank { font-family: var(--display); font-weight: 700; white-space: nowrap; }
+  .rank::before { content: ""; color: inherit; display: inline-block; width: 8px; height: 8px; margin-right: 10px; border-radius: 50%; background: currentColor;
+                  box-shadow: 0 0 10px currentColor; vertical-align: 2px; }
   .perks { color: var(--muted); font-size: 14px; }
-  .r1 { color: #3ccf6e; } .r2 { color: #5ce8ff; } .r3 { color: #ff7ad9; } .r4 { color: #3ec7d6; } .r5 { color: #ff5b5b; }
-  .note { margin-top: 12px; color: var(--muted); font-size: 14px; }
+  .r1 { color: #4ade80; } .r2 { color: #67e8f9; } .r3 { color: #f472d0; } .r4 { color: #a78bfa; } .r5 { color: var(--gold); }
+  tr.top { background: linear-gradient(90deg, rgba(245, 200, 76, .10), transparent 70%); }
+  tr.top:hover { background: linear-gradient(90deg, rgba(245, 200, 76, .14), transparent 70%); }
+  .note { margin-top: 14px; color: var(--faint); font-size: 14px; }
 
   /* events */
-  .events { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); } /* @note 4 cards: 2 x 2 */
-  .event { display: flex; gap: 14px; align-items: flex-start; }
-  .when { flex: none; min-width: 84px; text-align: center; padding: 6px 8px; border-radius: 10px; background: var(--field); border: 1px solid var(--line);
-          color: var(--gold); font-weight: 800; font-size: 13px; }
+  .events { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); } /* @note 4 cards: 2 x 2 */
+  .event { display: flex; gap: 18px; align-items: flex-start; }
+  .when { flex: none; min-width: 86px; text-align: center; padding: 8px 10px; border-radius: 12px; background: var(--gold-soft); border: 1px solid rgba(245, 200, 76, .22);
+          color: var(--gold); font-family: var(--display); font-weight: 700; font-size: 13px; }
 
   /* join */
   ol.steps { counter-reset: step; list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
-  ol.steps > li { counter-increment: step; position: relative; padding-left: 60px; }
-  ol.steps > li::before { content: counter(step); position: absolute; left: 20px; top: 20px; width: 28px; height: 28px; border-radius: 50%;
-                          background: var(--gold); color: #3a2800; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
-  ol.steps h3 { color: var(--text); }
+  ol.steps > li { counter-increment: step; padding-left: 80px; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 24px; top: 22px; width: 34px; height: 34px; border-radius: 10px;
+                          background: linear-gradient(160deg, var(--gold-1), var(--gold) 55%, var(--gold-3)); color: #1d1404; font-family: var(--display);
+                          font-weight: 800; display: grid; place-items: center; font-size: 15px; box-shadow: 0 6px 18px -6px rgba(245, 200, 76, .6); }
+  ol.steps p + p { margin-top: 10px; }
   code, pre { font-family: Consolas, "Cascadia Mono", monospace; }
-  code { background: var(--field); padding: 1px 6px; border-radius: 6px; font-size: 14px; }
-  pre { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0 0; font-size: 14px; color: var(--text); }
-  .callout { border-left: 4px solid var(--gold); background: var(--field); padding: 12px 14px; border-radius: 0 10px 10px 0; margin-top: 16px; color: var(--muted); font-size: 15px; }
-  .callout b { color: var(--text); }
+  code { background: rgba(255, 255, 255, .07); border: 1px solid var(--border); padding: 1px 6px; border-radius: 6px; font-size: 13.5px; color: #dfe7f3; }
+  pre { background: #050a14; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; overflow-x: auto; margin: 12px 0 0; font-size: 14px; color: var(--gold-1); }
+  .card .note { font-size: 14px; color: var(--faint); }
+  .callout { border: 1px solid rgba(245, 200, 76, .25); background: var(--gold-soft); padding: 16px 20px; border-radius: 14px; margin-top: 20px; color: #c4d0e3; font-size: 15px; }
+  .callout b { color: var(--gold-1); }
 
   /* rules */
-  ol.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); counter-reset: rule; }
+  ol.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); counter-reset: rule; }
   ol.rules li { counter-increment: rule; }
-  ol.rules h3::before { content: counter(rule) ". "; }
-  .warn { margin-top: 16px; color: var(--muted); }
-  .warn b { color: var(--red); }
+  ol.rules li::before { content: counter(rule, decimal-leading-zero); display: block; margin-bottom: 14px; font-family: var(--display); font-weight: 700;
+                        font-size: 13px; letter-spacing: .1em; color: var(--gold); }
+  .warn { margin-top: 24px; color: var(--muted); }
+  .warn b { color: var(--red); font-weight: 600; }
 
   /* soon */
-  .soon { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; border-style: dashed; }
-  .soon p { flex: 1 1 320px; }
-  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+  .soon { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; border-style: dashed; border-color: rgba(245, 200, 76, .3); padding: 28px; }
+  .soon p { flex: 1 1 320px; color: #c4d0e3; }
+  #soon { padding-top: 0; border-top: 0; }
+  .tag { display: inline-block; padding: 4px 12px; border-radius: 999px; background: var(--gold-soft); border: 1px solid rgba(245, 200, 76, .3); color: var(--gold);
+         font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 
-  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer { border-top: 1px solid var(--border); padding: 48px 0 56px; color: var(--faint); font-size: 14px; background: #04080f; }
+  footer .brand { margin-bottom: 18px; }
   footer p { margin: 0 0 10px; max-width: 780px; }
-  footer strong { color: var(--text); }
+  footer strong { color: var(--muted); }
 
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats li:nth-child(3) { border-left: 0; }
+    .stats li:nth-child(n+3) { border-top: 1px solid var(--border); }
+  }
   @media (max-width: 640px) {
-    header.hero { padding: 48px 0 40px; }
+    .wrap { padding: 0 16px; }
+    header.hero { padding: 64px 0 56px; }
     .hero .pitch { font-size: 16px; }
-    section { padding: 40px 0; }
-    section h2 { font-size: 25px; }
-    ol.steps > li { padding-left: 20px; padding-top: 56px; }
-    ol.steps > li::before { top: 18px; }
+    .stats { margin-top: 44px; }
+    .stats b { font-size: 22px; }
+    section { padding: 64px 0; }
+    section .lead { font-size: 16px; margin-bottom: 28px; }
+    .card { padding: 20px; }
+    ol.steps > li { padding-left: 20px; padding-top: 70px; }
+    ol.steps > li::before { left: 20px; top: 20px; }
 
     /* top bar: brand on its own row, every menu link visible on the second row */
-    nav .wrap { flex-wrap: wrap; height: auto; gap: 0; padding-top: 8px; padding-bottom: 4px; }
-    nav ul { margin: 0; width: 100%; justify-content: space-between; }
+    nav .wrap { flex-wrap: wrap; height: auto; gap: 0; padding-top: 10px; padding-bottom: 6px; }
+    .brand { font-size: 17px; } .mark { width: 26px; height: 26px; font-size: 15px; border-radius: 8px; }
+    nav ul { margin: 6px 0 0; width: 100%; justify-content: space-between; }
     nav ul a { padding: 6px 4px; font-size: 13px; }
-    section { scroll-margin-top: 84px; }
+    nav ul a.cta { padding: 6px 10px; margin-left: 0; }
+    section { scroll-margin-top: 92px; }
 
     /* ranks: one card per rank instead of a table that has to be scrolled sideways */
     .table-wrap { overflow: visible; border: 0; background: none; }
     table, tbody, tr, td { display: block; min-width: 0; }
     thead { display: none; }
     tbody { display: grid; gap: 12px; }
-    tr { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
-    tr:last-child td, td { border: 0; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; }
-    td::before { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; flex: none; }
+    tr { background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02)); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; }
+    tr.top { border-color: rgba(245, 200, 76, .3); background: linear-gradient(180deg, rgba(245, 200, 76, .10), rgba(255, 255, 255, .02)); }
+    tr:last-child td, td { border: 0; padding: 4px 0; display: flex; justify-content: space-between; gap: 12px; }
+    td::before { color: var(--faint); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; flex: none; }
     td:nth-child(2)::before { content: "Price (gems)"; }
     td:nth-child(3)::before { content: "Extra gems"; }
     td:nth-child(4)::before { content: "Extra XP"; }
     td:nth-child(5)::before { content: "Backpack"; }
-    td.rank { font-size: 18px; padding-bottom: 6px; }
-    td.perks { display: block; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
+    td.rank { display: block; font-size: 18px; padding-bottom: 8px; }
+    td.perks { display: block; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--border); }
   }
-  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before { transition: none !important; } .grid .card:hover { transform: none; } }
 </style>
 </head>
 <body>
 
 <nav aria-label="Sections">
   <div class="wrap">
-    <a class="brand" href="#top">SevenPS</a>
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true">7</span>SevenPS</a>
     <ul>
       <li><a href="#features">Features</a></li>
       <li><a href="#ranks">Ranks</a></li>
       <li><a href="#events">Events</a></li>
-      <li><a href="#join">How to join</a></li>
       <li><a href="#rules">Rules</a></li>
+      <li><a class="cta" href="#join">How to join</a></li>
     </ul>
   </div>
 </nav>
 
 <header class="hero" id="top">
   <div class="wrap">
+    <span class="pill"><i aria-hidden="true"></i>Seven Private Server</span>
     <h1>SevenPS</h1>
-    <p class="full">Seven Private Server</p>
     <p class="pitch">A fan-made private server for the sandbox game you know: build worlds, trade, run surgery, fish, join a guild and climb the ranks. Free to play, nothing sold for real money.</p>
     <div class="buttons">
       <a class="btn go" href="#join">How to join</a>
       <a class="btn ghost" href="#features">See the features</a>
     </div>
-    <ul class="facts">
-      <li><b>Free</b> to play</li>
-      <li>Events every <b>2 hours</b></li>
-      <li><b>5</b> ranks, bought with gems</li>
-      <li>Passwords <b>hashed</b>, never shown to staff</li>
+    <ul class="stats">
+      <li><b>Free</b><span>to play</span></li>
+      <li><b>2 hours</b><span>between server events</span></li>
+      <li><b>5 ranks</b><span>bought with gems</span></li>
+      <li><b>Hashed</b><span>passwords, never shown to staff</span></li>
     </ul>
   </div>
 </header>
@@ -169,24 +233,26 @@
 <main>
   <section id="features">
     <div class="wrap">
+      <p class="eyebrow">What's inside</p>
       <h2>Features</h2>
       <p class="lead">Made to play like the original game. The numbers, prices and dialogs follow the real game wherever we know them.</p>
       <div class="grid">
-        <div class="card"><h3>Trade &amp; vending</h3><p>A real trade window with both sides confirming, vending machines, the World Lock Bank and Trade-Scan history.</p></div>
-        <div class="card"><h3>Surgery</h3><p>Operate on Surg-E: 6 diagnoses and all 13 surgical tools. Your surgeon skill is saved.</p></div>
-        <div class="card"><h3>Guilds</h3><p>Create a guild, invite friends, give ranks, set a flag and statement, and talk in guild chat with <code>/gc</code>.</p></div>
-        <div class="card"><h3>Fishing</h3><p>Put on a rod, pick a bait and punch at the splash. Better bait catches rarer fish.</p></div>
-        <div class="card"><h3>Locks &amp; boxes</h3><p>Small, Big, Huge and Builder's Locks, storage boxes, Safe Vault, Donation Box, Mailbox and Bulletin Board.</p></div>
-        <div class="card"><h3>Machines</h3><p>Magplant 5000 with remote, providers (Cow, Chicken, ATM…), Chemical Combiners with 406 recipes, Harmonic Crystals and fossils.</p></div>
-        <div class="card"><h3>Profile &amp; goals</h3><p>Stats, 25 achievements, daily Goals and Quests, Grow Pass bonus, Wardrobe outfits and a personal bio.</p></div>
-        <div class="card"><h3>Daily rewards</h3><p>Daily Spin, Lucky Box, redeem codes from events, gems for playing, and the PARKOUR course once a day.</p></div>
-        <div class="card"><h3>Fair play</h3><p>Anti-cheat for speed hacks, teleports and fast breaking. Every item staff spawn is logged.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h15l-4-4M20 16H5l4 4"/></svg></div><h3>Trade &amp; vending</h3><p>A real trade window with both sides confirming, vending machines, the World Lock Bank and Trade-Scan history.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5-6 5 12 2.5-6h4"/></svg></div><h3>Surgery</h3><p>Operate on Surg-E: 6 diagnoses and all 13 surgical tools. Your surgeon skill is saved.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"/></svg></div><h3>Guilds</h3><p>Create a guild, invite friends, give ranks, set a flag and statement, and talk in guild chat with <code>/gc</code>.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 7l3 5-3 5M5 12c2.5-4 6-6 9.5-6 3.2 0 5.6 2.6 6.5 6-.9 3.4-3.3 6-6.5 6-3.5 0-7-2-9.5-6z"/><circle cx="16.5" cy="11" r=".6"/></svg></div><h3>Fishing</h3><p>Put on a rod, pick a bait and punch at the splash. Better bait catches rarer fish.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3M12 14.5v2"/></svg></div><h3>Locks &amp; boxes</h3><p>Small, Big, Huge and Builder's Locks, storage boxes, Safe Vault, Donation Box, Mailbox and Bulletin Board.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg></div><h3>Machines</h3><p>Magplant 5000 with remote, providers (Cow, Chicken, ATM…), Chemical Combiners with 406 recipes, Harmonic Crystals and fossils.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0V4zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4v3h-4z"/></svg></div><h3>Profile &amp; goals</h3><p>Stats, 25 achievements, daily Goals and Quests, Grow Pass bonus, Wardrobe outfits and a personal bio.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="8" width="17" height="4.5" rx="1"/><path d="M5 12.5V20h14v-7.5M12 8v12M12 8c-1.5-3.5-5.5-4-5.5-1.5S10 8 12 8zm0 0c1.5-3.5 5.5-4 5.5-1.5S14 8 12 8z"/></svg></div><h3>Daily rewards</h3><p>Daily Spin, Lucky Box, redeem codes from events, gems for playing, and the PARKOUR course once a day.</p></div>
+        <div class="card"><div class="icon"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.5-3.2 8-7.5 9.5-4.3-1.5-7.5-5-7.5-9.5V6L12 3z"/><path d="M8.8 12.2 11 14.4l4.3-4.6"/></svg></div><h3>Fair play</h3><p>Anti-cheat for speed hacks, teleports and fast breaking. Every item staff spawn is logged.</p></div>
       </div>
     </div>
   </section>
 
   <section id="ranks">
     <div class="wrap">
+      <p class="eyebrow">Progression</p>
       <h2>Ranks</h2>
       <p class="lead">Ranks are bought with gems you earn in game, never with real money. Type <code>/rank</code> in game.</p>
       <div class="table-wrap">
@@ -199,7 +265,7 @@
             <tr><td class="rank r2">Super VIP</td><td class="num">150,000</td><td class="num">+20%</td><td class="num">+20%</td><td class="num">+20 slots</td><td class="perks">Free /sb, /warp, titles, 2 Daily Spins</td></tr>
             <tr><td class="rank r3">Legend</td><td class="num">400,000</td><td class="num">+35%</td><td class="num">+35%</td><td class="num">+30 slots</td><td class="perks">Free /sb, /warp, titles, 2 Daily Spins, Lucky Box 10% off</td></tr>
             <tr><td class="rank r4">Mythic</td><td class="num">1,000,000</td><td class="num">+50%</td><td class="num">+50%</td><td class="num">+40 slots</td><td class="perks">Free /sb, /warp, titles, /nick, 3 Daily Spins, Lucky Box 15% off</td></tr>
-            <tr><td class="rank r5">GOD</td><td class="num">3,000,000</td><td class="num">+100%</td><td class="num">+100%</td><td class="num">+60 slots</td><td class="perks">Free /sb, /warp, titles, /nick, 3 Daily Spins, Lucky Box 25% off</td></tr>
+            <tr class="top"><td class="rank r5">GOD</td><td class="num">3,000,000</td><td class="num">+100%</td><td class="num">+100%</td><td class="num">+60 slots</td><td class="perks">Free /sb, /warp, titles, /nick, 3 Daily Spins, Lucky Box 25% off</td></tr>
           </tbody>
         </table>
       </div>
@@ -209,6 +275,7 @@
 
   <section id="events">
     <div class="wrap">
+      <p class="eyebrow">Always on</p>
       <h2>Events</h2>
       <p class="lead">Something is always going on. Event start times are broadcast to everyone in game.</p>
       <div class="events">
@@ -222,6 +289,7 @@
 
   <section id="join">
     <div class="wrap">
+      <p class="eyebrow">Get started</p>
       <h2>How to join</h2>
       <p class="lead">For Windows. It takes about five minutes, and you only do it once.</p>
       <ol class="steps">
@@ -252,6 +320,7 @@ SERVER-IP www.growtopia2.com</pre>
 
   <section id="rules">
     <div class="wrap">
+      <p class="eyebrow">Community</p>
       <h2>Rules</h2>
       <p class="lead">The same rules as <code>/rules</code> in game.</p>
       <ol class="rules">
@@ -280,6 +349,7 @@ SERVER-IP www.growtopia2.com</pre>
 
 <footer>
   <div class="wrap">
+    <a class="brand" href="#top"><span class="mark" aria-hidden="true">7</span>SevenPS</a>
     <p><strong>SevenPS</strong> is a fan-made, non-commercial project for learning. It is not affiliated with, endorsed by or connected to Ubisoft or Growtopia. Growtopia and its names are trademarks of their owners. SevenPS has no game files or assets from Ubisoft, and nothing in SevenPS is sold for real money.</p>
     <p>Based on <a href="https://github.com/gurotopia/Gurotopia">Gurotopia</a> (Apache License 2.0). Source: <a href="https://github.com/sevennxtdoor/SevenPS">github.com/sevennxtdoor/SevenPS</a>. Contact on Discord: <strong>feelingsarefake</strong> or <strong>iseven_99</strong>.</p>
     <p>© 2026 Seven</p>
