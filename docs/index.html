@@ -46,7 +46,7 @@
   .facts b { color: var(--text); }
 
   /* sections */
-  section { padding: 56px 0; }
+  section { padding: 56px 0; scroll-margin-top: 56px; } /* @note the sticky top bar must not cover the heading after a menu jump */
   section h2 { margin: 0 0 6px; font-size: 30px; }
   section .lead { margin: 0 0 28px; color: var(--muted); max-width: 680px; }
   .card { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 20px; }
@@ -105,9 +105,29 @@
     .hero .pitch { font-size: 16px; }
     section { padding: 40px 0; }
     section h2 { font-size: 25px; }
-    nav .wrap { gap: 10px; }
     ol.steps > li { padding-left: 20px; padding-top: 56px; }
     ol.steps > li::before { top: 18px; }
+
+    /* top bar: brand on its own row, every menu link visible on the second row */
+    nav .wrap { flex-wrap: wrap; height: auto; gap: 0; padding-top: 8px; padding-bottom: 4px; }
+    nav ul { margin: 0; width: 100%; justify-content: space-between; }
+    nav ul a { padding: 6px 4px; font-size: 13px; }
+    section { scroll-margin-top: 84px; }
+
+    /* ranks: one card per rank instead of a table that has to be scrolled sideways */
+    .table-wrap { overflow: visible; border: 0; background: none; }
+    table, tbody, tr, td { display: block; min-width: 0; }
+    thead { display: none; }
+    tbody { display: grid; gap: 12px; }
+    tr { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+    tr:last-child td, td { border: 0; padding: 3px 0; display: flex; justify-content: space-between; gap: 12px; }
+    td::before { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; flex: none; }
+    td:nth-child(2)::before { content: "Price (gems)"; }
+    td:nth-child(3)::before { content: "Extra gems"; }
+    td:nth-child(4)::before { content: "Extra XP"; }
+    td:nth-child(5)::before { content: "Backpack"; }
+    td.rank { font-size: 18px; padding-bottom: 6px; }
+    td.perks { display: block; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
   }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
