@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SevenPS</title>
+<meta name="description" content="SevenPS (Seven Private Server): a fan-made, non-commercial Growtopia private server. Features, ranks, events, rules and how to join.">
+<meta name="color-scheme" content="dark">
+<!-- SevenPS website: one static file, no external scripts, fonts or images (host it anywhere, e.g. GitHub Pages).
+     Same colors as the login page (resources/login.html). Numbers come from resources/ranks.txt, /rules (commands/gtos.cpp)
+     and NOTICE-SEVENPS.md: update them here when those change.
+     @todo when the VPS is there: live server status + leaderboard (needs a public endpoint on the server) -->
+<style>
+  :root { --bg1: #0b1d3a; --bg2: #1d4f8c; --card: #102a52; --line: #2c5a96; --text: #eef5ff; --muted: #9fb7d9;
+          --gold: #ffd34d; --gold-dark: #a3700a; --green: #3ccf6e; --green-dark: #1f8a45; --red: #ff6b6b; --field: #0a1f40;
+          --radius: 16px; --wrap: 1080px; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font-family: "Segoe UI", Tahoma, Arial, sans-serif; color: var(--text); line-height: 1.55;
+         background: var(--bg1); background-image: linear-gradient(180deg, var(--bg2) 0, var(--bg1) 720px); }
+  a { color: var(--gold); }
+  .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 16px; }
+
+  /* top bar */
+  nav { position: sticky; top: 0; z-index: 10; background: rgba(11, 29, 58, .88); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+  .brand { font-weight: 800; font-size: 20px; color: var(--gold); text-decoration: none; text-shadow: 0 2px 0 var(--gold-dark); letter-spacing: .5px; }
+  nav ul { display: flex; gap: 4px; list-style: none; margin: 0 0 0 auto; padding: 0; overflow-x: auto; scrollbar-width: none; }
+  nav ul::-webkit-scrollbar { display: none; }
+  nav ul a { display: block; padding: 6px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  nav ul a:hover { color: var(--text); background: var(--card); }
+
+  /* hero */
+  header.hero { text-align: center; padding: 72px 0 56px; }
+  .hero h1 { margin: 0; font-size: clamp(44px, 9vw, 76px); line-height: 1.05; color: var(--gold); text-shadow: 0 5px 0 var(--gold-dark); letter-spacing: 1px; }
+  .hero .full { margin: 10px 0 0; color: var(--muted); font-size: 15px; letter-spacing: 2px; text-transform: uppercase; }
+  .hero .pitch { max-width: 620px; margin: 20px auto 0; font-size: 18px; }
+  .buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+  .btn { display: inline-block; padding: 12px 22px; border-radius: 12px; font-weight: 700; font-size: 16px; text-decoration: none; }
+  .btn.go { background: var(--green); color: #06301a; box-shadow: 0 4px 0 var(--green-dark); }
+  .btn.go:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--green-dark); }
+  .btn.ghost { border: 2px solid var(--line); color: var(--text); background: var(--card); }
+  .btn.ghost:hover { border-color: var(--gold); }
+  .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 36px; padding: 0; list-style: none; }
+  .facts li { background: var(--field); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-size: 14px; color: var(--muted); }
+  .facts b { color: var(--text); }
+
+  /* sections */
+  section { padding: 56px 0; }
+  section h2 { margin: 0 0 6px; font-size: 30px; }
+  section .lead { margin: 0 0 28px; color: var(--muted); max-width: 680px; }
+  .card { background: var(--card); border: 2px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); } /* @note 9 cards: 3 x 3 on a wide screen */
+  .card h3 { margin: 0 0 6px; font-size: 17px; color: var(--gold); }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  /* ranks */
+  .table-wrap { overflow-x: auto; border: 2px solid var(--line); border-radius: var(--radius); background: var(--card); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 15px; }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .5px; background: var(--field); }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .rank { font-weight: 800; }
+  .perks { color: var(--muted); font-size: 14px; }
+  .r1 { color: #3ccf6e; } .r2 { color: #5ce8ff; } .r3 { color: #ff7ad9; } .r4 { color: #3ec7d6; } .r5 { color: #ff5b5b; }
+  .note { margin-top: 12px; color: var(--muted); font-size: 14px; }
+
+  /* events */
+  .events { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); } /* @note 4 cards: 2 x 2 */
+  .event { display: flex; gap: 14px; align-items: flex-start; }
+  .when { flex: none; min-width: 84px; text-align: center; padding: 6px 8px; border-radius: 10px; background: var(--field); border: 1px solid var(--line);
+          color: var(--gold); font-weight: 800; font-size: 13px; }
+
+  /* join */
+  ol.steps { counter-reset: step; list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+  ol.steps > li { counter-increment: step; position: relative; padding-left: 60px; }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 20px; top: 20px; width: 28px; height: 28px; border-radius: 50%;
+                          background: var(--gold); color: #3a2800; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
+  ol.steps h3 { color: var(--text); }
+  code, pre { font-family: Consolas, "Cascadia Mono", monospace; }
+  code { background: var(--field); padding: 1px 6px; border-radius: 6px; font-size: 14px; }
+  pre { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; margin: 10px 0 0; font-size: 14px; color: var(--text); }
+  .callout { border-left: 4px solid var(--gold); background: var(--field); padding: 12px 14px; border-radius: 0 10px 10px 0; margin-top: 16px; color: var(--muted); font-size: 15px; }
+  .callout b { color: var(--text); }
+
+  /* rules */
+  ol.rules { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); counter-reset: rule; }
+  ol.rules li { counter-increment: rule; }
+  ol.rules h3::before { content: counter(rule) ". "; }
+  .warn { margin-top: 16px; color: var(--muted); }
+  .warn b { color: var(--red); }
+
+  /* soon */
+  .soon { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; border-style: dashed; }
+  .soon p { flex: 1 1 320px; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--gold); font-size: 12px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer p { margin: 0 0 10px; max-width: 780px; }
+  footer strong { color: var(--text); }
+
+  @media (max-width: 640px) {
+    header.hero { padding: 48px 0 40px; }
+    .hero .pitch { font-size: 16px; }
+    section { padding: 40px 0; }
+    section h2 { font-size: 25px; }
+    nav .wrap { gap: 10px; }
+    ol.steps > li { padding-left: 20px; padding-top: 56px; }
+    ol.steps > li::before { top: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<nav aria-label="Sections">
+  <div class="wrap">
+    <a class="brand" href="#top">SevenPS</a>
+    <ul>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#ranks">Ranks</a></li>
+      <li><a href="#events">Events</a></li>
+      <li><a href="#join">How to join</a></li>
+      <li><a href="#rules">Rules</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <h1>SevenPS</h1>
+    <p class="full">Seven Private Server</p>
+    <p class="pitch">A fan-made private server for the sandbox game you know: build worlds, trade, run surgery, fish, join a guild and climb the ranks. Free to play, nothing sold for real money.</p>
+    <div class="buttons">
+      <a class="btn go" href="#join">How to join</a>
+      <a class="btn ghost" href="#features">See the features</a>
+    </div>
+    <ul class="facts">
+      <li><b>Free</b> to play</li>
+      <li>Events every <b>2 hours</b></li>
+      <li><b>5</b> ranks, bought with gems</li>
+      <li>Passwords <b>hashed</b>, never shown to staff</li>
+    </ul>
+  </div>
+</header>
+
+<main>
+  <section id="features">
+    <div class="wrap">
+      <h2>Features</h2>
+      <p class="lead">Made to play like the original game. The numbers, prices and dialogs follow the real game wherever we know them.</p>
+      <div class="grid">
+        <div class="card"><h3>Trade &amp; vending</h3><p>A real trade window with both sides confirming, vending machines, the World Lock Bank and Trade-Scan history.</p></div>
+        <div class="card"><h3>Surgery</h3><p>Operate on Surg-E: 6 diagnoses and all 13 surgical tools. Your surgeon skill is saved.</p></div>
+        <div class="card"><h3>Guilds</h3><p>Create a guild, invite friends, give ranks, set a flag and statement, and talk in guild chat with <code>/gc</code>.</p></div>
+        <div class="card"><h3>Fishing</h3><p>Put on a rod, pick a bait and punch at the splash. Better bait catches rarer fish.</p></div>
+        <div class="card"><h3>Locks &amp; boxes</h3><p>Small, Big, Huge and Builder's Locks, storage boxes, Safe Vault, Donation Box, Mailbox and Bulletin Board.</p></div>
+        <div class="card"><h3>Machines</h3><p>Magplant 5000 with remote, providers (Cow, Chicken, ATM…), Chemical Combiners with 406 recipes, Harmonic Crystals and fossils.</p></div>
+        <div class="card"><h3>Profile &amp; goals</h3><p>Stats, 25 achievements, daily Goals and Quests, Grow Pass bonus, Wardrobe outfits and a personal bio.</p></div>
+        <div class="card"><h3>Daily rewards</h3><p>Daily Spin, Lucky Box, redeem codes from events, gems for playing, and the PARKOUR course once a day.</p></div>
+        <div class="card"><h3>Fair play</h3><p>Anti-cheat for speed hacks, teleports and fast breaking. Every item staff spawn is logged.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ranks">
+    <div class="wrap">
+      <h2>Ranks</h2>
+      <p class="lead">Ranks are bought with gems you earn in game, never with real money. Type <code>/rank</code> in game.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Rank</th><th>Price (gems)</th><th>Extra gems</th><th>Extra XP</th><th>Backpack</th><th>Perks</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="rank r1">VIP</td><td class="num">50,000</td><td class="num">+10%</td><td class="num">+10%</td><td class="num">+10 slots</td><td class="perks">Free /sb, /warp</td></tr>
+            <tr><td class="rank r2">Super VIP</td><td class="num">150,000</td><td class="num">+20%</td><td class="num">+20%</td><td class="num">+20 slots</td><td class="perks">Free /sb, /warp, titles, 2 Daily Spins</td></tr>
+            <tr><td class="rank r3">Legend</td><td class="num">400,000</td><td class="num">+35%</td><td class="num">+35%</td><td class="num">+30 slots</td><td class="perks">Free /sb, /warp, titles, 2 Daily Spins, Lucky Box 10% off</td></tr>
+            <tr><td class="rank r4">Mythic</td><td class="num">1,000,000</td><td class="num">+50%</td><td class="num">+50%</td><td class="num">+40 slots</td><td class="perks">Free /sb, /warp, titles, /nick, 3 Daily Spins, Lucky Box 15% off</td></tr>
+            <tr><td class="rank r5">GOD</td><td class="num">3,000,000</td><td class="num">+100%</td><td class="num">+100%</td><td class="num">+60 slots</td><td class="perks">Free /sb, /warp, titles, /nick, 3 Daily Spins, Lucky Box 25% off</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Without a rank, a super broadcast (<code>/sb</code>) costs 1,000 gems.</p>
+    </div>
+  </section>
+
+  <section id="events">
+    <div class="wrap">
+      <h2>Events</h2>
+      <p class="lead">Something is always going on. Event start times are broadcast to everyone in game.</p>
+      <div class="events">
+        <div class="card event"><span class="when">2 hours</span><div><h3>Server events</h3><p>Gems x2, XP x2, Lucky Drops or Surgery Day, with a warning 5 minutes before.</p></div></div>
+        <div class="card event"><span class="when">3 hours</span><div><h3>Item Hunt</h3><p>5 Treasure Chests are hidden in START for 20 minutes. One per player, 750–1,500 gems each. Use <code>/hunt</code> for hints.</p></div></div>
+        <div class="card event"><span class="when">15 min</span><div><h3>Chat quiz</h3><p>The first right answer in chat wins a prize.</p></div></div>
+        <div class="card event"><span class="when">Daily</span><div><h3>Spin &amp; PARKOUR</h3><p><code>/spin</code> once a day, and gems for finishing the PARKOUR course.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="join">
+    <div class="wrap">
+      <h2>How to join</h2>
+      <p class="lead">For Windows. It takes about five minutes, and you only do it once.</p>
+      <ol class="steps">
+        <li class="card">
+          <h3>Get the server address and certificate</h3>
+          <p>Ask on Discord (<strong>feelingsarefake</strong> or <strong>iseven_99</strong>) for the server's IP address and the file <code>sevenps-ca.crt</code>.</p>
+        </li>
+        <li class="card">
+          <h3>Point the game to SevenPS</h3>
+          <p>Open Notepad <b>as administrator</b>, open <code>C:\Windows\System32\drivers\etc\hosts</code> and add these two lines at the bottom (use the IP you got):</p>
+          <pre>SERVER-IP www.growtopia1.com
+SERVER-IP www.growtopia2.com</pre>
+          <p class="note">Check it: <code>ping www.growtopia1.com</code> should answer with the server's IP. If the lines disappear, your antivirus removed them: add them again and allow the change.</p>
+        </li>
+        <li class="card">
+          <h3>Install the SevenPS certificate</h3>
+          <p>Double-click <code>sevenps-ca.crt</code> → <b>Install Certificate</b> → <b>Local Machine</b> → <b>Place all certificates in the following store</b> → <b>Trusted Root Certification Authorities</b> → Finish.</p>
+          <p class="note">It's needed for the login window. The certificate is limited to the two addresses above and can't be used for any other website.</p>
+        </li>
+        <li class="card">
+          <h3>Open the game and log in</h3>
+          <p>The SevenPS login window opens. Pick <b>New account</b>, choose a GrowID (3–18 letters or numbers) and a password. Next time, just log in.</p>
+        </li>
+      </ol>
+      <div class="callout"><b>Back to the official game?</b> Delete the two lines from the hosts file (or put <code>#</code> in front of them), then restart the game.</div>
+    </div>
+  </section>
+
+  <section id="rules">
+    <div class="wrap">
+      <h2>Rules</h2>
+      <p class="lead">The same rules as <code>/rules</code> in game.</p>
+      <ol class="rules">
+        <li class="card"><h3>No scamming</h3><p>Always trade with the trade window, never "drop first". Real Roulette Wheel results only come from a real spin, never from chat.</p></li>
+        <li class="card"><h3>Keep your password safe</h3><p>Never share it with anyone. Staff will never ask for it.</p></li>
+        <li class="card"><h3>No cheating</h3><p>No hacks, modded clients, bots, macros or auto clickers.</p></li>
+        <li class="card"><h3>No bug abuse</h3><p>Found a bug? Report it to staff instead of using it.</p></li>
+        <li class="card"><h3>Be polite</h3><p>No spamming, swearing, racism, insults or begging.</p></li>
+        <li class="card"><h3>Keep names clean</h3><p>World names, signs and GrowIDs must not be rude or offensive.</p></li>
+        <li class="card"><h3>Bet at your own risk</h3><p>Staff won't refund items or World Locks lost in casinos or bets between players.</p></li>
+        <li class="card"><h3>Respect everyone</h3><p>Staff decisions are final.</p></li>
+      </ol>
+      <p class="warn">Breaking the rules can get you <b>muted</b>, <b>cursed</b> (sent to HELL), <b>world banned</b> or <b>banned</b>. Report players with wrench → Report, and type <code>/mods</code> to see which staff are online.</p>
+    </div>
+  </section>
+
+  <section id="soon">
+    <div class="wrap">
+      <div class="card soon">
+        <span class="tag">Coming soon</span>
+        <p>Live server status, players online and leaderboards on this page, once SevenPS moves to its own server.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>SevenPS</strong> is a fan-made, non-commercial project for learning. It is not affiliated with, endorsed by or connected to Ubisoft or Growtopia. Growtopia and its names are trademarks of their owners. SevenPS has no game files or assets from Ubisoft, and nothing in SevenPS is sold for real money.</p>
+    <p>Based on <a href="https://github.com/gurotopia/Gurotopia">Gurotopia</a> (Apache License 2.0). Source: <a href="https://github.com/sevennxtdoor/SevenPS">github.com/sevennxtdoor/SevenPS</a>. Contact on Discord: <strong>feelingsarefake</strong> or <strong>iseven_99</strong>.</p>
+    <p>© 2026 Seven</p>
+  </div>
+</footer>
+
+</body>
+</html>
