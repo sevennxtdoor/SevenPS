@@ -23,6 +23,7 @@
 #include "include/tools/web_login.hpp" // @note web_login_tick()
 #include "include/tools/buffs.hpp" // @note buff_tick()
 #include "include/tools/autosave.hpp" // @note autosave_tick()
+#include "include/tools/guard.hpp" // @note guard_tick()
 #include <csignal>
 #include <atomic>
 #ifdef _WIN32
@@ -105,6 +106,7 @@ int main()
         backup_tick(); // @note daily database backup
         buff_tick(); // @note timed mods from consumables run out
         autosave_tick(); // @note players & worlds every 5 minutes
+        guard_tick(); // @note connections that never log in
     }
 
     safe_disconnect_peers(gSignal);

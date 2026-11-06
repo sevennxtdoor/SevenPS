@@ -60,7 +60,8 @@ void action::input(ENetEvent& event, const std::string& header)
             send_action(*event.peer, "log", "msg|`4Unknown command.`` Enter `$/?`` for a list of valid commands.");
         }
     }
-    else 
+    else if (pPeer->netid == 0) {} // @note not in a world (left it, or banned from it): recent_worlds still names it, nobody there may hear us
+    else
     {
         if (pPeer->state & S_DUCT_TAPE)
         {

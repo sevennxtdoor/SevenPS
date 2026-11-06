@@ -4,6 +4,39 @@
 #include "tools/guard.hpp"
 #include "receive.hpp"
 
+namespace
+{
+    /* @note every text packet is printed: 50 players at the flood limit (40 a second each) wrote 2000 lines a second to the
+     * slow Windows console and held up the main loop. at most this many a second, the rest are only counted */
+    constexpr int MAX_PRINTS_PER_SECOND = 50;
+    std::time_t print_second{};
+    int prints{}, skipped{};
+
+    void print_packet(const std::string &header)
+    {
+        const std::time_t now = std::time(nullptr);
+        if (now != print_second)
+        {
+            if (skipped > 0) std::printf("[receive] %d packet(s) not printed (too many in one second)\n", skipped);
+            print_second = now, prints = 0, skipped = 0;
+        }
+        if (++prints > MAX_PRINTS_PER_SECOND) { ++skipped; return; }
+        fputs(guard_redact(header).c_str(), stdout); // @note never print passwords to the console
+    }
+
+    /* @note these only make sense inside a world. after leaving one (also a world ban, /wkick, a door) netid is 0 but
+     * recent_worlds.back() still names it: a modded client kept walking (unseen), picking up drops, dropping, punching and
+     * building there */
+    bool needs_world(const std::string &action)
+    {
+        return action == "action|drop" || action == "action|wrench" || action == "action|respawn" || action == "action|respawn_spike";
+    }
+    bool needs_world(u_char type)
+    {
+        return type == 0x00/*movement*/ || type == 0x03/*tile_change*/ || type == 0x07/*tile_activate*/ || type == 0x0b/*pick up a drop*/;
+    }
+}
+
 void receive(ENetEvent& event)
 {
     std::span<const enet_uint8> data{event.packet->data, event.packet->dataLength};
@@ -20,7 +53,7 @@ void receive(ENetEvent& event)
         {
             if (data.size() < 5ull) break; // @note 4 byte type + at least the ending 0
             std::string header{data.begin() + 4, data.end() - 1};
-            fputs(guard_redact(header).c_str(), stdout); // @note never print passwords to the console
+            print_packet(header);
 
             std::ranges::replace(header, '\n', '|');
             const std::vector<std::string> pipes = readch(header, '|');
@@ -35,6 +68,7 @@ void receive(ENetEvent& event)
 
             /* @note before logging in only the login itself is allowed: every other action assumed a loaded player */
             if (!pPeer->loaded && action != "protocol" && action != "tankIDName" && action != "action|quit") break;
+            if (pPeer->netid == 0 && needs_world(action)) break;
 
             if (const auto i = action_pool.find(action); i != action_pool.end())
                 i->second(event, header);
@@ -48,6 +82,7 @@ void receive(ENetEvent& event)
             gamePacket.size = event.packet->dataLength - sizeof(::gamePacket); // @todo did i do this right? or check for flag ::EXTENDED
 
             if (!pPeer->loaded && gamePacket.type != 0x15 && gamePacket.type != 0x1a) break; // @note ping and disconnect only
+            if (pPeer->netid == 0 && needs_world(gamePacket.type)) break;
             if (const auto i = gamePacket_pool.find(gamePacket.type); i != gamePacket_pool.end())
                 i->second(event, std::move(gamePacket));
             break;

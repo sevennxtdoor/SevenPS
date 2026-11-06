@@ -8,6 +8,8 @@ namespace
     constexpr int MAX_LOGIN_FAILS = 10, LOGIN_FAIL_WINDOW = 15 * 60, LOGIN_BLOCK = 15 * 60;
     constexpr int MAX_ACCOUNTS_PER_DAY = 3;
     constexpr int FLOOD_BLOCK = 5 * 60;
+    constexpr int LOGIN_SECONDS = 30; // @note the real login takes a second or two (the 1st connection only hands over)
+    constexpr std::size_t MAX_IPS = 10000; // @note then forget IPs whose limits are all over (every IP that ever connected stayed in memory)
 
     struct ip_state
     {
@@ -45,6 +47,13 @@ bool guard_connect(ENetPeer &p)
     rates[&p] = {};
     if (local(ip)) return true;
 
+    if (ips.size() >= MAX_IPS)
+        std::erase_if(ips, [now](const auto &e)
+        {
+            const ip_state &s = e.second;
+            return s.blocked_until <= now && s.login_blocked_until <= now && now - s.connect_minute >= 60 &&
+                   now - s.fail_start >= LOGIN_FAIL_WINDOW && now - s.account_day >= 24 * 3600;
+        });
     ip_state &s = ips[ip];
     if (s.blocked_until > now) return false;
     if (now - s.connect_minute >= 60) { s.connect_minute = now; s.connects = 0; }
@@ -71,6 +80,21 @@ bool guard_packet(ENetPeer &p, bool text)
     enet_peer_disconnect_later(&p, 0); // @note the disconnect event still saves a logged in player
     r = { .second = now + 3600 }; // @note don't print this again for the rest of the connection
     return false;
+}
+
+void guard_tick()
+{
+    const std::time_t now = std::time(nullptr);
+    static std::time_t last{};
+    if (now == last) return; // @note once a second is enough
+    last = now;
+    peers("", PEER_ALL, [now](ENetPeer &p)
+    {
+        const ::peer *pPeer = static_cast<::peer*>(p.data);
+        if (pPeer == nullptr || pPeer->loaded || now - pPeer->connected_at < LOGIN_SECONDS) return;
+        std::printf("[guard] %s didn't log in within %d seconds, closed\n", peer_ip(p).c_str(), LOGIN_SECONDS);
+        enet_peer_disconnect(&p, 0); // @note no longer CONNECTED, so not seen again; the disconnect event frees it
+    });
 }
 
 std::string guard_login_blocked(const std::string &ip)

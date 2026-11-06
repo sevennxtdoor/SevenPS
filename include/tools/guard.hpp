@@ -26,5 +26,9 @@ extern void guard_login_failed(const std::string &ip);
 extern bool guard_may_register(const std::string &ip);
 extern void guard_registered(const std::string &ip);
 
+/* @note main loop: closes connections that didn't log in within LOGIN_SECONDS. without it a few IPs (4 connections each)
+ * could take all 50 slots and just sit there, so nobody else could join */
+extern void guard_tick();
+
 /* @note console logging: hides passwords/tokens in a packet before it is printed */
 extern std::string guard_redact(const std::string &header);

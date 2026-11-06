@@ -1023,6 +1023,11 @@ int main()
         CHECK(authenticate("MTAUTH", "Secret1", false, "127.0.0.1") == "Wrong password.", "wrong password refused (was accepted before!)");
         for (int k = 0; k < 4; ++k) authenticate("MTAUTH", "guess" + std::to_string(k), false, "127.0.0.1");
         CHECK(authenticate("MTAUTH", "secret1", false, "127.0.0.1").starts_with("Too many"), "5 wrong tries lock it, even for the right password");
+        { ::peer *np = new ::peer(); np->growid = "MTAUTH3"; np->load("MTAUTH3", "secret3"); }
+        bool all_began = true; // @note the web login: 6 guesses pass login_begin() at once, their passwords are checked on the https threads
+        for (int k = 0; k < 6; ++k) all_began &= login_begin("MTAUTH3", "x", false, "10.0.0.31").error.empty();
+        for (int k = 0; k < 5; ++k) login_end("MTAUTH3", false, {}, "10.0.0.31");
+        CHECK(all_began && login_end("MTAUTH3", true, {}, "10.0.0.31").starts_with("Too many"), "a right guess still in flight when the lock is set is refused");
 
         { ::peer *np = new ::peer(); np->growid = "MTAUTH2"; np->load("MTAUTH2", "x"); }
         { ::hStmt up{ "UPDATE peer SET password = 'plainpw' WHERE growid = 'MTAUTH2'" }; up.execute(); }
@@ -1243,6 +1248,67 @@ int main()
         std::vector<u_char> gp(4 + sizeof(::gamePacket), 0); gp[0] = 4; gp[4] = 3;
         ENetEvent r = ue; r.packet = enet_packet_create(gp.data(), gp.size(), 0); outbox.clear(); receive(r);
         CHECK(outbox.empty(), "punching/placing before login: ignored");
+    }
+
+    std::puts("\n[S5] after leaving a world (or a world ban): no walking, picking up, dropping or chatting there");
+    {
+        ::peer *op = static_cast<::peer*>(ev.peer->data);
+        op->recent_worlds.back() = "MTTEST";
+        const int was_netid = op->netid; const ::pos was_pos = op->pos; const bool was_loaded = op->loaded;
+        op->loaded = true; // @note receive() ignores players that aren't logged in (the checks below would pass for that reason)
+        op->pos = ::pos{ 40 * 32.0f, 10 * 32.0f };
+        w.objects.emplace_back(::object(2, 3, op->pos, ++w.last_object_uid));
+        const u_int uid = w.last_object_uid;
+        if (held(*op, 2) == 0) op->slots.push_back(::slot(2, 5));
+        guard_connect(*ev.peer); // @note fresh packet counter, earlier tests sent a lot this second
+        auto game = [&](int type, int id, ::pos pos) {
+            std::vector<u_char> v(4 + sizeof(::gamePacket), 0); v[0] = 4;
+            memcpy(&v[4], &type, 4); memcpy(&v[24], &id, 4); memcpy(&v[28], &pos.x, 4); memcpy(&v[32], &pos.y, 4);
+            ENetEvent r = ev; r.packet = enet_packet_create(v.data(), v.size(), 0); outbox.clear(); receive(r); };
+        auto text = [&](const std::string &t) { std::vector<u_char> v{ 2, 0, 0, 0 }; v.insert(v.end(), t.begin(), t.end()); v.push_back(0);
+            ENetEvent r = ev; r.packet = enet_packet_create(v.data(), v.size(), 0); outbox.clear(); receive(r); };
+        const int dirt = held(*op, 2);
+        const std::size_t objects = w.objects.size();
+
+        op->netid = 0; // @note what quit_to_exit() leaves behind: recent_worlds.back() is still MTTEST
+        game(0x0b, static_cast<int>(uid), op->pos);
+        CHECK(held(*op, 2) == dirt && std::ranges::find(w.objects, uid, &::object::uid) != w.objects.end(), "picking up a drop there: refused");
+        game(0x00, 0, ::pos{ 41 * 32.0f, 10 * 32.0f });
+        CHECK(op->pos.x == 40 * 32.0f, "walking there (unseen): refused");
+        text("action|input\n|text|ghostchat123");
+        CHECK(!said("ghostchat123"), "chat there: nobody hears it");
+        text("action|dialog_return\ndialog_name|drop_item\nitemID|2\ncount|1");
+        CHECK(held(*op, 2) == dirt && w.objects.size() == objects, "dropping there with a faked dialog: refused");
+        text("action|input\n|text|/who");
+        CHECK(said("/who"), "commands still work outside a world");
+
+        op->netid = was_netid; // @note back in the world: the same packet works
+        game(0x0b, static_cast<int>(uid), op->pos);
+        CHECK(held(*op, 2) == dirt + 3, "inside the world: picked up as before");
+        game(0x00, 0, ::pos{ 41 * 32.0f, 10 * 32.0f });
+        CHECK(op->pos.x == 41 * 32.0f, "inside the world: walking as before");
+        op->pos = was_pos; op->loaded = was_loaded;
+    }
+
+    std::puts("\n[S6] connections that never log in are closed");
+    {
+        enet_initialize();
+        ENetHost *real = enet_host_create(ENET_ADDRESS_TYPE_IPV4, nullptr, 3, 2, 0, 0);
+        ENetHost *saved_host = host; host = real;
+        ENetPeer &a = real->peers[0], &b = real->peers[1], &c = real->peers[2];
+        ::peer *idle = new ::peer(), *fresh = new ::peer(), *player = new ::peer();
+        idle->connected_at -= 31; player->connected_at -= 3600; player->loaded = true;
+        a.data = idle; b.data = fresh; c.data = player;
+        a.state = b.state = c.state = ENET_PEER_STATE_CONNECTED;
+        guard_tick();
+        CHECK(a.state != ENET_PEER_STATE_CONNECTED, "31 seconds without logging in: closed");
+        CHECK(b.state == ENET_PEER_STATE_CONNECTED, "just connected: still waiting for its login");
+        CHECK(c.state == ENET_PEER_STATE_CONNECTED, "logged in player: never closed");
+        player->loaded = false; // @note nothing to save
+        delete idle; delete fresh; delete player;
+        a.data = b.data = c.data = nullptr;
+        a.state = b.state = c.state = ENET_PEER_STATE_DISCONNECTED;
+        host = saved_host; enet_host_destroy(real);
     }
 
     std::puts("\n[W1] SevenPS's own login page");

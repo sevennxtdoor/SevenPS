@@ -223,9 +223,9 @@ login_check login_begin(const std::string &growid, const std::string &password, 
     if (!valid_growid(growid)) return { "GrowIDs are 3-18 letters or numbers." };
     if (password.empty() || password.size() > 64) return { "Wrong password." };
 
-    const fails &f = failed[lower(growid)];
     const std::time_t now = std::time(nullptr);
-    if (f.locked_until > now) return { std::format("Too many wrong passwords. Try again in {} seconds.", f.locked_until - now) };
+    if (auto f = failed.find(lower(growid)); f != failed.end() && f->second.locked_until > now) // @note find, not []: a bot trying made-up GrowIDs filled the map forever
+        return { std::format("Too many wrong passwords. Try again in {} seconds.", f->second.locked_until - now) };
 
     login_check check{ .stored = stored_password(growid) };
     if (!check.stored)
@@ -239,14 +239,19 @@ login_check login_begin(const std::string &growid, const std::string &password, 
 
 std::string login_end(const std::string &growid, bool password_ok, const std::string &rehash, const std::string &ip)
 {
-    fails &f = failed[lower(growid)];
+    fails &f = failed[lower(growid)]; // @note only real accounts get here
+    const std::time_t now = std::time(nullptr);
     if (!password_ok)
     {
-        if (++f.count >= MAX_FAILS) { f.count = 0; f.locked_until = std::time(nullptr) + LOCK_SECONDS; } // @note slows down password guessing
+        if (++f.count >= MAX_FAILS) { f.count = 0; f.locked_until = now + LOCK_SECONDS; } // @note slows down password guessing
         guard_login_failed(ip); // @note ...and a bot trying many accounts from one IP
         return "Wrong password.";
     }
-    f = {};
+    /* @note again: the password is checked on the https threads, many at once. guesses that passed login_begin() before the
+     * lock was set must not get in after it */
+    if (f.locked_until > now) return std::format("Too many wrong passwords. Try again in {} seconds.", f.locked_until - now);
+    if (const std::string why = guard_login_blocked(ip); !why.empty()) return why;
+    failed.erase(lower(growid));
     if (!rehash.empty()) store_password(growid, rehash); // @note upgrade the old plain text
     return {};
 }
