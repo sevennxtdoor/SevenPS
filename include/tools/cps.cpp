@@ -13,6 +13,7 @@
 #include "tools/wrench_menu.hpp"
 #include "tools/economy.hpp"
 #include "action/join_request.hpp"
+#include "tools/bad_words.hpp"
 
 #include "cps.hpp"
 
@@ -544,7 +545,7 @@ void msg_command(ENetEvent &event, const std::string_view text)
     if (args.size() < 3) return on::ConsoleMessage(event.peer, "`oUsage: /msg {growid} {message}``");
 
     const std::size_t start = text.find(' ', text.find(' ') + 1);
-    const std::string message = clean_text(std::string{ text.substr(start + 1) }, 120);
+    const std::string message = censor(clean_text(std::string{ text.substr(start + 1) }, 120));
     for (ENetPeer *p : peers())
     {
         ::peer *pp = static_cast<::peer*>(p->data);

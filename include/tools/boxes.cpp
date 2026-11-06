@@ -5,6 +5,7 @@
 #include "tools/economy.hpp"
 #include "tools/area_lock.hpp"
 #include "tools/duct_tape.hpp"
+#include "tools/bad_words.hpp"
 
 #include "boxes.hpp"
 
@@ -342,7 +343,7 @@ void box_return(ENetEvent &event, const ::hPipe &hPipe)
         return on::ConsoleMessage(event.peer, std::format("`oYour {} is empty now.``", item.raw_name));
     }
     if (kind == box_kind::MAIL && is_owner) return;
-    const std::string text = clean(hPipe["text"]);
+    const std::string text = censor(clean(hPipe["text"])); // @note SevenPS rude-word filter
     if (text.empty()) return;
     if (tape_blocks(*event.peer)) return; // @note duct tape: no writing on bulletin boards and mailboxes
     if (b.notes.size() >= MAX_NOTES)

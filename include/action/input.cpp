@@ -8,6 +8,7 @@
 #include "commands/gtos.hpp"
 #include "tools/casino.hpp"
 #include "tools/duct_tape.hpp"
+#include "tools/bad_words.hpp"
 #include "input.hpp"
 
 void action::input(ENetEvent& event, const std::string& header)
@@ -63,6 +64,7 @@ void action::input(ENetEvent& event, const std::string& header)
     else if (pPeer->netid == 0) {} // @note not in a world (left it, or banned from it): recent_worlds still names it, nobody there may hear us
     else
     {
+        text = censor(text); // @note SevenPS rude-word filter (resources/bad_words.txt)
         if (pPeer->state & S_DUCT_TAPE)
         {
             for (char &c : text)

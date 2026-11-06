@@ -93,3 +93,28 @@ bool is_bad_name(std::string_view name)
     }
     return false;
 }
+
+std::string censor(std::string text)
+{
+    const auto alnum_at = [&text](std::size_t i) { return i < text.size() && std::isalnum(static_cast<u_char>(text[i])); };
+    for (std::size_t i = 0; i < text.size(); )
+    {
+        if (text[i] == '`') { i += 2; continue; } // @note color code
+        if (!alnum_at(i)) { ++i; continue; }
+
+        /* @note one word: letters and numbers, color codes inside it are skipped (kon`4tol is still one word) */
+        std::vector<std::size_t> at{};
+        std::string word{};
+        std::size_t j = i;
+        while (j < text.size())
+        {
+            if (alnum_at(j)) { at.push_back(j); word += text[j]; ++j; }
+            else if (text[j] == '`' && alnum_at(j + 2)) j += 2;
+            else break;
+        }
+        if (is_bad_name(word))
+            for (std::size_t k : at) text[k] = '*';
+        i = j;
+    }
+    return text;
+}

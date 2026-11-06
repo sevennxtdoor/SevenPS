@@ -2,6 +2,7 @@
 #include "tools/area_lock.hpp"
 #include "tools/password_door.hpp"
 #include "tools/duct_tape.hpp"
+#include "tools/bad_words.hpp"
 
 #include "gateway_edit.hpp"
 
@@ -31,10 +32,10 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
         auto sign = std::ranges::find(world->signs, ::pos{tilex, tiley}, &::sign::pos);
         if (sign != world->signs.end()) 
         {
-            sign->label = capped("sign_text", 128);
+            sign->label = censor(capped("sign_text", 128)); // @note SevenPS rude-word filter
         }
         else {
-            world->signs.emplace_back(::sign(capped("sign_text", 128), ::pos{tilex, tiley}));
+            world->signs.emplace_back(::sign(censor(capped("sign_text", 128)), ::pos{tilex, tiley}));
         }
     }
     else if (hPipe["dialog_name"] == "door_edit") 
@@ -46,7 +47,7 @@ void gateway_edit(ENetEvent& event, const ::hPipe &hPipe)
         if (door == world->doors.end())
             door = world->doors.emplace(world->doors.end(), "", "", "", ::pos{ tilex, tiley });
 
-        door->label = capped("door_name", 100);
+        door->label = censor(capped("door_name", 100));
         door->dest = capped("door_target", 24);
         door->id = capped("door_id", 11);
         door->password = (block.fg == PASSWORD_DOOR) ? clean_door_password(hPipe["door_password"]) : "";

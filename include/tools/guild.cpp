@@ -394,6 +394,16 @@ void load_guilds()
         if (!g.members.empty()) guilds.push_back(std::move(g));
     }
     std::printf("loaded %zu guild(s)\n", guilds.size());
+
+    /* @note SevenPS rude-name filter (resources/bad_words.txt): guilds made before a name was on the list are disbanded on start,
+     * the same way as /guild disband (members are out, the Guild Lock is a World Lock again). names are copied first: erase() edits guilds */
+    std::vector<std::string> rude{};
+    for (const guild &g : guilds) if (is_bad_name(g.name)) rude.push_back(g.name);
+    for (const std::string &name : rude)
+    {
+        std::printf("[bad words] guild %s disbanded: name on the bad word list\n", name.c_str());
+        erase(name);
+    }
 }
 
 void guild_return(ENetEvent &event, const ::hPipe &hPipe)
@@ -428,7 +438,7 @@ void guild_return(ENetEvent &event, const ::hPipe &hPipe)
     if (clicked != "create") return;
 
     const std::string name = clean_text(hPipe["guild_name"], 15);
-    std::string statement = clean_text(hPipe["guild_statement"], 100);
+    std::string statement = censor(clean_text(hPipe["guild_statement"], 100));
     if (statement == "Enter a Guild statement here!") statement.clear();
     auto fail = [&](const std::string &error) { creation(error, name, statement); };
     if (!valid_name(name)) return fail("`4Guild names are 3-15 letters or numbers.``");
@@ -589,7 +599,7 @@ void gc_command(ENetEvent &event, const std::string_view text)
     if (g == nullptr) return say(event, "`4You're not in a guild.``");
     const std::size_t space = text.find(' ');
     if (space == std::string_view::npos) return say(event, "`oUsage: /gc {message}``");
-    const std::string message = clean_text(std::string{ text.substr(space + 1) }, 120);
+    const std::string message = censor(clean_text(std::string{ text.substr(space + 1) }, 120));
     if (message.empty()) return;
     to_guild(*g, std::format("`5[GUILD]`` {}`5:`` `${}``", p.display_growid, message));
 }
@@ -647,7 +657,7 @@ void guild_command(ENetEvent &event, const std::string_view text)
     {
         if (mine->rank < CO_LEADER) return say(event, "`4Only the leader and co-leaders can change the statement.``");
         const std::size_t at = text.find(' ', text.find(' ') + 1);
-        g->statement = (at == std::string_view::npos) ? "" : clean_text(std::string{ text.substr(at + 1) }, 100);
+        g->statement = (at == std::string_view::npos) ? "" : censor(clean_text(std::string{ text.substr(at + 1) }, 100));
         save(*g);
         return to_guild(*g, std::format("`5[GUILD]`` {} `5changed the statement: ``{}", p.display_growid, g->statement));
     }

@@ -6,6 +6,7 @@
 #include "tools/jammer.hpp"
 #include "commands/gtos.hpp"
 #include "tools/economy.hpp"
+#include "tools/bad_words.hpp"
 
 #include "sb.hpp"
 
@@ -13,7 +14,7 @@
 static void super_broadcast(ENetEvent& event, const std::string_view text, bool megaphone)
 {
     if (text.size() <= sizeof("sb ")-1) return; // @note "/sb" with no message: substr() would throw and crash the server
-    const std::string message = clean_text(std::string{ text.substr(sizeof("sb ")-1) }, 120);
+    const std::string message = censor(clean_text(std::string{ text.substr(sizeof("sb ")-1) }, 120)); // @note /sb and the Megaphone
     ::peer *pPeer = static_cast<::peer*>(event.peer->data);
 
     auto world = std::ranges::find(worlds, pPeer->recent_worlds.back(), &::world::name);

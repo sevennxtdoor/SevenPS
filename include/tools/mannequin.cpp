@@ -3,6 +3,7 @@
 #include "tools/area_lock.hpp"
 #include "tools/economy.hpp"
 #include "tools/string.hpp"
+#include "tools/bad_words.hpp"
 
 #include "mannequin.hpp"
 
@@ -267,7 +268,7 @@ void mannequin_return(ENetEvent &event, const ::hPipe &hPipe)
         }
         if (changed) sfx_world(*world, "audio/change_clothes.wav");
     }
-    if (const std::string text = clean_text(hPipe["sign_text"]); text != m.text)
+    if (const std::string text = censor(clean_text(hPipe["sign_text"])); text != m.text) // @note SevenPS rude-word filter
     {
         m.text = text;
         changed = true;
