@@ -4,6 +4,7 @@
 #include "tools/random.hpp"
 #include "tools/time.hpp"
 #include "onVariant/ConsoleMessage.hpp"
+#include "commands/weather.hpp"
 
 #include "world.hpp"
 #include "tools/vending.hpp"
@@ -209,6 +210,12 @@ static void tree_extra(::blob &blob, const ::world &world, const ::pos &pos, boo
     {
         blob.push_back(object.to_blob());
     }
+    /* @note weather at the end of the map data (gtworld-r: base u16, unknown u16, current u16). SevenPS left it out, so the
+     * client read past the packet (suspected cause of weather never showing, not yet confirmed in game) */
+    const short weather = static_cast<short>(current_weather(*this));
+    blob.i16(weather);
+    blob.i16(0x00);
+    blob.i16(weather);
     return blob;
 }
 
