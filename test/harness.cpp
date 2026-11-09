@@ -18,6 +18,8 @@
 #include "gamePacket/tile_activate.hpp"
 #include "tools/magplant.hpp"
 #include "tools/area_lock.hpp"
+#include "tools/discord.hpp"
+#include "tools/economy.hpp"
 #include "tools/password_door.hpp"
 #include "action/dialog_return/gateway_edit.hpp"
 #include "tools/fishing.hpp"
@@ -1299,6 +1301,35 @@ int main()
         CHECK(!in_world(tw, 0, 10000), "y 10000: outside");
         CHECK(in_world(tw, 0, 0) && in_world(tw, 99, static_cast<int>(tw.blocks.size()) / 100 - 1), "real corners: inside");
         CHECK(!in_world(tw, 0, static_cast<int>(tw.blocks.size()) / 100), "one row below the world: outside");
+    }
+
+    std::puts("\n[S8] Discord bot: outbox messages, staff log, server status");
+    {
+        const auto count = [](const char *sql)
+        {
+            ::hStmt q{ sql };
+            long long n{}; MYSQL_BIND r = make_bind_out(n);
+            mysql_stmt_bind_result(q.pStmt, &r); q.execute(); mysql_stmt_store_result(q.pStmt); mysql_stmt_fetch(q.pStmt);
+            return n;
+        };
+        discord_post("announce", "MTDISCORD test message");
+        CHECK(count("SELECT COUNT(*) FROM discord_outbox WHERE channel = 'announce' AND text = 'MTDISCORD test message'") == 1, "discord_post: one row in the outbox");
+        discord_post("sb", std::string(900, 'x'));
+        CHECK(count("SELECT COUNT(*) FROM discord_outbox WHERE channel = 'sb' AND CHAR_LENGTH(text) = 500 AND text LIKE 'xxx%'") >= 1, "a long text is cut to 500 characters, not refused");
+
+        ::peer staff{}; staff.growid = "MTSTAFF";
+        staff_log(staff, "/mute", "MTPLAYER", 0, 60, "1 hour: spam");
+        CHECK(count("SELECT COUNT(*) FROM staff_log WHERE staff = 'MTSTAFF' AND action = '/mute' AND target = 'MTPLAYER' AND amount = 60") == 1, "staff_log: still written for /stafflog");
+        CHECK(count("SELECT COUNT(*) FROM discord_outbox WHERE channel = 'staff' AND text = 'MTSTAFF /mute MTPLAYER (60) - 1 hour: spam'") == 1, "staff_log: also sent to the Discord staff channel, with the reason");
+        staff_log(staff, "drop", "AVERYLONGWORLDNAME123456", 2, 5);
+        CHECK(count("SELECT COUNT(*) FROM staff_log WHERE staff = 'MTSTAFF' AND action = 'drop' AND target = 'AVERYLONGWORLDNAME'") == 1, "a 24 letter world name is cut to the 18 letter column");
+
+        discord_tick();
+        CHECK(count("SELECT COUNT(*) FROM server_status WHERE id = 1 AND updated >= UNIX_TIMESTAMP() - 5 AND online >= 0") == 1, "discord_tick: server_status updated");
+
+        ::hStmt c1{ "DELETE FROM discord_outbox WHERE text LIKE 'MT%' OR text LIKE 'xxx%'" }; c1.execute();
+        ::hStmt c2{ "DELETE FROM staff_log WHERE staff = 'MTSTAFF'" }; c2.execute();
+        ::hStmt c3{ "DELETE FROM server_status WHERE id = 1" }; c3.execute(); // @note the real server writes it again within 30 s
     }
 
     std::puts("\n[S6] connections that never log in are closed");

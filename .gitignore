@@ -26,3 +26,8 @@ web.log
 resources/ctx/*.key
 resources/ctx/*.crt
 resources/ctx/pending/
+
+# Discord bot: the token and database password live here, never push
+discord_bot/.env
+discord_bot/.venv/
+discord_bot/__pycache__/

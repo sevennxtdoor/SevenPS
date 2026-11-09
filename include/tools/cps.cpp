@@ -14,6 +14,7 @@
 #include "tools/economy.hpp"
 #include "action/join_request.hpp"
 #include "tools/bad_words.hpp"
+#include "tools/discord.hpp"
 
 #include "cps.hpp"
 
@@ -90,6 +91,7 @@ static void to_all(const std::string &message, bool overlay = false)
 void system_broadcast(const std::string &message, bool notification)
 {
     to_all(message);
+    discord_post("announce", message); // @note level milestones, Item Hunt, Parkour, LEGENDARYMOUNTAIN
     if (notification)
         peers("", PEER_ALL, [&](ENetPeer &p)
         {
@@ -140,7 +142,9 @@ static void start_event(event_type type, int seconds)
     current = type;
     event_ends = std::time(nullptr) + seconds;
     event_warned = false;
-    to_all(std::format("`9** EVENT STARTED: {} `9for {} minutes! ``{}", event_name(type), seconds / 60, event_description(type)), true);
+    const std::string started = std::format("`9** EVENT STARTED: {} `9for {} minutes! ``{}", event_name(type), seconds / 60, event_description(type));
+    to_all(started, true);
+    discord_post("announce", started);
     peers("", PEER_ALL, [&](ENetPeer &p)
     {
         ::peer *pp = static_cast<::peer*>(p.data);
@@ -152,7 +156,9 @@ static void start_event(event_type type, int seconds)
 static void stop_event()
 {
     if (current == event_type::NONE) return;
-    to_all(std::format("`9** EVENT ENDED: {}`9. Thanks for playing!``", event_name(current)));
+    const std::string ended = std::format("`9** EVENT ENDED: {}`9. Thanks for playing!``", event_name(current));
+    to_all(ended);
+    discord_post("announce", ended);
     current = event_type::NONE;
     next_event = std::time(nullptr) + EVENT_GAP;
 }

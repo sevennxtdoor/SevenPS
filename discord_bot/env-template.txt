@@ -1,0 +1,21 @@
+# Copy this file to a new file named .env (in this same folder) and fill it in.
+# .env is in .gitignore: never commit or share it.
+
+# Discord Developer Portal > your application > Bot > Reset Token
+DISCORD_TOKEN=
+
+# Right click your Discord server > Copy Server ID (turn on Developer Mode in Discord settings first)
+GUILD_ID=
+
+# Right click each channel > Copy Channel ID. Leave one empty to turn that feature off.
+CHANNEL_STATUS=
+CHANNEL_ANNOUNCE=
+CHANNEL_SB=
+CHANNEL_STAFF=
+
+# The bot's own MariaDB account (see setup_db_user.sql), NOT the server's account
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=sevenps
+DB_USER=sevenps_bot
+DB_PASSWORD=

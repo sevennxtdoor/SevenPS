@@ -13,6 +13,7 @@ extern void economy_command(ENetEvent &event, const std::string_view text); // @
 extern bool staff_locked(const ::peer &p);
 extern void staff_locked_message(ENetPeer &p);
 
-/* @note every /find, /give, /givegems and /giverank is written to the `staff_log` table, the owner reads it with /stafflog */
-extern void staff_log(const ::peer &staff, std::string_view action, std::string_view target, int item, int amount);
+/* @note every /find, /give, /givegems, /giverank and moderation command (ban, mute, kick...) is written to the `staff_log`
+ * table, the owner reads it with /stafflog. it also goes to the Discord staff channel, with `note` (a reason) added there */
+extern void staff_log(const ::peer &staff, std::string_view action, std::string_view target, int item, int amount, std::string_view note = {});
 extern void stafflog_command(ENetEvent &event, const std::string_view text);

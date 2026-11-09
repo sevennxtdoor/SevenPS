@@ -2,6 +2,7 @@
 #include <chrono>
 #include <optional>
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/discord.hpp"
 
 #include "restart.hpp"
 
@@ -17,6 +18,7 @@ namespace
 
 static void announce(const std::string &message)
 {
+    discord_post("announce", message); // @note restart countdown, cancel and "restarting now"
     peers("", PEER_ALL, [&message](ENetPeer &p)
     {
         on::ConsoleMessage(&p, message);

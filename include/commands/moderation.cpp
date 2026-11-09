@@ -3,6 +3,7 @@
 #include "action/quit_to_exit.hpp"
 #include "onVariant/ConsoleMessage.hpp"
 #include "tools/worldban.hpp"
+#include "tools/economy.hpp" // @note staff_log(): /stafflog + Discord staff channel
 
 #include "moderation.hpp"
 
@@ -91,6 +92,7 @@ void kick(ENetEvent& event, const std::string_view text)
     on::ConsoleMessage(target, "`4You have been kicked from the server by a moderator.``");
     enet_peer_disconnect_later(target, 0); // @note disconnect event saves their inventory
     send_action(*event.peer, "log", std::format("msg|`2Kicked `w{}``.", growid));
+    staff_log(*static_cast<::peer*>(event.peer->data), "/kick", growid, 0, 0);
 }
 
 void ban(ENetEvent& event, const std::string_view text)
@@ -120,6 +122,7 @@ void ban(ENetEvent& event, const std::string_view text)
     {
         on::ConsoleMessage(&p, std::format("`4** `w{}`` `4has been banned from SevenPS **``", growid));
     });
+    staff_log(*static_cast<::peer*>(event.peer->data), "/ban", growid, 0, 0);
 }
 
 void unban(ENetEvent& event, const std::string_view text)
@@ -133,6 +136,7 @@ void unban(ENetEvent& event, const std::string_view text)
         return;
     }
     send_action(*event.peer, "log", std::format("msg|`2Unbanned `w{}``.", growid));
+    staff_log(*static_cast<::peer*>(event.peer->data), "/unban", growid, 0, 0);
 }
 
 /* /nuke [world] - defaults to the world you are in */
@@ -169,6 +173,7 @@ void nuke(ENetEvent& event, const std::string_view text)
     {
         on::ConsoleMessage(&p, std::format("`o>>`4{}`` `owas nuked from orbit. It's the only way to be sure. Play nice, everybody!``", world_name));
     });
+    staff_log(*pPeer, "/nuke", world_name, 0, 0);
 }
 
 void unnuke(ENetEvent& event, const std::string_view text)
@@ -185,6 +190,7 @@ void unnuke(ENetEvent& event, const std::string_view text)
     hStmt.bind_param(&param);
     hStmt.execute();
     send_action(*event.peer, "log", std::format("msg|`2World `w{}`` `2is no longer nuked.``", world_name));
+    staff_log(*pPeer, "/unnuke", world_name, 0, 0);
 }
 
 void uba(ENetEvent& event, const std::string_view text)

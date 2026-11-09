@@ -7,6 +7,7 @@
 #include "commands/gtos.hpp"
 #include "tools/economy.hpp"
 #include "tools/bad_words.hpp"
+#include "tools/discord.hpp"
 
 #include "sb.hpp"
 
@@ -36,6 +37,7 @@ static void super_broadcast(ENetEvent& event, const std::string_view text, bool 
             send_varlist(&peer, { "OnAddNotification", "interface/atomic_button.rttex",
                 std::format("`9{}``: `w{}``", pPeer->display_growid, message), "audio/hub_open.wav", 0 });
         });
+        discord_post("sb", std::format("[OWNER] {} in [{}]: {}", pPeer->growid, display, message));
         return;
     }
     /* @note developer broadcast: orange header, no pop-up */
@@ -46,6 +48,7 @@ static void super_broadcast(ENetEvent& event, const std::string_view text, bool 
             pPeer->display_growid, display, message
         );
         peers("", PEER_ALL, [&dev_sb](ENetPeer& peer) { on::ConsoleMessage(&peer, dev_sb); });
+        discord_post("sb", std::format("[DEVELOPER] {} in [{}]: {}", pPeer->growid, display, message));
         return;
     }
 
@@ -78,6 +81,7 @@ static void super_broadcast(ENetEvent& event, const std::string_view text, bool 
             )
         );
     });
+    discord_post("sb", std::format("{} in [{}]: {}", pPeer->growid, display, message));
 }
 
 void sb(ENetEvent& event, const std::string_view text) { super_broadcast(event, text, false); }

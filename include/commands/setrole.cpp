@@ -3,6 +3,7 @@
 
 #include "onVariant/SetClothing.hpp"
 #include "titles.hpp"
+#include "tools/economy.hpp" // @note staff_log()
 #include "setrole.hpp"
 
 static std::string to_lower(std::string str)
@@ -98,4 +99,5 @@ void setrole(ENetEvent& event, const std::string_view text)
     });
 
     send_action(*event.peer, "log", std::format("msg|`2Set `w{}`` `2to`` {}`2.``", growid, label));
+    staff_log(*pPeer, "/setrole", growid, 0, 0, role_name); // @note /stafflog + Discord staff channel
 }

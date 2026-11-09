@@ -1,0 +1,12 @@
+[project]
+name = "sevenps-discord-bot"
+version = "1.0.0"
+description = "SevenPS Discord bot: server status, leaderboards, game announcements and the staff log"
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py>=2.5",
+    "PyMySQL>=1.1",
+]
+
+[tool.uv]
+package = false

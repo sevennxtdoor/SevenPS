@@ -213,6 +213,7 @@ void mute(ENetEvent &event, const std::string_view text)
     on::ConsoleMessage(target, std::format("`4You were muted for {} by staff. Reason: ``{}", duration(minutes * 60), reason));
     send_varlist(target, { "OnAddNotification", "interface/atomic_button.rttex", std::format("`4Muted for {}: ``{}", duration(minutes * 60), reason), "audio/hub_open.wav", 0 });
     on::ConsoleMessage(event.peer, std::format("`oMuted ``{}`o for {}.``", t->display_growid, duration(minutes * 60)));
+    staff_log(me(event), "/mute", t->growid, 0, minutes, std::format("{}: {}", duration(minutes * 60), reason));
 }
 
 void unmute(ENetEvent &event, const std::string_view text)
@@ -224,6 +225,7 @@ void unmute(ENetEvent &event, const std::string_view text)
     pset(*static_cast<::peer*>(target->data), "mute_until", 0);
     on::ConsoleMessage(target, "`2You were unmuted. Please follow the rules (`$/rules``).``");
     on::ConsoleMessage(event.peer, "`2Unmuted.``");
+    staff_log(me(event), "/unmute", static_cast<::peer*>(target->data)->growid, 0, 0);
 }
 
 void curse(ENetEvent &event, const std::string_view text)
@@ -238,6 +240,7 @@ void curse(ENetEvent &event, const std::string_view text)
     ENetEvent te{ .peer = target };
     warp(te, std::format("warp {}", CURSE_WORLD));
     on::ConsoleMessage(event.peer, std::format("`oCursed ``{}`o for {}.``", t->display_growid, duration(minutes * 60)));
+    staff_log(me(event), "/curse", t->growid, 0, minutes, std::format("{}: {}", duration(minutes * 60), reason));
 }
 
 void uncurse(ENetEvent &event, const std::string_view text)
@@ -249,6 +252,7 @@ void uncurse(ENetEvent &event, const std::string_view text)
     pset(*static_cast<::peer*>(target->data), "curse_until", 0);
     on::ConsoleMessage(target, "`2Your curse was lifted. You can leave now.``");
     on::ConsoleMessage(event.peer, "`2Uncursed.``");
+    staff_log(me(event), "/uncurse", static_cast<::peer*>(target->data)->growid, 0, 0);
 }
 
 void warn(ENetEvent &event, const std::string_view text)
@@ -262,6 +266,7 @@ void warn(ENetEvent &event, const std::string_view text)
     send_varlist(target, { "OnAddNotification", "interface/atomic_button.rttex", std::format("`4Warning from staff: ``{}", reason), "audio/hub_open.wav", 0 });
     on::ConsoleMessage(target, std::format("`4** Warning from staff: ``{}", reason));
     on::ConsoleMessage(event.peer, std::format("`oWarned ``{}`o.``", static_cast<::peer*>(target->data)->display_growid));
+    staff_log(me(event), "/warn", static_cast<::peer*>(target->data)->growid, 0, 0, reason);
 }
 
 void kickall(ENetEvent &event, const std::string_view text)
@@ -281,4 +286,5 @@ void kickall(ENetEvent &event, const std::string_view text)
         ++kicked;
     }
     on::ConsoleMessage(event.peer, std::format("`oKicked `w{}`` players from {}.``", kicked, world));
+    staff_log(p, "/kickall", world, 0, kicked);
 }

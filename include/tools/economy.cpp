@@ -1,6 +1,7 @@
 #include "pch.hpp"
 #include <map>
 #include "onVariant/ConsoleMessage.hpp"
+#include "tools/discord.hpp"
 
 #include "economy.hpp"
 
@@ -80,14 +81,22 @@ void staff_locked_message(ENetPeer &p)
     on::ConsoleMessage(&p, "`4Staff accounts can't trade, use vending machines or /pay`` - this keeps the economy fair. Use a normal account to play.");
 }
 
-void staff_log(const ::peer &staff, std::string_view action, std::string_view target, int item, int amount)
+void staff_log(const ::peer &staff, std::string_view action, std::string_view target, int item, int amount, std::string_view note)
 {
-    ::hStmt hStmt{ "INSERT INTO staff_log (time, staff, action, target, item, amount) VALUES (?, ?, ?, ?, ?, ?)" };
-    const signed now = static_cast<signed>(std::time(nullptr));
-    const std::string a{ action }, t{ target };
-    MYSQL_BIND params[6] = { make_bind_in(now), make_bind_in(staff.growid), make_bind_in(a), make_bind_in(t), make_bind_in(item), make_bind_in(amount) };
-    hStmt.bind_param(params);
-    hStmt.execute();
+    {
+        ::hStmt hStmt{ "INSERT INTO staff_log (time, staff, action, target, item, amount) VALUES (?, ?, ?, ?, ?, ?)" };
+        const signed now = static_cast<signed>(std::time(nullptr));
+        const std::string a{ action.substr(0, 16) }, t{ target.substr(0, 18) }; // @note column sizes (a world name can be 24)
+        MYSQL_BIND params[6] = { make_bind_in(now), make_bind_in(staff.growid), make_bind_in(a), make_bind_in(t), make_bind_in(item), make_bind_in(amount) };
+        hStmt.bind_param(params);
+        hStmt.execute();
+    }
+    std::string text = std::format("{} {}", staff.growid, action);
+    if (!target.empty()) text += std::format(" {}", target);
+    if (item > 0) text += std::format(" ({} x{})", id_to_item(static_cast<u_short>(item)).raw_name, amount);
+    else if (amount != 0) text += std::format(" ({})", amount);
+    if (!note.empty()) text += std::format(" - {}", note);
+    discord_post("staff", text);
 }
 
 void stafflog_command(ENetEvent &event, const std::string_view text)
