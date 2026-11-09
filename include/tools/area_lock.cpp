@@ -291,7 +291,9 @@ void area_lock_return(ENetEvent &event, const ::hPipe &hPipe)
 
 bool in_world(const ::world &world, int x, int y)
 {
-    return x >= 0 && y >= 0 && x < 100 && cord(x, y) < static_cast<int>(world.blocks.size());
+    /* @note y < 10000 first: a dialog's tiley of 30000000 made y * 100 overflow to a negative cord that passed the size check,
+     * and the server read far outside the blocks and crashed (boxes, magplant, mannequin, display block, lock dialogs) */
+    return x >= 0 && y >= 0 && x < 100 && y < 10000 && cord(x, y) < static_cast<int>(world.blocks.size());
 }
 
 bool in_world(const ::world &world, const ::pos &tile)

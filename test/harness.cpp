@@ -17,6 +17,7 @@
 #include "database/database_config.hpp"
 #include "gamePacket/tile_activate.hpp"
 #include "tools/magplant.hpp"
+#include "tools/area_lock.hpp"
 #include "tools/password_door.hpp"
 #include "action/dialog_return/gateway_edit.hpp"
 #include "tools/fishing.hpp"
@@ -1288,6 +1289,16 @@ int main()
         game(0x00, 0, ::pos{ 41 * 32.0f, 10 * 32.0f });
         CHECK(op->pos.x == 41 * 32.0f, "inside the world: walking as before");
         op->pos = was_pos; op->loaded = was_loaded;
+    }
+
+    std::puts("\n[S7] a huge tile y from a dialog can't overflow past the bounds check");
+    {
+        const ::world &tw = *std::ranges::find(worlds, std::string{ "MTTEST" }, &::world::name);
+        CHECK(!in_world(tw, 0, 30000000), "tiley 30000000 (y * 100 overflows): outside");
+        CHECK(!in_world(tw, 99, 21474837), "first y where y * 100 overflows: outside");
+        CHECK(!in_world(tw, 0, 10000), "y 10000: outside");
+        CHECK(in_world(tw, 0, 0) && in_world(tw, 99, static_cast<int>(tw.blocks.size()) / 100 - 1), "real corners: inside");
+        CHECK(!in_world(tw, 0, static_cast<int>(tw.blocks.size()) / 100), "one row below the world: outside");
     }
 
     std::puts("\n[S6] connections that never log in are closed");
