@@ -1433,6 +1433,21 @@ int main()
         use(ev, *owner, 764, me_at);
         CHECK((owner->state & S_ZOMBIE) && has_buff(*owner, "Infected!"), "zombie");
         CHECK(player_physics(*owner).x < 250.0f, "zombies are slow");
+
+        std::puts("\n[B5b] a zombie's punch infects another player, not with a Zombie Jammer on");
+        {
+            const ::block was_jam = w.blocks[cord(1, 1)];
+            const ::block was_them = w.blocks[cord(them_at.x, them_at.y)];
+            auto punch = [&] { outbox.clear(); tile_change(ev, ::gamePacket{ .type = 3, .id = 18, .pos = owner->pos, .punch = them_at }); };
+            w.blocks[cord(1, 1)].fg = 1278; w.blocks[cord(1, 1)].state[2] |= S_TOGGLE; // @note Zombie Jammer on
+            punch(); CHECK(!has_buff(*visitor, "Infected!"), "Zombie Jammer: not infected");
+            w.blocks[cord(1, 1)].state[2] &= ~S_TOGGLE;
+            punch(); CHECK(has_buff(*visitor, "Infected!") && (visitor->state & S_ZOMBIE) && said("You infected"), "jammer off: visitor infected");
+            ENetEvent vev{ .peer = ev2.peer }; buff_remove(vev, "Infected!");
+            visitor->role = MODERATOR; punch(); CHECK(!has_buff(*visitor, "Infected!"), "staff can't be infected");
+            visitor->role = PLAYER;
+            w.blocks[cord(1, 1)] = was_jam; w.blocks[cord(them_at.x, them_at.y)] = was_them;
+        }
         use(ev, *owner, 782, me_at);
         CHECK(!(owner->state & S_ZOMBIE) && !has_buff(*owner, "Infected!") && held(*owner, 782) == 2, "cured");
         CHECK(has_buff(*owner, "Feelin' Blue"), "other mods stay");

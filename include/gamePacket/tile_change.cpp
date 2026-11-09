@@ -18,6 +18,7 @@
 #include "tools/rank.hpp"
 #include "tools/system_worlds.hpp"
 #include "tools/jammer.hpp"
+#include "tools/zombie.hpp"
 #include "tools/consumables.hpp"
 #include "tools/buffs.hpp"
 #include "action/quit_to_exit.hpp"
@@ -102,6 +103,7 @@ void tile_change(ENetEvent& event, ::gamePacket gamePacket)
             const float reach = max_reach + playmod_range(*pPeer, gamePacket.id == 18); // @note Punch/Build Range items
             if (std::abs(me.x - gamePacket.punch.x) > reach || std::abs(me.y - gamePacket.punch.y) > reach) return;
         }
+        if (gamePacket.id == 18) zombie_punch(event, *world, gamePacket.punch); // @note g-Virus spreads by punching a player (tools/zombie.cpp)
 
         const ::item &item = id_to_item((gamePacket.id != 32 && gamePacket.id != 18) ? gamePacket.id : (block.fg != 0) ? block.fg : block.bg);
         if (item.id == 0) return;
