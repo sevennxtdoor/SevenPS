@@ -1,9 +1,30 @@
-# SevenPS
+<p align="center">
+  <img src="docs/banner.svg" alt="SevenPS" width="560">
+</p>
 
-**Seven Private Server**: a Growtopia private server written in C++20, made by @Seven.
+<p align="center">
+  <img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white" alt="C++20">
+  <img src="https://img.shields.io/badge/MariaDB-database-003545?logo=mariadb&logoColor=white" alt="MariaDB">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-555555" alt="Windows | Linux">
+  <a href="#license"><img src="https://img.shields.io/badge/license-Apache%202.0%20base%20%2B%20SevenPS%20terms-blue" alt="License"></a>
+  <br>
+  <a href="https://sevennxtdoor.github.io/SevenPS/"><img src="https://img.shields.io/badge/website-sevennxtdoor.github.io-2bb377" alt="Website"></a>
+  <a href="NOTICE-SEVENPS.md"><img src="https://img.shields.io/badge/changelog-NOTICE--SEVENPS.md-orange" alt="Changes"></a>
+</p>
 
-Everything SevenPS adds or changes (roles, trade, vending, surgery, ranks, guilds, events, login security,
-backups...) is listed in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
+<p align="center">
+  <b>Seven Private Server</b>: a Growtopia private server written in C++20, made by @Seven.
+</p>
+
+- **Built to behave like the real game.** Trade, vending, surgery, fishing, guilds, area locks, magplants,
+  providers, combiners and hundreds of item effects, with numbers checked against the Growtopia wiki.
+- **Staff tools that stay safe.** Roles saved in the database, role checks on every staff command, staff log,
+  item-leak rules for moderators.
+- **Secure login.** HTTPS login server, PBKDF2-SHA256 password hashes, rate limits, daily database backups.
+- **Tested offline.** A harness runs the real server code against a fake network, hundreds of tests per build.
+- **Discord bot.** Live server status, announcements, staff log and account linking in Discord.
+
+Everything SevenPS adds or changes is listed in [`NOTICE-SEVENPS.md`](NOTICE-SEVENPS.md).
 
 > **Disclaimer:** SevenPS is a fan-made, non-commercial project for learning. It is not affiliated with,
 > endorsed by or connected to Ubisoft or Growtopia. Growtopia and its names are trademarks of their owners.
