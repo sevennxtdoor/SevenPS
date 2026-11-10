@@ -13,6 +13,17 @@ CHANNEL_ANNOUNCE=
 CHANNEL_SB=
 CHANNEL_STAFF=
 
+# Linked accounts (/link) get these roles automatically. Right click a role > Copy Role ID. Empty = not used.
+# The bot needs the Manage Roles permission, and its own role must be ABOVE these roles in Server Settings > Roles.
+ROLE_LINKED=
+ROLE_MOD=
+ROLE_DEV=
+ROLE_OWNER=
+
+# Status message extras (optional). JOIN_INFO is one line: write \n for a new line. LOGO_URL must start with https://
+JOIN_INFO=
+LOGO_URL=
+
 # The bot's own MariaDB account (see setup_db_user.sql), NOT the server's account
 DB_HOST=127.0.0.1
 DB_PORT=3306

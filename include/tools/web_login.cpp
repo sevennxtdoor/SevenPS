@@ -8,6 +8,7 @@
 
 #include "auth.hpp"
 #include "web_login.hpp"
+#include "discord.hpp"
 
 namespace
 {
@@ -177,6 +178,7 @@ namespace
                     account.load(growid, password, s->hashed); // @note makes the account (hashed password, starter backpack)
                     account.loaded = false; // @note nothing to save: it was just made
                     std::printf("[web login] new account %s from %s\n", growid.c_str(), ip.c_str());
+                    discord_post("staff", std::format("New player registered: {}", growid)); // @note never the IP or password
                     s->answer = token_json(session_new(growid));
                     return;
                 }

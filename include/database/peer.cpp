@@ -278,6 +278,7 @@ void peer::save()
         this->mysql_update<signed>("xp", this->level.back());
     }
     this->mysql_update<signed>("wl_bank", this->wl_bank);
+    this->mysql_update<signed>("last_online", static_cast<signed>(std::time(nullptr))); // @note Discord bot /player (autosave and logout)
     if (this->login_time != 0) this->mysql_update<signed>("playtime", this->playtime + static_cast<int>(std::time(nullptr) - this->login_time));
 }
 

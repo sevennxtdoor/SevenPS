@@ -29,6 +29,7 @@
 #include "titles.hpp"
 #include "tools/rewards.hpp"
 #include "tools/home.hpp"
+#include "tools/discord.hpp"
 #include "__command.hpp"
 
 /* emote commands all dispatch to on::Action. listed once here so the
@@ -43,7 +44,7 @@ static constexpr std::string_view emotes[24]{
 /* named commands with their usage hint, shown in /help */
 static constexpr std::string_view named_help =
     "/time /sb {msg} /warp {world} /punch {id} /skin {id} /who /me {msg} "
-    "/news /weather {id} /pull {growid} /wkick {growid} /wban {growid} /uba /title /start /event /top /rank /msg {growid} {msg} /online /hunt /tutorial /guild /gc {msg} /sponsor /parkour /pay {growid} {gems} /go /rgo /sethome /home /rules /mods /radio /info {item} /status /spin /luckybox /redeem {code}";
+    "/news /weather {id} /pull {growid} /wkick {growid} /wban {growid} /uba /title /start /event /top /rank /msg {growid} {msg} /online /hunt /tutorial /guild /gc {msg} /sponsor /parkour /pay {growid} {gems} /go /rgo /sethome /home /rules /mods /radio /info {item} /status /spin /luckybox /redeem {code} /link {code} /unlink";
 
 /* moderator+, shown in /help to MODERATOR and DEVELOPER */
 static constexpr std::string_view mod_help =
@@ -130,6 +131,7 @@ std::unordered_map<std::string_view, std::function<void(ENetEvent&, const std::s
         {"rebuild", &rebuild_command},
         {"economy", &economy_command},
         {"stafflog", &stafflog_command},
+        {"link", &link_command}, {"unlink", &unlink_command}, // @note Discord account link (tools/discord.cpp)
         {"redeem", &redeem_command}, {"code", &code_command}, {"spin", &spin_command}, {"luckybox", &lucky_box_command}, {"gacha", &lucky_box_command},
         {"pay", &pay}, {"go", &go}, {"sethome", &sethome_command}, {"home", &home_command}, {"gethome", &home_command}, {"rules", &rules}, {"mods", &mods}, {"radio", &radio}, {"info", &info}, {"status", &status},
         {"warpto", &warpto}, {"mute", &mute}, {"unmute", &unmute}, {"curse", &curse}, {"uncurse", &uncurse}, {"warn", &warn}, {"kickall", &kickall},

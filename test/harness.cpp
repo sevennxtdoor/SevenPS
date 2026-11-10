@@ -1326,6 +1326,23 @@ int main()
 
         discord_tick();
         CHECK(count("SELECT COUNT(*) FROM server_status WHERE id = 1 AND updated >= UNIX_TIMESTAMP() - 5 AND online >= 0") == 1, "discord_tick: server_status updated");
+        CHECK(count("SELECT COUNT(*) FROM server_status WHERE id = 1 AND peak >= online AND peak_day > 2000000 AND worlds >= 0 AND players IS NOT NULL") == 1, "discord_tick: peak, day, worlds and the player list");
+        CHECK(count("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'peer' AND COLUMN_NAME = 'last_online'") == 1, "peer.last_online column exists");
+
+        /* @note /link: a pending code from the bot links the GrowID once, and an old code doesn't */
+        { ::hStmt q{ "DELETE FROM discord_link WHERE growid LIKE 'MTLINK%' OR discord_id IN (111, 222)" }; q.execute(); }
+        { ::hStmt q{ "INSERT INTO discord_link_pending (code, discord_id, expires) VALUES ('MTAB12', 111, UNIX_TIMESTAMP() + 600), ('MTOLD1', 222, UNIX_TIMESTAMP() - 1)" }; q.execute(); }
+        CHECK(discord_link("MTLINK", "abc").starts_with("`4That's not"), "/link: a short code is refused");
+        CHECK(discord_link("MTLINK", "mtold1").starts_with("`4That code is wrong"), "/link: an expired code is refused");
+        CHECK(discord_link("MTLINK", "mtab12").starts_with("`2Linked"), "/link: a fresh code links (any case)");
+        CHECK(count("SELECT COUNT(*) FROM discord_link WHERE growid = 'MTLINK' AND discord_id = 111") == 1, "/link: the link row is there");
+        CHECK(count("SELECT COUNT(*) FROM discord_link_pending WHERE code = 'MTAB12'") == 0, "/link: the code is used up");
+        CHECK(discord_link("MTLINK2", "MTAB12").starts_with("`4That code is wrong"), "/link: a used code can't link a second GrowID");
+        { ::hStmt q{ "INSERT INTO discord_link_pending (code, discord_id, expires) VALUES ('MTCD34', 111, UNIX_TIMESTAMP() + 600)" }; q.execute(); }
+        CHECK(discord_link("MTLINK2", "MTCD34").starts_with("`2Linked") && count("SELECT COUNT(*) FROM discord_link WHERE discord_id = 111") == 1
+            && count("SELECT COUNT(*) FROM discord_link WHERE growid = 'MTLINK2'") == 1, "/link: one Discord account moves to the new GrowID");
+        { ::hStmt q{ "DELETE FROM discord_link WHERE growid LIKE 'MTLINK%'" }; q.execute(); }
+        { ::hStmt q{ "DELETE FROM discord_link_pending WHERE code LIKE 'MT%'" }; q.execute(); }
 
         ::hStmt c1{ "DELETE FROM discord_outbox WHERE text LIKE 'MT%' OR text LIKE 'xxx%'" }; c1.execute();
         ::hStmt c2{ "DELETE FROM staff_log WHERE staff = 'MTSTAFF'" }; c2.execute();

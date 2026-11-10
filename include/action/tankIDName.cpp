@@ -3,6 +3,7 @@
 #include "action/quit.hpp"
 #include "automate/holiday.hpp"
 #include "tools/bad_words.hpp"
+#include "tools/discord.hpp"
 
 #include "tankIDName.hpp"
 
@@ -90,6 +91,7 @@ void action::tankIDName(ENetEvent& event, const std::string& header)
         enet_peer_disconnect_later(event.peer, 0);
         return;
     }
+    discord_post("staff", std::format("{} joined (level {})", pPeer->growid, pPeer->level.front()));
 
     send_varlist(event.peer, { "OnOverrideGDPRFromServer", 18, 1, 0, 1 });
 

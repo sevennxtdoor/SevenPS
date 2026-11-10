@@ -28,7 +28,8 @@ void create_table_if_not_exist()
             "profile TEXT,"
             "level INT DEFAULT 1,"
             "xp INT DEFAULT 0,"
-            "rank_level INT DEFAULT 0"
+            "rank_level INT DEFAULT 0,"
+            "last_online INT DEFAULT 0"
         ")";
     /* @note older tables made before these columns existed */
     std::string query_peer_role =
@@ -47,7 +48,8 @@ void create_table_if_not_exist()
             "ADD COLUMN IF NOT EXISTS profile TEXT,"
             "ADD COLUMN IF NOT EXISTS level INT DEFAULT 1,"
             "ADD COLUMN IF NOT EXISTS xp INT DEFAULT 0,"
-            "ADD COLUMN IF NOT EXISTS rank_level INT DEFAULT 0";
+            "ADD COLUMN IF NOT EXISTS rank_level INT DEFAULT 0,"
+            "ADD COLUMN IF NOT EXISTS last_online INT DEFAULT 0"; // @note Discord bot /player
     std::string query_nuked = "CREATE TABLE IF NOT EXISTS nuked (name VARCHAR(24) NOT NULL PRIMARY KEY)";
     std::string query_world = 
         "CREATE TABLE IF NOT EXISTS world ("
@@ -98,8 +100,15 @@ void create_table_if_not_exist()
     /* @note SevenPS Discord bot (tools/discord.cpp writes, discord_bot/ reads and deletes) */
     std::string query_discord_outbox = "CREATE TABLE IF NOT EXISTS discord_outbox (id INT AUTO_INCREMENT PRIMARY KEY, time INT, channel VARCHAR(16), text VARCHAR(512), INDEX (time))";
     std::string query_server_status = "CREATE TABLE IF NOT EXISTS server_status (id INT NOT NULL PRIMARY KEY, updated INT, online INT, started INT)";
+    /* @note players: one "shown name<TAB>world<TAB>growid" line each (growid empty under /nick); peak: most online on peak_day */
+    std::string query_server_status_more = "ALTER TABLE server_status ADD COLUMN IF NOT EXISTS players TEXT, ADD COLUMN IF NOT EXISTS peak INT DEFAULT 0, "
+        "ADD COLUMN IF NOT EXISTS peak_day INT DEFAULT 0, ADD COLUMN IF NOT EXISTS worlds INT DEFAULT 0";
+    /* @note Discord /link: the bot makes a code (pending), the player types /link {code} in game and the server links them */
+    std::string query_discord_link = "CREATE TABLE IF NOT EXISTS discord_link (growid VARCHAR(18) NOT NULL PRIMARY KEY, discord_id BIGINT UNSIGNED NOT NULL UNIQUE, linked INT)";
+    std::string query_discord_pending = "CREATE TABLE IF NOT EXISTS discord_link_pending (code VARCHAR(8) NOT NULL PRIMARY KEY, discord_id BIGINT UNSIGNED NOT NULL, expires INT, INDEX (discord_id))";
     if (mysql_query(db, query_peer.c_str()) || mysql_query(db, query_peer_role.c_str()) || mysql_query(db, query_world.c_str()) || mysql_query(db, query_nuked.c_str()) || mysql_query(db, query_vending.c_str()) || mysql_query(db, query_weather.c_str()) ||
-        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_door_password.c_str()) || mysql_query(db, query_staff_log.c_str()) || mysql_query(db, query_area_lock.c_str()) || mysql_query(db, query_box.c_str()) || mysql_query(db, query_magplant.c_str()) || mysql_query(db, query_mannequin.c_str()) || mysql_query(db, query_display.c_str()) || mysql_query(db, query_guild.c_str()) || mysql_query(db, query_password.c_str()) || mysql_query(db, query_fossil_prep.c_str()) || mysql_query(db, query_special_tile.c_str()) || mysql_query(db, query_redeem.c_str()) || mysql_query(db, query_redeem_used.c_str()) || mysql_query(db, query_discord_outbox.c_str()) || mysql_query(db, query_server_status.c_str()))
+        mysql_query(db, query_friends.c_str()) || mysql_query(db, query_reports.c_str()) || mysql_query(db, query_trades.c_str()) || mysql_query(db, query_doors.c_str()) || mysql_query(db, query_door_password.c_str()) || mysql_query(db, query_staff_log.c_str()) || mysql_query(db, query_area_lock.c_str()) || mysql_query(db, query_box.c_str()) || mysql_query(db, query_magplant.c_str()) || mysql_query(db, query_mannequin.c_str()) || mysql_query(db, query_display.c_str()) || mysql_query(db, query_guild.c_str()) || mysql_query(db, query_password.c_str()) || mysql_query(db, query_fossil_prep.c_str()) || mysql_query(db, query_special_tile.c_str()) || mysql_query(db, query_redeem.c_str()) || mysql_query(db, query_redeem_used.c_str()) || mysql_query(db, query_discord_outbox.c_str()) || mysql_query(db, query_server_status.c_str()) ||
+        mysql_query(db, query_server_status_more.c_str()) || mysql_query(db, query_discord_link.c_str()) || mysql_query(db, query_discord_pending.c_str()))
     {
         std::fprintf(stderr, "%s\n", mysql_error(db));
     }
