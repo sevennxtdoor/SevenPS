@@ -30,7 +30,7 @@ namespace
         { 100, 100000, 0 }, { 200, 0, 8188 /*1-Year Subscription Token*/ }, { 500, 0, 9470 /*Wacky Rocket Sled*/ }, { 1000, 0, 9472 /*Dumb Mentor Title*/ },
     };
 
-    struct link
+    struct mentor_link
     {
         std::string apprentice{}, mentor{};
         int level{ 1 };      // @note the apprentice's level when last seen
@@ -38,7 +38,7 @@ namespace
         int pending{};       // @note bit per ticket step: Mentor Tickets the mentor still has to get
         long long since{};
     };
-    std::vector<link> links{};
+    std::vector<mentor_link> links{};
     struct invite { std::string mentor; std::time_t until{}; };
     std::unordered_map<std::string, invite> invites{}; // @note lower-case apprentice growid -> invite
 
@@ -53,22 +53,22 @@ namespace
         return nullptr;
     }
 
-    link *link_of(const std::string &apprentice)
+    mentor_link *link_of(const std::string &apprentice)
     {
-        for (link &l : links) if (lower(l.apprentice) == lower(apprentice)) return &l;
+        for (mentor_link &l : links) if (lower(l.apprentice) == lower(apprentice)) return &l;
         return nullptr;
     }
-    bool is_mentor_of(const link &l, const std::string &growid) { return lower(l.mentor) == lower(growid); }
+    bool is_mentor_of(const mentor_link &l, const std::string &growid) { return lower(l.mentor) == lower(growid); }
     int active_count(const std::string &mentor)
     {
-        return static_cast<int>(std::ranges::count_if(links, [&](const link &l) { return is_mentor_of(l, mentor) && !l.archived; }));
+        return static_cast<int>(std::ranges::count_if(links, [&](const mentor_link &l) { return is_mentor_of(l, mentor) && !l.archived; }));
     }
     int graduated_count(const std::string &mentor) // @note apprentices at level 20+, what the milestones count
     {
-        return static_cast<int>(std::ranges::count_if(links, [&](const link &l) { return is_mentor_of(l, mentor) && l.level >= 20; }));
+        return static_cast<int>(std::ranges::count_if(links, [&](const mentor_link &l) { return is_mentor_of(l, mentor) && l.level >= 20; }));
     }
 
-    void save(const link &l)
+    void save(const mentor_link &l)
     {
         ::hStmt hStmt{ "REPLACE INTO mentorship (apprentice, mentor, level, archived, pending, since) VALUES (?, ?, ?, ?, ?, ?)" };
         const signed archived = l.archived ? 1 : 0;
@@ -82,7 +82,7 @@ namespace
         MYSQL_BIND param = make_bind_in(apprentice);
         hStmt.bind_param(&param);
         hStmt.execute();
-        std::erase_if(links, [&](const link &l) { return lower(l.apprentice) == lower(apprentice); });
+        std::erase_if(links, [&](const mentor_link &l) { return lower(l.apprentice) == lower(apprentice); });
     }
 
     std::string number_text(int n) // @note 10000 -> "10,000"
@@ -121,7 +121,7 @@ namespace
             }
             pset(pp, "appr_tickets", given);
         }
-        for (link &l : links)
+        for (mentor_link &l : links)
         {
             if (!is_mentor_of(l, pp.growid) || l.pending == 0) continue;
             for (std::size_t step = 0; step < TICKET_LEVELS.size(); ++step)
@@ -157,7 +157,7 @@ namespace
         send_varlist(event.peer, { "OnDialogRequest", "set_default_color|`o\n" + body + "add_quick_exit|\nend_dialog|mt_mentor|Close||\n" });
     }
 
-    void apprentice_dialog(ENetEvent &event, const link &l)
+    void apprentice_dialog(ENetEvent &event, const mentor_link &l)
     {
         const bool done = l.level >= DONE_LEVEL;
         send(event, std::format(
@@ -223,7 +223,7 @@ namespace
     void archived_dialog(ENetEvent &event)
     {
         std::string names{};
-        for (const link &l : links)
+        for (const mentor_link &l : links)
             if (is_mentor_of(l, me(event).growid) && l.archived) names += std::format("add_label_with_icon|small|`w{}`` (Level {})|left|18|\n", l.apprentice, l.level);
         send(event, std::format(
             "add_label|big|`wArchived Apprentices``|left|\n"
@@ -256,7 +256,7 @@ void load_mentorship()
     hStmt.execute();
     mysql_stmt_store_result(hStmt.pStmt);
     while (mysql_stmt_fetch(hStmt.pStmt) == 0)
-        links.push_back(link{ .apprentice = std::string(apprentice, std::min<u_long>(apprentice_len, sizeof(apprentice))),
+        links.push_back(mentor_link{ .apprentice = std::string(apprentice, std::min<u_long>(apprentice_len, sizeof(apprentice))),
                               .mentor = std::string(mentor, std::min<u_long>(mentor_len, sizeof(mentor))),
                               .level = std::max(level, 1), .archived = archived != 0, .pending = pending & 0x1F, .since = since });
     std::printf("loaded %zu mentorship(s)\n", links.size());
@@ -264,7 +264,7 @@ void load_mentorship()
 
 std::string mentor_wrench_lines(const ::peer &viewer, const ::peer &target)
 {
-    if (const link *l = link_of(target.growid); l != nullptr && is_mentor_of(*l, viewer.growid))
+    if (const mentor_link *l = link_of(target.growid); l != nullptr && is_mentor_of(*l, viewer.growid))
         return std::format("add_spacer|small|\nadd_label_with_icon|small|`wYour Apprentice`` `o(Level {})``|left|{}|\n", target.level.front(), CERTIFICATE);
     if (viewer.level.front() < MENTOR_LEVEL || target.level.front() >= APPRENTICE_BELOW || link_of(target.growid) != nullptr) return "";
     return "add_button|mentor_add|`wAdd Apprentice``|noflags|0|0|\n";
@@ -319,7 +319,7 @@ void mentor_invite_return(ENetEvent &event, const ::hPipe &hPipe)
     if (const std::string why = cannot_add(*mentor, *event.peer); !why.empty()) return say(event.peer, why); // @note again: things changed since the request
 
     ::peer &m = *static_cast<::peer*>(mentor->data);
-    link l{ .apprentice = p.growid, .mentor = m.growid, .level = static_cast<int>(p.level.front()), .since = std::time(nullptr) };
+    mentor_link l{ .apprentice = p.growid, .mentor = m.growid, .level = static_cast<int>(p.level.front()), .since = std::time(nullptr) };
     links.push_back(l);
     save(l);
     pset(m, "mentor_day", static_cast<int>(std::time(nullptr) / 86400));
@@ -334,7 +334,7 @@ void send_apprentices(ENetEvent &event)
     grant_tickets(*event.peer); // @note anything left over from a full backpack
     std::string body = std::format("add_label_with_icon|big|`wApprentices``|left|{}|\nadd_spacer|small|\n", CERTIFICATE);
 
-    if (const link *l = link_of(p.growid); l != nullptr && !l->archived)
+    if (const mentor_link *l = link_of(p.growid); l != nullptr && !l->archived)
     {
         const int lvl = p.level.front();
         auto next = std::ranges::find_if(TICKET_LEVELS, [&](int t) { return t > lvl; });
@@ -349,7 +349,7 @@ void send_apprentices(ENetEvent &event)
     {
         body += std::format("add_textbox|`wMy Apprentices`` ({}/{})|left|\n", active_count(p.growid), MAX_ACTIVE);
         bool any{};
-        for (const link &l : links)
+        for (const mentor_link &l : links)
             if (is_mentor_of(l, p.growid) && !l.archived)
             {
                 body += std::format("add_button|appr_{}|`w{}`` `o(Level {})``|noflags|0|0|\n", l.apprentice, l.apprentice, l.level);
@@ -379,7 +379,7 @@ void mentor_return(ENetEvent &event, const ::hPipe &hPipe)
 
     if (clicked == "mentor_leave" || clicked == "mentor_leave_yes")
     {
-        const link *l = link_of(p.growid);
+        const mentor_link *l = link_of(p.growid);
         if (l == nullptr || l->archived) return;
         if (p.level.front() >= LEAVE_BEFORE) return say(event.peer, std::format("`4You can't leave your Mentor once you reach level {}.``", LEAVE_BEFORE));
         if (clicked == "mentor_leave")
@@ -400,7 +400,7 @@ void mentor_return(ENetEvent &event, const ::hPipe &hPipe)
     const std::size_t sep = clicked.find('_');
     if (sep == std::string::npos) return;
     const std::string what = clicked.substr(0, sep), who = clicked.substr(sep + 1);
-    link *l = link_of(who);
+    mentor_link *l = link_of(who);
     if (l == nullptr || !is_mentor_of(*l, p.growid) || l->archived) return send_apprentices(event);
     if (ENetPeer *a = online(l->apprentice)) l->level = static_cast<::peer*>(a->data)->level.front();
 
@@ -427,7 +427,7 @@ void mentor_return(ENetEvent &event, const ::hPipe &hPipe)
 void mentor_level_up(ENetEvent &event, int level)
 {
     ::peer &p = me(event);
-    link *l = link_of(p.growid);
+    mentor_link *l = link_of(p.growid);
     if (l == nullptr || l->archived) return;
     l->level = level;
     save(*l);
@@ -444,7 +444,7 @@ void mentor_level_up(ENetEvent &event, int level)
 void mentor_login(ENetEvent &event)
 {
     ::peer &p = me(event);
-    if (link *l = link_of(p.growid); l != nullptr && !l->archived && l->level != p.level.front())
+    if (mentor_link *l = link_of(p.growid); l != nullptr && !l->archived && l->level != p.level.front())
     {
         l->level = p.level.front();
         save(*l);
@@ -469,7 +469,7 @@ void apprentice_ticket_used(ENetEvent &event, int step)
     /* @note one Mentor Ticket per level per apprentice: tickets traded from others don't count twice */
     const int used = pget(p, "appr_used");
     if (used & (1 << step)) return;
-    link *l = link_of(p.growid);
+    mentor_link *l = link_of(p.growid);
     if (l == nullptr) return;
     pset(p, "appr_used", used | (1 << step));
     l->pending |= 1 << step;
